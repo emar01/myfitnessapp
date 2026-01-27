@@ -9,9 +9,10 @@ interface ExerciseCardProps {
     exercise: WorkoutExercise;
     onUpdate: (updatedExercise: WorkoutExercise) => void;
     onRemove: () => void;
+    onPlayVideo?: (url: string) => void;
 }
 
-export default function ExerciseCard({ exercise, onUpdate, onRemove }: ExerciseCardProps) {
+export default function ExerciseCard({ exercise, onUpdate, onRemove, onPlayVideo }: ExerciseCardProps) {
     // Separate sets
     const warmupSets = exercise.sets.filter(s => s.type === 'warmup');
     const workingSets = exercise.sets.filter(s => s.type !== 'warmup');
@@ -46,8 +47,8 @@ export default function ExerciseCard({ exercise, onUpdate, onRemove }: ExerciseC
                     <Text style={styles.title}>{exercise.name}</Text>
                 </View>
                 <View style={styles.headerActions}>
-                    <TouchableOpacity onPress={() => alert('Info')}>
-                        <Ionicons name="help-circle-outline" size={24} color={Palette.text.secondary} style={{ marginRight: Spacing.s }} />
+                    <TouchableOpacity onPress={() => onPlayVideo && exercise.videoLink ? onPlayVideo(exercise.videoLink) : alert('No video available')}>
+                        <Ionicons name="play-circle-outline" size={24} color={Palette.primary.main} style={{ marginRight: Spacing.s }} />
                     </TouchableOpacity>
 
                     <TouchableOpacity onPress={onRemove}>

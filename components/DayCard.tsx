@@ -3,7 +3,11 @@ import { FontAwesome } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-export type DayCardType = 'distance' | 'threshold' | 'long' | 'rest' | 'interval';
+export type DayCardType =
+    | 'distans' | 'långpass' | 'intervall'
+    | 'crossfit' | 'styrka' | 'rörlighet'
+    | 'rest';
+
 export type DayCardStatus = 'completed' | 'pending' | 'skipped';
 
 interface DayCardProps {
@@ -11,7 +15,7 @@ interface DayCardProps {
     date: string;
     title?: string;
     subtitle?: string;
-    type: DayCardType;
+    type: DayCardType | string; // Allow string for flexibility
     status?: DayCardStatus;
     onPress?: () => void;
     isToday?: boolean;
@@ -33,10 +37,17 @@ export default function DayCard({
     // Tag Color based on workout type
     const getTagColor = () => {
         switch (type) {
-            case 'distance': return Palette.primary.main; // Green
-            case 'threshold': return Palette.accent.main; // Salmon
-            case 'long': return '#2196F3'; // Blue
-            case 'interval': return '#FF9800'; // Orange
+            // Running
+            case 'distans': return Palette.primary.main; // Green (Default)
+            case 'långpass': return '#2196F3'; // Blue
+            case 'intervall': return '#F44336'; // Red
+
+            // Strength
+            case 'crossfit': return '#FF9800'; // Orange
+            case 'styrka': return '#9C27B0'; // Purple
+            case 'rörlighet': return '#009688'; // Teal
+
+            case 'rest': return Palette.text.disabled;
             default: return Palette.text.disabled;
         }
     };
@@ -61,7 +72,7 @@ export default function DayCard({
                 >
                     <View style={[styles.typeTag, { backgroundColor: getTagColor() }]}>
                         <Text style={styles.typeTagText}>
-                            {type === 'long' ? 'Långpass' : type === 'threshold' ? 'Tröskel' : 'Distans'}
+                            {String(type).charAt(0).toUpperCase() + String(type).slice(1)}
                         </Text>
                     </View>
 

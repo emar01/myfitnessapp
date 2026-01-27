@@ -38,10 +38,17 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="programs"
+        name="library"
         options={{
-          title: 'Program',
-          tabBarIcon: ({ color }) => <FontAwesome name="list-alt" size={24} color={color} style={{ marginBottom: -3 }} />,
+          title: 'Bibliotek',
+          tabBarIcon: ({ color }) => <FontAwesome name="book" size={24} color={color} style={{ marginBottom: -3 }} />,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Inställningar',
+          tabBarIcon: ({ color }) => <FontAwesome name="cog" size={24} color={color} style={{ marginBottom: -3 }} />,
         }}
       />
       <Tabs.Screen

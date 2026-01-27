@@ -1,8 +1,8 @@
 import { useSession } from '@/app/ctx';
 import ExerciseCard from '@/components/ExerciseCard';
+import VideoPlayer from '@/components/VideoPlayer';
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
 import { db } from '@/lib/firebaseConfig';
-import { seedExercises } from '@/scripts/seedFirestore';
 import { Exercise, Workout, WorkoutExercise } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -42,6 +42,10 @@ export default function WorkoutLoggerScreen() {
     const [modalTab, setModalTab] = useState<'MostUsed' | 'All'>('All');
     const [copySets, setCopySets] = useState(true);
 
+    // Video Modal State
+    const [videoModalVisible, setVideoModalVisible] = useState(false);
+    const [currentVideoUrl, setCurrentVideoUrl] = useState<string | null>(null);
+
     useEffect(() => {
         fetchExercises();
         // Timer
@@ -56,9 +60,6 @@ export default function WorkoutLoggerScreen() {
     const fetchExercises = async () => {
         setIsLoading(true);
         try {
-            console.log("Attempting to seed exercises...");
-            await seedExercises();
-
             console.log("Fetching exercises...");
             const querySnapshot = await getDocs(collection(db, "exercises"));
             const exercisesList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Exercise));
@@ -78,6 +79,7 @@ export default function WorkoutLoggerScreen() {
             name: exercise.name,
             sets: [], // Start empty, let user add
             isBodyweight: exercise.isBodyweight,
+            videoLink: exercise.videoLink // Start persisting this!
         };
         // Logic to maybe copy sets if copySets is true could go here (mocked for now)
         if (copySets) {
@@ -131,6 +133,15 @@ export default function WorkoutLoggerScreen() {
         }
     };
 
+    const openVideo = (url?: string) => {
+        if (url) {
+            setCurrentVideoUrl(url);
+            setVideoModalVisible(true);
+        } else {
+            alert('No video available for this exercise.');
+        }
+    };
+
     // Filter exercises based on search
     const filteredExercises = availableExercises.filter(ex =>
         ex.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -173,6 +184,7 @@ export default function WorkoutLoggerScreen() {
                         exercise={exercise}
                         onUpdate={(updated) => updateExercise(index, updated)}
                         onRemove={() => removeExercise(index)}
+                        onPlayVideo={openVideo}
                     />
                 ))}
 
@@ -289,8 +301,8 @@ export default function WorkoutLoggerScreen() {
                                         <Text style={styles.exerciseName}>{item.name}</Text>
                                     </View>
                                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                        <TouchableOpacity style={{ padding: 4 }}>
-                                            <Ionicons name="help-circle-outline" size={22} color={Palette.text.secondary} />
+                                        <TouchableOpacity style={{ padding: 4 }} onPress={() => openVideo(item.videoLink)}>
+                                            <Ionicons name="play-circle-outline" size={24} color={Palette.primary.main} />
                                         </TouchableOpacity>
                                     </View>
                                 </TouchableOpacity>
@@ -312,6 +324,18 @@ export default function WorkoutLoggerScreen() {
                     )}
 
                 </View>
+            </Modal>
+
+            {/* NEW VIDEO MODAL */}
+            <Modal visible={videoModalVisible} animationType="slide" presentationStyle="pageSheet">
+                <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'flex-end', padding: 16, backgroundColor: '#222' }}>
+                        <TouchableOpacity onPress={() => setVideoModalVisible(false)}>
+                            <Text style={{ color: '#FFF', fontSize: 18, fontWeight: 'bold' }}>Close</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <VideoPlayer url={currentVideoUrl} />
+                </SafeAreaView>
             </Modal>
 
         </SafeAreaView>

@@ -1,3 +1,7 @@
+export type WorkoutCategory = 'löpning' | 'styrketräning' | 'rehab' | 'övrigt';
+export type RunningSubcategory = 'distans' | 'långpass' | 'intervall';
+export type StrengthSubcategory = 'crossfit' | 'styrka' | 'rörlighet';
+
 export interface Exercise {
     id?: string;
     name: string;
@@ -29,8 +33,11 @@ export interface Workout {
     userId: string;
     name: string;
     date: Date;
+    scheduledDate?: Date;
     status: 'Planned' | 'In Progress' | 'Completed';
     exercises: WorkoutExercise[];
+    category?: WorkoutCategory;
+    subcategory?: RunningSubcategory | StrengthSubcategory;
     notes?: string;
     programId?: string;
     stravaActivityId?: string;
@@ -42,4 +49,23 @@ export interface UserProfile {
     email: string;
     weight?: number;
     height?: number;
+}
+
+export interface Program {
+    id?: string;
+    title: string;
+    duration: string;
+    type: 'daily' | 'period'; // Updated type
+    category: string; // e.g. 'Styrketräning' (Keep for backward compat or just display)
+    description?: string;
+    workoutIds?: string[];
+}
+
+export interface WorkoutTemplate {
+    id?: string;
+    name: string;
+    category: WorkoutCategory;
+    subcategory?: RunningSubcategory | StrengthSubcategory;
+    exercises: WorkoutExercise[];
+    note?: string;
 }

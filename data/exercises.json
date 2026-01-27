@@ -3,174 +3,203 @@
         "name": "Bench Press",
         "type": "Barbell",
         "primaryMuscleGroup": "Chest",
-        "isBodyweight": false
+        "isBodyweight": false,
+        "videoLink": "https://www.youtube.com/watch?v=0D-i4Y4-2mY"
     },
     {
         "name": "Push-up",
         "type": "Bodyweight",
         "primaryMuscleGroup": "Chest",
-        "isBodyweight": true
+        "isBodyweight": true,
+        "videoLink": "https://www.youtube.com/watch?v=IODxDxX7oi4"
     },
     {
         "name": "Dumbbell Bench Press",
         "type": "Dumbbell",
         "primaryMuscleGroup": "Chest",
-        "isBodyweight": false
+        "isBodyweight": false,
+        "videoLink": "https://www.youtube.com/watch?v=Y_7aHqEiB_E"
     },
     {
         "name": "Incline Bench Press",
         "type": "Barbell",
         "primaryMuscleGroup": "Chest",
-        "isBodyweight": false
+        "isBodyweight": false,
+        "videoLink": "https://www.youtube.com/watch?v=SrqOu55lrYU"
     },
     {
         "name": "Cable Fly",
         "type": "Cable",
         "primaryMuscleGroup": "Chest",
-        "isBodyweight": false
+        "isBodyweight": false,
+        "videoLink": "https://www.youtube.com/watch?v=IweJZ_M0kC8"
     },
     {
         "name": "Deadlift",
         "type": "Barbell",
         "primaryMuscleGroup": "Back",
-        "isBodyweight": false
+        "isBodyweight": false,
+        "videoLink": "https://www.youtube.com/watch?v=JcE2lQ8IuJM"
     },
     {
         "name": "Barbell Row",
         "type": "Barbell",
         "primaryMuscleGroup": "Back",
-        "isBodyweight": false
+        "isBodyweight": false,
+        "videoLink": "https://www.youtube.com/watch?v=RQU8wZPbioA"
     },
     {
         "name": "Pull-up",
         "type": "Bodyweight",
         "primaryMuscleGroup": "Back",
-        "isBodyweight": true
+        "isBodyweight": true,
+        "videoLink": "https://www.youtube.com/watch?v=eGo4IYlbE5g"
     },
     {
         "name": "Lat Pulldown",
         "type": "Machine",
         "primaryMuscleGroup": "Back",
-        "isBodyweight": false
+        "isBodyweight": false,
+        "videoLink": "https://www.youtube.com/watch?v=CAwfieNP9qs"
     },
     {
         "name": "Seated Cable Row",
         "type": "Cable",
         "primaryMuscleGroup": "Back",
-        "isBodyweight": false
+        "isBodyweight": false,
+        "videoLink": "https://www.youtube.com/watch?v=GZbfZ033fYD"
     },
     {
         "name": "Back Extension",
         "type": "Bodyweight",
         "primaryMuscleGroup": "Back",
-        "isBodyweight": true
+        "isBodyweight": true,
+        "videoLink": "https://www.youtube.com/watch?v=ph3pddpKzzw"
     },
     {
         "name": "Back Squat",
         "type": "Barbell",
         "primaryMuscleGroup": "Legs",
-        "isBodyweight": false
+        "isBodyweight": false,
+        "videoLink": "https://www.youtube.com/watch?v=F3QY5vN_cuI"
     },
     {
         "name": "Front Squat",
         "type": "Barbell",
         "primaryMuscleGroup": "Legs",
-        "isBodyweight": false
+        "isBodyweight": false,
+        "videoLink": "https://www.youtube.com/watch?v=v-mQm_droHg"
     },
     {
         "name": "Romanian Deadlift",
         "type": "Barbell",
         "primaryMuscleGroup": "Legs",
-        "isBodyweight": false
+        "isBodyweight": false,
+        "videoLink": "https://www.youtube.com/watch?v=JCXUYuzwNrM"
     },
     {
         "name": "Lunge",
         "type": "Dumbbell",
         "primaryMuscleGroup": "Legs",
-        "isBodyweight": false
+        "isBodyweight": false,
+        "videoLink": "https://www.youtube.com/watch?v=D7KaRcUTQeE"
     },
     {
         "name": "Bulgarian Split Squat",
         "type": "Dumbbell",
         "primaryMuscleGroup": "Legs",
-        "isBodyweight": false
+        "isBodyweight": false,
+        "videoLink": "https://www.youtube.com/watch?v=2C-uNgKwPLE"
     },
     {
         "name": "Leg Press",
         "type": "Machine",
         "primaryMuscleGroup": "Legs",
-        "isBodyweight": false
+        "isBodyweight": false,
+        "videoLink": "https://www.youtube.com/watch?v=IZxyjW7MPJQ"
     },
     {
         "name": "Seated Leg Curl",
         "type": "Machine",
         "primaryMuscleGroup": "Legs",
-        "isBodyweight": false
+        "isBodyweight": false,
+        "videoLink": "https://www.youtube.com/watch?v=ELOCsoDSmrg"
     },
     {
         "name": "Standing Calf Raise",
         "type": "Machine",
         "primaryMuscleGroup": "Legs",
-        "isBodyweight": false
+        "isBodyweight": false,
+        "videoLink": "https://www.youtube.com/watch?v=ymkhmb9q_M8"
     },
     {
         "name": "Overhead Press",
         "type": "Barbell",
         "primaryMuscleGroup": "Shoulders",
-        "isBodyweight": false
+        "isBodyweight": false,
+        "videoLink": "https://www.youtube.com/watch?v=0wQ7SpCfqRw"
     },
     {
         "name": "Strict Press",
         "type": "Barbell",
         "primaryMuscleGroup": "Shoulders",
-        "isBodyweight": false
+        "isBodyweight": false,
+        "videoLink": "https://www.youtube.com/watch?v=CnBmiBqp-MI"
     },
     {
         "name": "Dumbbell Lateral Raise",
         "type": "Dumbbell",
         "primaryMuscleGroup": "Shoulders",
-        "isBodyweight": false
+        "isBodyweight": false,
+        "videoLink": "https://www.youtube.com/watch?v=3VcKaXpzqRo"
     },
     {
         "name": "Face Pull",
         "type": "Cable",
         "primaryMuscleGroup": "Shoulders",
-        "isBodyweight": false
+        "isBodyweight": false,
+        "videoLink": "https://www.youtube.com/watch?v=rep-qVOkqgk"
     },
     {
         "name": "Barbell Curl",
         "type": "Barbell",
         "primaryMuscleGroup": "Biceps",
-        "isBodyweight": false
+        "isBodyweight": false,
+        "videoLink": "https://www.youtube.com/watch?v=kwG2ipFRgfo"
     },
     {
         "name": "Hammer Curl",
         "type": "Dumbbell",
         "primaryMuscleGroup": "Biceps",
-        "isBodyweight": false
+        "isBodyweight": false,
+        "videoLink": "https://www.youtube.com/watch?v=zC3nLlEvin4"
     },
     {
         "name": "Tricep Pushdown",
         "type": "Cable",
         "primaryMuscleGroup": "Triceps",
-        "isBodyweight": false
+        "isBodyweight": false,
+        "videoLink": "https://www.youtube.com/watch?v=2-LAMcpzODU"
     },
     {
         "name": "Dip",
         "type": "Bodyweight",
         "primaryMuscleGroup": "Triceps",
-        "isBodyweight": true
+        "isBodyweight": true,
+        "videoLink": "https://www.youtube.com/watch?v=2z8JmcrW-As"
     },
     {
         "name": "Plank",
         "type": "Bodyweight",
         "primaryMuscleGroup": "Core",
-        "isBodyweight": true
+        "isBodyweight": true,
+        "videoLink": "https://www.youtube.com/watch?v=ASdvN_XEl_c"
     },
     {
         "name": "Hanging Leg Raise",
         "type": "Bodyweight",
         "primaryMuscleGroup": "Core",
-        "isBodyweight": true
+        "isBodyweight": true,
+        "videoLink": "https://www.youtube.com/watch?v=Pr1ieGZ5atk"
     }
 ]
