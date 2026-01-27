@@ -1,0 +1,47 @@
+[
+    {
+        "title": "20-Minute Workout with Dumbbells",
+        "duration": "15 min",
+        "type": "strength",
+        "category": "Styrketräning"
+    },
+    {
+        "title": "30-Minute Workout at Home",
+        "duration": "32 min",
+        "type": "strength",
+        "premium": true,
+        "category": "Styrketräning"
+    },
+    {
+        "title": "Ab Workout",
+        "duration": "39 min",
+        "type": "strength",
+        "category": "Styrketräning"
+    },
+    {
+        "title": "Morning Run 5k",
+        "duration": "30 min",
+        "type": "cardio",
+        "premium": true,
+        "category": "Löpning"
+    },
+    {
+        "title": "Knee Rehab Routine",
+        "duration": "20 min",
+        "type": "rehab",
+        "premium": false,
+        "category": "Rehab"
+    },
+    {
+        "title": "Intervals 4x4",
+        "duration": "45 min",
+        "type": "cardio",
+        "category": "Löpning"
+    },
+    {
+        "title": "Beginner Barbell Program",
+        "duration": "45 min",
+        "type": "strength",
+        "category": "Styrketräning"
+    }
+]

@@ -1,0 +1,176 @@
+[
+    {
+        "name": "Bench Press",
+        "type": "Barbell",
+        "primaryMuscleGroup": "Chest",
+        "isBodyweight": false
+    },
+    {
+        "name": "Push-up",
+        "type": "Bodyweight",
+        "primaryMuscleGroup": "Chest",
+        "isBodyweight": true
+    },
+    {
+        "name": "Dumbbell Bench Press",
+        "type": "Dumbbell",
+        "primaryMuscleGroup": "Chest",
+        "isBodyweight": false
+    },
+    {
+        "name": "Incline Bench Press",
+        "type": "Barbell",
+        "primaryMuscleGroup": "Chest",
+        "isBodyweight": false
+    },
+    {
+        "name": "Cable Fly",
+        "type": "Cable",
+        "primaryMuscleGroup": "Chest",
+        "isBodyweight": false
+    },
+    {
+        "name": "Deadlift",
+        "type": "Barbell",
+        "primaryMuscleGroup": "Back",
+        "isBodyweight": false
+    },
+    {
+        "name": "Barbell Row",
+        "type": "Barbell",
+        "primaryMuscleGroup": "Back",
+        "isBodyweight": false
+    },
+    {
+        "name": "Pull-up",
+        "type": "Bodyweight",
+        "primaryMuscleGroup": "Back",
+        "isBodyweight": true
+    },
+    {
+        "name": "Lat Pulldown",
+        "type": "Machine",
+        "primaryMuscleGroup": "Back",
+        "isBodyweight": false
+    },
+    {
+        "name": "Seated Cable Row",
+        "type": "Cable",
+        "primaryMuscleGroup": "Back",
+        "isBodyweight": false
+    },
+    {
+        "name": "Back Extension",
+        "type": "Bodyweight",
+        "primaryMuscleGroup": "Back",
+        "isBodyweight": true
+    },
+    {
+        "name": "Back Squat",
+        "type": "Barbell",
+        "primaryMuscleGroup": "Legs",
+        "isBodyweight": false
+    },
+    {
+        "name": "Front Squat",
+        "type": "Barbell",
+        "primaryMuscleGroup": "Legs",
+        "isBodyweight": false
+    },
+    {
+        "name": "Romanian Deadlift",
+        "type": "Barbell",
+        "primaryMuscleGroup": "Legs",
+        "isBodyweight": false
+    },
+    {
+        "name": "Lunge",
+        "type": "Dumbbell",
+        "primaryMuscleGroup": "Legs",
+        "isBodyweight": false
+    },
+    {
+        "name": "Bulgarian Split Squat",
+        "type": "Dumbbell",
+        "primaryMuscleGroup": "Legs",
+        "isBodyweight": false
+    },
+    {
+        "name": "Leg Press",
+        "type": "Machine",
+        "primaryMuscleGroup": "Legs",
+        "isBodyweight": false
+    },
+    {
+        "name": "Seated Leg Curl",
+        "type": "Machine",
+        "primaryMuscleGroup": "Legs",
+        "isBodyweight": false
+    },
+    {
+        "name": "Standing Calf Raise",
+        "type": "Machine",
+        "primaryMuscleGroup": "Legs",
+        "isBodyweight": false
+    },
+    {
+        "name": "Overhead Press",
+        "type": "Barbell",
+        "primaryMuscleGroup": "Shoulders",
+        "isBodyweight": false
+    },
+    {
+        "name": "Strict Press",
+        "type": "Barbell",
+        "primaryMuscleGroup": "Shoulders",
+        "isBodyweight": false
+    },
+    {
+        "name": "Dumbbell Lateral Raise",
+        "type": "Dumbbell",
+        "primaryMuscleGroup": "Shoulders",
+        "isBodyweight": false
+    },
+    {
+        "name": "Face Pull",
+        "type": "Cable",
+        "primaryMuscleGroup": "Shoulders",
+        "isBodyweight": false
+    },
+    {
+        "name": "Barbell Curl",
+        "type": "Barbell",
+        "primaryMuscleGroup": "Biceps",
+        "isBodyweight": false
+    },
+    {
+        "name": "Hammer Curl",
+        "type": "Dumbbell",
+        "primaryMuscleGroup": "Biceps",
+        "isBodyweight": false
+    },
+    {
+        "name": "Tricep Pushdown",
+        "type": "Cable",
+        "primaryMuscleGroup": "Triceps",
+        "isBodyweight": false
+    },
+    {
+        "name": "Dip",
+        "type": "Bodyweight",
+        "primaryMuscleGroup": "Triceps",
+        "isBodyweight": true
+    },
+    {
+        "name": "Plank",
+        "type": "Bodyweight",
+        "primaryMuscleGroup": "Core",
+        "isBodyweight": true
+    },
+    {
+        "name": "Hanging Leg Raise",
+        "type": "Bodyweight",
+        "primaryMuscleGroup": "Core",
+        "isBodyweight": true
+    }
+]

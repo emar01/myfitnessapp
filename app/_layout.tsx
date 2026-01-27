@@ -10,7 +10,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 
 export {
   // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
+  ErrorBoundary
 } from 'expo-router';
 
 export const unstable_settings = {
@@ -45,15 +45,25 @@ export default function RootLayout() {
   return <RootLayoutNav />;
 }
 
+import { SessionProvider } from './ctx';
+
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-      </Stack>
-    </ThemeProvider>
+    <SessionProvider>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="onboarding/plans" options={{ headerShown: false }} />
+          <Stack.Screen name="onboarding/questionnaire" options={{ headerShown: false }} />
+          <Stack.Screen name="workout/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="workout/log" options={{ headerShown: false }} />
+          <Stack.Screen name="program/settings" options={{ headerShown: false }} />
+          <Stack.Screen name="login" options={{ headerShown: false }} />
+        </Stack>
+      </ThemeProvider>
+    </SessionProvider>
   );
 }

@@ -1,19 +1,21 @@
-const tintColorLight = '#2f95dc';
-const tintColorDark = '#fff';
+import { Palette } from './DesignSystem';
+
+const tintColorLight = Palette.primary.main;
+const tintColorDark = Palette.accent.main;
 
 export default {
   light: {
-    text: '#000',
-    background: '#fff',
+    text: Palette.text.primary,
+    background: Palette.background.default,
     tint: tintColorLight,
-    tabIconDefault: '#ccc',
+    tabIconDefault: Palette.text.disabled,
     tabIconSelected: tintColorLight,
   },
   dark: {
-    text: '#fff',
-    background: '#000',
-    tint: tintColorDark,
-    tabIconDefault: '#ccc',
-    tabIconSelected: tintColorDark,
+    text: Palette.text.primary, // Keeping light theme for now as per screenshots which are light mode
+    background: Palette.background.default,
+    tint: tintColorLight,
+    tabIconDefault: Palette.text.disabled,
+    tabIconSelected: tintColorLight,
   },
 };
