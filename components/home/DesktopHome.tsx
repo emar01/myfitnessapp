@@ -7,13 +7,14 @@ import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { collection, doc, getDocs, limit, query, updateDoc, where } from 'firebase/firestore';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
+import { TouchableOpacity as GHTouchableOpacity } from 'react-native-gesture-handler';
 import { getWeekDates, ListItem } from './MobileHome';
 
 export default function DesktopHome() {
     const router = useRouter();
-    const { user, isLoading: sessionLoading } = useSession();
+    const { user, signOut, isLoading: sessionLoading } = useSession();
     const [dailyProgram, setDailyProgram] = useState<Program | null>(null);
     const [loading, setLoading] = useState(true);
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -28,6 +29,24 @@ export default function DesktopHome() {
             }
         }
     }, [user, sessionLoading, currentDate]);
+
+    const handleSignOut = () => {
+        Alert.alert(
+            'Logga ut',
+            `Är du säker på att du vill logga ut från ${user?.email}?`,
+            [
+                { text: 'Avbryt', style: 'cancel' },
+                {
+                    text: 'Logga ut',
+                    style: 'destructive',
+                    onPress: () => {
+                        signOut();
+                        // router.replace('/login'); 
+                    }
+                }
+            ]
+        );
+    };
 
     const fetchData = async () => {
         setLoading(true);
@@ -204,7 +223,9 @@ export default function DesktopHome() {
                             <Ionicons name="add" size={20} color="#FFF" />
                             <Text style={styles.startWorkoutText}>Starta pass</Text>
                         </TouchableOpacity>
-                        <View style={styles.profileAvatar}><FontAwesome name="user" size={20} color={Palette.text.secondary} /></View>
+                        <GHTouchableOpacity onPress={handleSignOut} style={styles.profileAvatar}>
+                            <FontAwesome name="user" size={20} color={Palette.text.secondary} />
+                        </GHTouchableOpacity>
                     </View>
                 </View>
 

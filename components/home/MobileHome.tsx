@@ -7,9 +7,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { collection, doc, getDocs, limit, query, updateDoc, where } from 'firebase/firestore';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-native-draggable-flatlist';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { GestureHandlerRootView, TouchableOpacity as GHTouchableOpacity } from 'react-native-gesture-handler';
 
 // Helper to get week dates based on a reference date
 export const getWeekDates = (referenceDate: Date = new Date()) => {
@@ -49,7 +49,7 @@ export type ListItem =
 
 export default function MobileHome() {
     const router = useRouter();
-    const { user, isLoading: sessionLoading } = useSession();
+    const { user, signOut, isLoading: sessionLoading } = useSession();
     const [dailyProgram, setDailyProgram] = useState<Program | null>(null);
     const [listData, setListData] = useState<ListItem[]>([]);
     const [loading, setLoading] = useState(true);
@@ -59,12 +59,30 @@ export default function MobileHome() {
         if (!sessionLoading) {
             if (!user) {
                 // Redirect to login if no user session
-                router.replace('/login');
+                // router.replace('/login'); // Handled by ProtectedLayout now
             } else {
                 fetchData();
             }
         }
     }, [user, sessionLoading, currentDate]);
+
+    const handleSignOut = () => {
+        Alert.alert(
+            'Logga ut',
+            `Är du säker på att du vill logga ut från ${user?.email}?`,
+            [
+                { text: 'Avbryt', style: 'cancel' },
+                {
+                    text: 'Logga ut',
+                    style: 'destructive',
+                    onPress: () => {
+                        signOut();
+                        // router.replace('/login'); // Handled by ProtectedLayout
+                    }
+                }
+            ]
+        );
+    };
 
     const fetchData = async () => {
         setLoading(true);
@@ -87,7 +105,7 @@ export default function MobileHome() {
                     const wSnap = await getDocs(qWorkouts);
                     workouts = wSnap.docs.map(d => ({ id: d.id, ...d.data() } as Workout));
                 } catch (err) {
-                    console.error("Error fetching workouts query", err);
+                    // console.error("Error fetching workouts query", err);
                 }
             }
 
@@ -260,6 +278,15 @@ export default function MobileHome() {
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
             <SafeAreaView style={styles.safeArea}>
+                {/* Main App Header */}
+                <View style={styles.mainHeader}>
+                    <Text style={styles.mainHeaderTitle}>MyFitness</Text>
+                    <GHTouchableOpacity onPress={handleSignOut} style={styles.mainHeaderProfile}>
+                        <Ionicons name="person-circle" size={32} color={Palette.primary.main} />
+                    </GHTouchableOpacity>
+                </View>
+
+                {/* Week Navigation Header */}
                 <View style={styles.header}>
                     <TouchableOpacity style={styles.profileIcon} onPress={() => changeWeek('prev')}>
                         <Ionicons name="chevron-back" size={24} color={Palette.text.primary} />
@@ -307,6 +334,24 @@ const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
         backgroundColor: Palette.background.default,
+    },
+    mainHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: Spacing.m,
+        paddingVertical: Spacing.s,
+        backgroundColor: Palette.background.paper,
+        borderBottomWidth: 1,
+        borderBottomColor: Palette.border.default,
+    },
+    mainHeaderTitle: {
+        fontSize: Typography.size.l,
+        fontWeight: 'bold',
+        color: Palette.primary.main,
+    },
+    mainHeaderProfile: {
+        padding: Spacing.s,
     },
     header: {
         flexDirection: 'row',
