@@ -1,7 +1,7 @@
-import { useSession } from '@/app/ctx';
 import ExerciseCard from '@/components/ExerciseCard';
 import VideoPlayer from '@/components/VideoPlayer';
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
+import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
 import { Exercise, Workout, WorkoutExercise } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,7 +28,7 @@ export default function WorkoutLoggerScreen() {
         name: (params.workoutName as string) || 'New Workout',
         date: new Date(),
         status: 'In Progress',
-        exercises: [],
+        exercises: params.initialExercises ? JSON.parse(params.initialExercises as string) : [],
     });
 
     const [isModalVisible, setModalVisible] = useState(false);

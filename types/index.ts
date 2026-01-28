@@ -51,14 +51,22 @@ export interface UserProfile {
     height?: number;
 }
 
+export interface ProgramScheduleItem {
+    dayOffset: number; // 0 = start date, 1 = day after, etc.
+    workoutTemplateId?: string; // Link to a predefined workout
+    workoutTitle?: string; // Fallback or override title
+    description?: string;
+}
+
 export interface Program {
     id?: string;
     title: string;
     duration: string;
     type: 'daily' | 'period'; // Updated type
-    category: string; // e.g. 'Styrketräning' (Keep for backward compat or just display)
+    category: string; // e.g. 'Styrketräning'
     description?: string;
     workoutIds?: string[];
+    schedule?: ProgramScheduleItem[];
 }
 
 export interface WorkoutTemplate {

@@ -8,6 +8,7 @@ export type DayCardType =
     | 'crossfit' | 'styrka' | 'rörlighet'
     | 'rest';
 
+
 export type DayCardStatus = 'completed' | 'pending' | 'skipped';
 
 interface DayCardProps {
@@ -18,6 +19,8 @@ interface DayCardProps {
     type: DayCardType | string; // Allow string for flexibility
     status?: DayCardStatus;
     onPress?: () => void;
+    onLongPress?: () => void;
+    showDragHandle?: boolean;
     isToday?: boolean;
 }
 
@@ -29,6 +32,8 @@ export default function DayCard({
     type,
     status,
     onPress,
+    onLongPress,
+    showDragHandle,
     isToday,
 }: DayCardProps) {
 
@@ -62,37 +67,52 @@ export default function DayCard({
                     <Text style={styles.restText}>Vilodag</Text>
                 </View>
             ) : (
-                <TouchableOpacity
+                <View
                     style={[
                         styles.workoutCard,
                         status === 'completed' && styles.completedBorder
                     ]}
-                    onPress={onPress}
-                    activeOpacity={0.9}
                 >
-                    <View style={[styles.typeTag, { backgroundColor: getTagColor() }]}>
-                        <Text style={styles.typeTagText}>
-                            {String(type).charAt(0).toUpperCase() + String(type).slice(1)}
-                        </Text>
-                    </View>
-
-                    <View style={styles.content}>
-                        <Text style={styles.dateText}>{day} {date}</Text>
-                        {title && <Text style={styles.titleText}>{title}</Text>}
-                        {subtitle && <Text style={styles.subtitleText}>{subtitle}</Text>}
-                    </View>
-
-                    {status === 'completed' && (
-                        <View style={styles.checkIcon}>
-                            <FontAwesome name="check-circle" size={24} color={Palette.primary.main} />
+                    <TouchableOpacity
+                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+                        onPress={onPress}
+                        activeOpacity={0.7}
+                    >
+                        <View style={[styles.typeTag, { backgroundColor: getTagColor() }]}>
+                            <Text style={styles.typeTagText}>
+                                {String(type).charAt(0).toUpperCase() + String(type).slice(1)}
+                            </Text>
                         </View>
-                    )}
 
-                    {/* Chevron for navigation hint */}
-                    {!status && (
-                        <FontAwesome name="chevron-right" size={14} color={Palette.text.disabled} style={{ marginLeft: 8 }} />
+                        <View style={styles.content}>
+                            <Text style={styles.dateText}>{day} {date}</Text>
+                            {title && <Text style={styles.titleText}>{title}</Text>}
+                            {subtitle && <Text style={styles.subtitleText}>{subtitle}</Text>}
+                        </View>
+
+                        {status === 'completed' && (
+                            <View style={styles.checkIcon}>
+                                <FontAwesome name="check-circle" size={24} color={Palette.primary.main} />
+                            </View>
+                        )}
+                    </TouchableOpacity>
+
+                    {showDragHandle ? (
+                        <TouchableOpacity
+                            style={styles.dragHandle}
+                            onPressIn={onLongPress}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                            <FontAwesome name="bars" size={20} color={Palette.text.disabled} />
+                        </TouchableOpacity>
+                    ) : (
+                        !status && (
+                            <View style={{ marginRight: 12 }}>
+                                <FontAwesome name="chevron-right" size={14} color={Palette.text.disabled} />
+                            </View>
+                        )
                     )}
-                </TouchableOpacity>
+                </View>
             )}
         </View>
     );
@@ -113,11 +133,20 @@ const styles = StyleSheet.create({
         borderRadius: BorderRadius.m,
         flexDirection: 'row',
         alignItems: 'center',
-        padding: Spacing.m,
+        padding: 0, // Removed padding to allow full touch areas
         ...Shadows.small,
         overflow: 'hidden',
         position: 'relative',
         height: 80,
+    },
+    dragHandle: {
+        padding: Spacing.m,
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderLeftWidth: 1,
+        borderLeftColor: Palette.border.default,
+        backgroundColor: '#F9FAFB',
     },
     completedBorder: {
         borderWidth: 1,
@@ -159,7 +188,8 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
-        marginLeft: 20, // Space for the tag
+        marginLeft: 20 + Spacing.m, // Space for tag + padding
+        paddingVertical: Spacing.m,
     },
     dateText: {
         fontSize: Typography.size.xs,

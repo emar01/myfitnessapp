@@ -80,14 +80,9 @@ export default function ExerciseCard({ exercise, onUpdate, onRemove, onPlayVideo
 
             {/* Default/Working Sets */}
             <View style={styles.section}>
-                {/* Only show header if we have mixed sets, or always? Screenshot implies list of numbered sets */}
-                {/* Only showing header if strictly separating or empty */}
-                {(warmupSets.length > 0 || workingSets.length === 0) && (
-                    <TouchableOpacity style={styles.sectionHeader} onPress={() => addSet('normal')}>
-                        <Ionicons name="add" size={16} color={Palette.accent.main} />
-                        <Text style={styles.sectionTitle}>Set</Text>
-                    </TouchableOpacity>
-                )}
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Set</Text>
+                </View>
 
                 {workingSets.map((set, i) => (
                     <SetRow
@@ -100,12 +95,10 @@ export default function ExerciseCard({ exercise, onUpdate, onRemove, onPlayVideo
                     />
                 ))}
 
-                {/* Bottom Add Button if no sets yet? Or always? */}
-                {exercise.sets.length === 0 && (
-                    <TouchableOpacity style={styles.emptyAddButton} onPress={() => addSet('normal')}>
-                        <Text style={styles.emptyAddText}>+ Add First Set</Text>
-                    </TouchableOpacity>
-                )}
+                <TouchableOpacity style={styles.footerAddButton} onPress={() => addSet('normal')}>
+                    <Ionicons name="add" size={18} color={Palette.primary.main} />
+                    <Text style={styles.footerAddText}>Lägg till set</Text>
+                </TouchableOpacity>
             </View>
 
         </View>
@@ -152,12 +145,19 @@ const styles = StyleSheet.create({
         color: Palette.text.secondary, // Light gray/reddish tint?
         marginLeft: 4,
     },
-    emptyAddButton: {
-        padding: Spacing.m,
+    footerAddButton: {
+        flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: Spacing.s,
+        marginTop: Spacing.xs,
+        backgroundColor: Palette.background.default,
+        borderRadius: BorderRadius.m,
     },
-    emptyAddText: {
+    footerAddText: {
         color: Palette.primary.main,
         fontWeight: 'bold',
+        fontSize: Typography.size.s,
+        marginLeft: Spacing.xs,
     }
 });

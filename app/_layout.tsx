@@ -45,25 +45,29 @@ export default function RootLayout() {
   return <RootLayoutNav />;
 }
 
-import { SessionProvider } from './ctx';
+import { SessionProvider } from '@/context/ctx';
+
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
 
   return (
-    <SessionProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="onboarding/plans" options={{ headerShown: false }} />
-          <Stack.Screen name="onboarding/questionnaire" options={{ headerShown: false }} />
-          <Stack.Screen name="workout/[id]" options={{ headerShown: false }} />
-          <Stack.Screen name="workout/log" options={{ headerShown: false }} />
-          <Stack.Screen name="program/settings" options={{ headerShown: false }} />
-          <Stack.Screen name="login" options={{ headerShown: false }} />
-        </Stack>
-      </ThemeProvider>
-    </SessionProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SessionProvider>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="onboarding/plans" options={{ headerShown: false }} />
+            <Stack.Screen name="onboarding/questionnaire" options={{ headerShown: false }} />
+            <Stack.Screen name="workout/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="workout/log" options={{ headerShown: false }} />
+            <Stack.Screen name="program/settings" options={{ headerShown: false }} />
+            <Stack.Screen name="login" options={{ headerShown: false }} />
+          </Stack>
+        </ThemeProvider>
+      </SessionProvider>
+    </GestureHandlerRootView>
   );
 }

@@ -11,8 +11,12 @@ function TabBarIcon(props: {
   return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
 }
 
+import { useWindowDimensions } from 'react-native';
+
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const { width } = useWindowDimensions();
+  const isDesktop = width > 768;
 
   return (
     <Tabs
@@ -23,6 +27,7 @@ export default function TabLayout() {
         tabBarStyle: {
           paddingBottom: 5,
           height: 60,
+          display: isDesktop ? 'none' : 'flex',
         },
         tabBarLabelStyle: {
           fontSize: 10,
@@ -49,6 +54,13 @@ export default function TabLayout() {
         options={{
           title: 'Inställningar',
           tabBarIcon: ({ color }) => <FontAwesome name="cog" size={24} color={color} style={{ marginBottom: -3 }} />,
+        }}
+      />
+      <Tabs.Screen
+        name="calendar"
+        options={{
+          title: 'Kalender',
+          tabBarIcon: ({ color }) => <FontAwesome name="calendar" size={22} color={color} style={{ marginBottom: -3 }} />,
         }}
       />
       <Tabs.Screen
