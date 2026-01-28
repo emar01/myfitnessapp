@@ -1,6 +1,8 @@
+import DayCard, { DayCardType } from '@/components/DayCard';
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
+import { Workout } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { collection, getDocs, query, where } from 'firebase/firestore';
@@ -13,11 +15,12 @@ export default function CalendarScreen() {
     const { user } = useSession();
     const [workouts, setWorkouts] = useState<any[]>([]);
     const [currentDate, setCurrentDate] = useState(new Date());
+    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (user) fetchWorkouts();
-    }, [user, currentDate]); // Refetch if month changes if we optimized, but fetching all for now
+    }, [user, currentDate]);
 
     const fetchWorkouts = async () => {
         if (!user) return;
@@ -29,8 +32,7 @@ export default function CalendarScreen() {
             const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59);
 
             const userWorkoutsRef = collection(db, 'users', user.uid, 'workouts');
-            // Depending on index, simple range check might need a composite index if we sorted.
-            // But just filtering should be fine.
+
             const q = query(
                 userWorkoutsRef,
                 where('scheduledDate', '>=', startOfMonth),
@@ -73,6 +75,7 @@ export default function CalendarScreen() {
         // Days
         for (let d = 1; d <= daysInMonth; d++) {
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const thisDate = new Date(year, month, d);
 
             // Find workouts for this day
             const dayWorkouts = workouts.filter(w => {
@@ -87,12 +90,33 @@ export default function CalendarScreen() {
             const todayStr = new Date().toISOString().split('T')[0];
             const isToday = dateStr === todayStr;
 
+            // Check if selected
+            const isSelected = selectedDate &&
+                selectedDate.getDate() === d &&
+                selectedDate.getMonth() === month &&
+                selectedDate.getFullYear() === year;
+
             days.push(
-                <TouchableOpacity key={d} style={[styles.calDay, isToday && styles.calDayToday]} onPress={() => { }}>
-                    <Text style={[styles.calDayText, isToday && styles.calDayTextToday]}>{d}</Text>
+                <TouchableOpacity
+                    key={d}
+                    style={[
+                        styles.calDay,
+                        isToday && styles.calDayToday,
+                        isSelected && styles.calDaySelected
+                    ]}
+                    onPress={() => setSelectedDate(thisDate)}
+                >
+                    <Text style={[
+                        styles.calDayText,
+                        isToday && styles.calDayTextToday,
+                        isSelected && styles.calDayTextSelected
+                    ]}>{d}</Text>
                     <View style={styles.dotContainer}>
                         {dayWorkouts.slice(0, 3).map((w, i) => (
-                            <View key={i} style={[styles.dot, { backgroundColor: Palette.primary.main }]} />
+                            <View key={i} style={[
+                                styles.dot,
+                                { backgroundColor: isSelected ? '#FFF' : Palette.primary.main }
+                            ]} />
                         ))}
                     </View>
                 </TouchableOpacity>
@@ -116,7 +140,19 @@ export default function CalendarScreen() {
         return rows;
     };
 
+    const getSelectedDayWorkouts = () => {
+        if (!selectedDate) return [];
+        return workouts.filter(w => {
+            let wDate = w.scheduledDate instanceof Date ? w.scheduledDate : w.scheduledDate?.toDate();
+            if (!wDate) return false;
+            return wDate.getFullYear() === selectedDate.getFullYear() &&
+                wDate.getMonth() === selectedDate.getMonth() &&
+                wDate.getDate() === selectedDate.getDate();
+        });
+    }
+
     const monthNames = ["Januari", "Februari", "Mars", "April", "Maj", "Juni", "Juli", "Augusti", "September", "Oktober", "November", "December"];
+    const selectedWorkouts = getSelectedDayWorkouts();
 
     return (
         <SafeAreaView style={styles.container}>
@@ -148,9 +184,41 @@ export default function CalendarScreen() {
                     {renderCalendarGrid()}
                 </View>
 
-                {/* Placeholder for Agenda below */}
-                <Text style={[styles.subTitle, { marginTop: Spacing.xl }]}>Kommande</Text>
-                {/* List could go here */}
+                {/* Agenda */}
+                <View style={styles.agendaContainer}>
+                    <Text style={styles.subTitle}>
+                        {selectedDate.toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' })}
+                    </Text>
+
+                    {selectedWorkouts.length > 0 ? (
+                        <View style={{ gap: Spacing.s }}>
+                            {selectedWorkouts.map((workout: Workout) => (
+                                <DayCard
+                                    key={workout.id}
+                                    day=""
+                                    date=""
+                                    title={workout.name}
+                                    type={workout.category === 'löpning' ? (workout.subcategory as DayCardType || 'distans') : (workout.category === 'styrketräning' ? (workout.subcategory as DayCardType || 'styrka') : 'rest')}
+                                    // @ts-ignore
+                                    status={workout.status === 'Completed' ? 'completed' : 'pending'}
+                                    onPress={() => router.push({ pathname: '/workout/[id]', params: { id: workout.id!, title: workout.name, status: workout.status === 'Completed' ? 'completed' : 'planned' } })}
+                                    showDragHandle={false}
+                                />
+                            ))}
+                        </View>
+                    ) : (
+                        <View style={styles.emptyState}>
+                            <Text style={styles.emptyStateText}>Inga pass planerade</Text>
+                            <TouchableOpacity
+                                style={styles.addBtn}
+                                onPress={() => router.push({ pathname: '/workout/log', params: { workoutName: 'New Workout' } })}
+                            >
+                                <Ionicons name="add" size={16} color={Palette.primary.main} />
+                                <Text style={styles.addBtnText}>Lägg till pass</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+                </View>
 
             </ScrollView>
         </SafeAreaView>
@@ -220,9 +288,13 @@ const styles = StyleSheet.create({
         borderTopWidth: 1,
         borderTopColor: '#F5F5F7',
         paddingTop: 8,
+        borderRadius: BorderRadius.m,
     },
     calDayToday: {
         backgroundColor: '#F0F9FF',
+    },
+    calDaySelected: {
+        backgroundColor: Palette.primary.main,
     },
     calDayText: {
         fontSize: 14,
@@ -234,6 +306,10 @@ const styles = StyleSheet.create({
         color: Palette.primary.main,
         fontWeight: 'bold',
     },
+    calDayTextSelected: {
+        color: '#FFF',
+        fontWeight: 'bold',
+    },
     dotContainer: {
         flexDirection: 'row',
         gap: 2,
@@ -243,9 +319,42 @@ const styles = StyleSheet.create({
         height: 4,
         borderRadius: 2,
     },
+    agendaContainer: {
+        marginTop: Spacing.xl,
+        paddingBottom: 40,
+    },
     subTitle: {
         fontSize: Typography.size.m,
         fontWeight: 'bold',
         color: Palette.text.primary,
+        marginBottom: Spacing.m,
+        textTransform: 'capitalize'
+    },
+    emptyState: {
+        alignItems: 'center',
+        padding: Spacing.l,
+        backgroundColor: '#FFF',
+        borderRadius: BorderRadius.l,
+        borderWidth: 1,
+        borderStyle: 'dashed',
+        borderColor: Palette.border.default,
+    },
+    emptyStateText: {
+        color: Palette.text.secondary,
+        marginBottom: Spacing.m,
+    },
+    addBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        backgroundColor: '#F0F9FF',
+        borderRadius: 20,
+    },
+    addBtnText: {
+        color: Palette.primary.main,
+        fontWeight: 'bold',
+        fontSize: 12,
+        marginLeft: 4,
     }
 });

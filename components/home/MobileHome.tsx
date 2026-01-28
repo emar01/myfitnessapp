@@ -155,7 +155,8 @@ export default function MobileHome() {
         setListData(data);
 
         // Logic to update dates
-        let currentHeaderDate: Date | null = null;
+        const weekDates = getWeekDates(currentDate);
+        let currentHeaderDate: Date | null = weekDates[0]; // Default to start of week logic if dragged to top
         const updates: Promise<any>[] = [];
 
         for (const item of data) {

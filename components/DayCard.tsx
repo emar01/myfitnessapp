@@ -1,7 +1,8 @@
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
 import { FontAwesome } from '@expo/vector-icons';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { TouchableOpacity } from 'react-native-gesture-handler';
 
 export type DayCardType =
     | 'distans' | 'långpass' | 'intervall'
@@ -76,6 +77,7 @@ export default function DayCard({
                     <TouchableOpacity
                         style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
                         onPress={onPress}
+                        onLongPress={onLongPress}
                         activeOpacity={0.7}
                     >
                         <View style={[styles.typeTag, { backgroundColor: getTagColor() }]}>
