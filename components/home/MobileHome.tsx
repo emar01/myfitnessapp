@@ -5,11 +5,9 @@ import { db } from '@/lib/firebaseConfig';
 import { Program, Workout } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { collection, doc, getDocs, limit, query, updateDoc, where } from 'firebase/firestore';
+import { collection, getDocs, limit, query, where } from 'firebase/firestore';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-native-draggable-flatlist';
-import { GestureHandlerRootView, TouchableOpacity as GHTouchableOpacity } from 'react-native-gesture-handler';
+import { ActivityIndicator, Alert, FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 // Helper to get week dates based on a reference date
 export const getWeekDates = (referenceDate: Date = new Date()) => {
@@ -151,44 +149,7 @@ export default function MobileHome() {
         }
     };
 
-    const handleDragEnd = async ({ data }: { data: ListItem[] }) => {
-        setListData(data);
 
-        // Logic to update dates
-        const weekDates = getWeekDates(currentDate);
-        let currentHeaderDate: Date | null = weekDates[0]; // Default to start of week logic if dragged to top
-        const updates: Promise<any>[] = [];
-
-        for (const item of data) {
-            if (item.type === 'header') {
-                currentHeaderDate = item.dateObj;
-            } else if (item.type === 'workout' && currentHeaderDate) {
-                // Check if this workout's date needs update
-                const oldDate = item.workout.scheduledDate instanceof Date
-                    ? item.workout.scheduledDate
-                    : (item.workout.scheduledDate as any).toDate();
-
-                const isSameDay = oldDate.getFullYear() === currentHeaderDate.getFullYear() &&
-                    oldDate.getMonth() === currentHeaderDate.getMonth() &&
-                    oldDate.getDate() === currentHeaderDate.getDate();
-
-                if (!isSameDay) {
-                    // Update Local State (optimistic)
-                    item.workout.scheduledDate = currentHeaderDate;
-                    if (item.workout.id && user) {
-                        const ref = doc(db, 'users', user.uid, 'workouts', item.workout.id);
-                        updates.push(updateDoc(ref, { scheduledDate: currentHeaderDate }));
-                    }
-                }
-            }
-        }
-
-        try {
-            await Promise.all(updates);
-        } catch (e) {
-            console.error("Failed to batch update workouts", e);
-        }
-    };
 
     const changeWeek = (direction: 'next' | 'prev') => {
         const newDate = new Date(currentDate);
@@ -222,29 +183,49 @@ export default function MobileHome() {
 
     const renderStartWorkoutButton = () => (
         <TouchableOpacity
-            style={styles.startWorkoutButton}
             onPress={() => router.push({ pathname: '/workout/log', params: { workoutName: 'New Workout' } })}
+            style={{ flexDirection: 'row', alignItems: 'center' }}
         >
-            <View style={styles.startWorkoutIcon}>
-                <Ionicons name="add" size={24} color="#FFF" />
-            </View>
-            <Text style={styles.startWorkoutText}>Starta nytt pass</Text>
-            <Ionicons name="chevron-forward" size={20} color={Palette.text.secondary} />
+            <Ionicons name="add" size={20} color={Palette.text.secondary} />
+            <Text style={{ fontSize: Typography.size.s, color: Palette.text.secondary, marginLeft: 4 }}>Lägg till pass</Text>
         </TouchableOpacity>
     );
 
     const renderHeader = () => {
+        // Calculate week range string
+        const start = listData.find(i => i.type === 'header')?.dateObj || currentDate;
+        const end = new Date(start);
+        end.setDate(end.getDate() + 6);
+
+        const monthNames = ["jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
+        const rangeStr = `${start.getDate()} ${monthNames[start.getMonth()]} - ${end.getDate()} ${monthNames[end.getMonth()]}`;
+
         return (
             <View>
-                {renderDailyCard()}
-                <View style={{ paddingHorizontal: Spacing.m, marginBottom: Spacing.m }}>
+                {/* Remove Daily Card for now based on design request focus */}
+                {/* {renderDailyCard()} */}
+
+                {/* Custom Header Layout matching image */}
+                <View style={styles.weekControlHeader}>
+                    <Text style={styles.weekRangeText}>{rangeStr}</Text>
+
+                    <View style={styles.weekBadgeContainer}>
+                        <TouchableOpacity onPress={() => changeWeek('prev')}>
+                            <Ionicons name="chevron-back" size={16} color="#FFF" />
+                        </TouchableOpacity>
+                        <Text style={styles.weekBadgeText}>Vecka {getScaleWeekNumber(currentDate)}</Text>
+                        <TouchableOpacity onPress={() => changeWeek('next')}>
+                            <Ionicons name="chevron-forward" size={16} color="#FFF" />
+                        </TouchableOpacity>
+                    </View>
+
                     {renderStartWorkoutButton()}
                 </View>
             </View>
         )
     }
 
-    const renderItem = useCallback(({ item, drag, isActive }: RenderItemParams<ListItem>) => {
+    const renderItem = useCallback(({ item }: { item: ListItem }) => {
         if (item.type === 'header') {
             return (
                 <View style={styles.dayHeader}>
@@ -256,61 +237,47 @@ export default function MobileHome() {
 
         // Workout Item
         return (
-            <ScaleDecorator>
-                <View style={[styles.itemContainer, isActive && { opacity: 0.5 }]}>
-                    <DayCard
-                        day="" // Hidden in list view as header handles it
-                        date=""
-                        title={item.workout.name}
-                        type={item.workout.category === 'löpning' ? (item.workout.subcategory as DayCardType || 'distans') : (item.workout.category === 'styrketräning' ? (item.workout.subcategory as DayCardType || 'styrka') : 'rest')}
-                        // @ts-ignore
-                        status={item.workout.status === 'Completed' ? 'completed' : 'pending'}
-                        onPress={() => router.push({ pathname: '/workout/[id]', params: { id: item.workout.id!, title: item.workout.name, status: item.workout.status === 'Completed' ? 'completed' : 'planned' } })}
-                        onLongPress={drag}
-                        showDragHandle={true}
-                    />
-                </View>
-            </ScaleDecorator>
+            <View style={styles.itemContainer}>
+                <DayCard
+                    day="" // Hidden in list view as header handles it
+                    date=""
+                    title={item.workout.name}
+                    type={item.workout.category === 'löpning' ? (item.workout.subcategory as DayCardType || 'distans') : (item.workout.category === 'styrketräning' ? (item.workout.subcategory as DayCardType || 'styrka') : 'rest')}
+                    // @ts-ignore
+                    status={item.workout.status === 'Completed' ? 'completed' : 'pending'}
+                    onPress={() => router.push({ pathname: '/workout/[id]', params: { id: item.workout.id!, title: item.workout.name, status: item.workout.status === 'Completed' ? 'completed' : 'planned' } })}
+                />
+            </View>
         );
     }, [user, currentDate]);
 
     const weekNumber = getScaleWeekNumber(currentDate);
 
     return (
-        <GestureHandlerRootView style={{ flex: 1 }}>
+        <View style={{ flex: 1 }}>
             <SafeAreaView style={styles.safeArea}>
                 {/* Main App Header */}
                 <View style={styles.mainHeader}>
                     <Text style={styles.mainHeaderTitle}>MyFitness</Text>
-                    <GHTouchableOpacity onPress={handleSignOut} style={styles.mainHeaderProfile}>
+                    <TouchableOpacity onPress={handleSignOut} style={styles.mainHeaderProfile}>
                         <Ionicons name="person-circle" size={32} color={Palette.primary.main} />
-                    </GHTouchableOpacity>
+                    </TouchableOpacity>
                 </View>
 
-                {/* Week Navigation Header */}
+                {/* Week Navigation Header - REMOVED / MERGED into ListHeader */}
+                {/* 
                 <View style={styles.header}>
-                    <TouchableOpacity style={styles.profileIcon} onPress={() => changeWeek('prev')}>
-                        <Ionicons name="chevron-back" size={24} color={Palette.text.primary} />
-                    </TouchableOpacity>
-
-                    <View style={{ alignItems: 'center' }}>
-                        <Text style={styles.headerTitle}>Vecka {weekNumber}</Text>
-                        <Text style={styles.headerSubtitle}>{new Date().getFullYear()}</Text>
-                    </View>
-
-                    <TouchableOpacity style={styles.profileIcon} onPress={() => changeWeek('next')}>
-                        <Ionicons name="chevron-forward" size={24} color={Palette.text.primary} />
-                    </TouchableOpacity>
-                </View>
+                    ...
+                </View> 
+                */}
 
                 {loading ? (
                     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                         <ActivityIndicator size="large" color={Palette.primary.main} />
                     </View>
                 ) : (
-                    <DraggableFlatList
+                    <FlatList
                         data={listData}
-                        onDragEnd={handleDragEnd}
                         keyExtractor={(item) => item.id}
                         renderItem={renderItem}
                         ListHeaderComponent={renderHeader}
@@ -318,7 +285,7 @@ export default function MobileHome() {
                     />
                 )}
             </SafeAreaView>
-        </GestureHandlerRootView>
+        </View>
     );
 }
 
@@ -421,44 +388,46 @@ const styles = StyleSheet.create({
     // List Items
     dayHeader: {
         paddingHorizontal: Spacing.m,
-        paddingVertical: Spacing.s,
-        marginTop: Spacing.s,
-        backgroundColor: Palette.background.default, // Sticky header look?
+        paddingTop: Spacing.m,
+        paddingBottom: Spacing.xs,
+        marginTop: 0,
     },
     dayHeaderText: {
-        fontSize: Typography.size.m,
-        fontWeight: 'bold',
+        fontSize: Typography.size.s,
         color: Palette.text.primary,
+        fontWeight: 'normal',
     },
     dayDateText: {
-        fontSize: Typography.size.s,
-        color: Palette.text.secondary,
+        display: 'none', // Hide specific date label if only DayName is desired like "Måndag"
     },
     itemContainer: {
         paddingHorizontal: Spacing.m,
     },
-    // Start Workout Button
-    startWorkoutButton: {
+
+    // New Header Styles
+    weekControlHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: Palette.background.paper,
-        padding: Spacing.m,
-        borderRadius: BorderRadius.l,
-        ...Shadows.small,
+        justifyContent: 'space-between',
+        paddingHorizontal: Spacing.m,
+        paddingVertical: Spacing.m,
     },
-    startWorkoutIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: Palette.primary.main,
+    weekRangeText: {
+        fontSize: Typography.size.xs,
+        color: Palette.text.secondary,
+    },
+    weekBadgeContainer: {
+        backgroundColor: '#C5A898', // Brownish/Beige color from image
+        borderRadius: 16,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: Spacing.m,
+        gap: 8,
     },
-    startWorkoutText: {
-        flex: 1,
-        fontSize: Typography.size.m,
+    weekBadgeText: {
+        color: '#FFF',
+        fontSize: Typography.size.s,
         fontWeight: 'bold',
-        color: Palette.text.primary,
-    }
+    },
 });

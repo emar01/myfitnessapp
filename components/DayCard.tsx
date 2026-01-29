@@ -9,20 +9,20 @@ export type DayCardType =
     | 'crossfit' | 'styrka' | 'rörlighet'
     | 'rest';
 
-
 export type DayCardStatus = 'completed' | 'pending' | 'skipped';
 
 interface DayCardProps {
-    day: string;
+    day: string; // Kept for interface compatibility, but might be hidden
     date: string;
     title?: string;
     subtitle?: string;
-    type: DayCardType | string; // Allow string for flexibility
+    type: DayCardType | string;
     status?: DayCardStatus;
     onPress?: () => void;
     onLongPress?: () => void;
     showDragHandle?: boolean;
     isToday?: boolean;
+    onMenuPress?: () => void;
 }
 
 export default function DayCard({
@@ -34,22 +34,21 @@ export default function DayCard({
     status,
     onPress,
     onLongPress,
-    showDragHandle,
-    isToday,
+    onMenuPress,
 }: DayCardProps) {
 
     const isRest = type === 'rest';
 
-    // Tag Color based on workout type
-    const getTagColor = () => {
+    // Highlight color based on workout type
+    const getAccentColor = () => {
         switch (type) {
             // Running
-            case 'distans': return Palette.primary.main; // Green (Default)
-            case 'långpass': return '#2196F3'; // Blue
-            case 'intervall': return '#F44336'; // Red
+            case 'distans': return Palette.primary.main;
+            case 'långpass': return '#2196F3';
+            case 'intervall': return '#F44336';
 
             // Strength
-            case 'crossfit': return '#FF9800'; // Orange
+            case 'crossfit': return '#FF9800';
             case 'styrka': return '#9C27B0'; // Purple
             case 'rörlighet': return '#009688'; // Teal
 
@@ -58,62 +57,41 @@ export default function DayCard({
         }
     };
 
+    const accentColor = getAccentColor();
+
     return (
         <View style={styles.container}>
-            <Text style={styles.dayLabel}>{day}</Text>
-
             {isRest ? (
                 <View style={styles.restCard}>
                     <FontAwesome name="leaf" size={16} color={Palette.text.secondary} style={{ marginRight: 8 }} />
                     <Text style={styles.restText}>Vilodag</Text>
                 </View>
             ) : (
-                <View
-                    style={[
-                        styles.workoutCard,
-                        status === 'completed' && styles.completedBorder
-                    ]}
-                >
+                <View style={[
+                    styles.cardContainer,
+                    status === 'completed' && styles.completedBorder,
+                ]}>
+                    <View style={[styles.accentStrip, { backgroundColor: accentColor }]} />
+
                     <TouchableOpacity
-                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+                        style={styles.contentContainer}
                         onPress={onPress}
                         onLongPress={onLongPress}
                         activeOpacity={0.7}
                     >
-                        <View style={[styles.typeTag, { backgroundColor: getTagColor() }]}>
-                            <Text style={styles.typeTagText}>
-                                {String(type).charAt(0).toUpperCase() + String(type).slice(1)}
-                            </Text>
-                        </View>
-
-                        <View style={styles.content}>
-                            <Text style={styles.dateText}>{day} {date}</Text>
-                            {title && <Text style={styles.titleText}>{title}</Text>}
-                            {subtitle && <Text style={styles.subtitleText}>{subtitle}</Text>}
-                        </View>
-
-                        {status === 'completed' && (
-                            <View style={styles.checkIcon}>
-                                <FontAwesome name="check-circle" size={24} color={Palette.primary.main} />
-                            </View>
-                        )}
+                        <Text style={styles.title} numberOfLines={1}>{title}</Text>
+                        {!!subtitle && <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>}
+                        {/* If we wanted to show specific tags or small text, we could do it here */}
+                        <Text style={styles.caption}>{String(type).charAt(0).toUpperCase() + String(type).slice(1)}</Text>
                     </TouchableOpacity>
 
-                    {showDragHandle ? (
-                        <TouchableOpacity
-                            style={styles.dragHandle}
-                            onPressIn={onLongPress}
-                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        >
-                            <FontAwesome name="bars" size={20} color={Palette.text.disabled} />
-                        </TouchableOpacity>
-                    ) : (
-                        !status && (
-                            <View style={{ marginRight: 12 }}>
-                                <FontAwesome name="chevron-right" size={14} color={Palette.text.disabled} />
-                            </View>
-                        )
-                    )}
+                    <TouchableOpacity
+                        style={styles.actionButton}
+                        onPress={onMenuPress}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                        <FontAwesome name="ellipsis-v" size={16} color={Palette.text.secondary} />
+                    </TouchableOpacity>
                 </View>
             )}
         </View>
@@ -122,92 +100,78 @@ export default function DayCard({
 
 const styles = StyleSheet.create({
     container: {
-        marginBottom: Spacing.m,
-    },
-    dayLabel: {
-        fontSize: Typography.size.s,
-        color: Palette.text.secondary,
         marginBottom: Spacing.s,
-        marginLeft: Spacing.xs,
     },
-    workoutCard: {
+    // Main Card
+    cardContainer: {
         backgroundColor: Palette.background.paper,
         borderRadius: BorderRadius.m,
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 0, // Removed padding to allow full touch areas
         ...Shadows.small,
+        flexDirection: 'row', // Main Flex Layout
+        alignItems: 'stretch', // Stretch vertically to match height
         overflow: 'hidden',
-        position: 'relative',
-        height: 80,
+        minHeight: 70, // Ensure good touch area
     },
-    dragHandle: {
-        padding: Spacing.m,
+    // Left Accent Border
+    accentStrip: {
+        width: 6, // Robust solid visible strip
         height: '100%',
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderLeftWidth: 1,
-        borderLeftColor: Palette.border.default,
-        backgroundColor: '#F9FAFB',
     },
-    completedBorder: {
-        borderWidth: 1,
-        borderColor: Palette.primary.main,
-    },
-    restCard: {
-        backgroundColor: '#F5F5F5', // Lighter grey for rest
-        borderRadius: BorderRadius.round,
+    // Content Area
+    contentContainer: {
+        flex: 1, // Takes all available space
         paddingVertical: Spacing.s,
         paddingHorizontal: Spacing.m,
+        justifyContent: 'center',
+    },
+    // Right Action Area
+    actionButton: {
+        width: 48, // Fixed width for reliability
+        justifyContent: 'center',
+        alignItems: 'center',
+        // No absolute positioning needed!
+    },
+
+    // Typography
+    title: {
+        fontSize: Typography.size.m, // Slightly larger for better read
+        fontWeight: '600',
+        color: Palette.text.primary,
+        marginBottom: 2,
+    },
+    subtitle: {
+        fontSize: Typography.size.s,
+        color: Palette.text.secondary,
+        marginBottom: 2,
+    },
+    caption: {
+        fontSize: Typography.size.xs,
+        color: Palette.text.disabled,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        fontWeight: '600',
+        marginTop: 2,
+    },
+
+    // Rest Day
+    restCard: {
+        backgroundColor: '#F5F5F5',
+        borderRadius: BorderRadius.m,
+        padding: Spacing.s,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        height: 40,
-        alignSelf: 'flex-start',
-        width: '100%',
+        height: 48,
     },
     restText: {
         color: Palette.text.secondary,
-        fontSize: Typography.size.s,
         fontStyle: 'italic',
-    },
-    typeTag: {
-        position: 'absolute',
-        left: 0,
-        top: 0,
-        bottom: 0,
-        width: 24,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    typeTagText: {
-        color: 'white',
-        fontSize: 10,
-        fontWeight: 'bold',
-        transform: [{ rotate: '-90deg' }],
-        width: 80, // Ensure enough width for text before rotation
-        textAlign: 'center',
-    },
-    content: {
-        flex: 1,
-        marginLeft: 20 + Spacing.m, // Space for tag + padding
-        paddingVertical: Spacing.m,
-    },
-    dateText: {
-        fontSize: Typography.size.xs,
-        color: Palette.text.primary,
-        fontWeight: '600',
-        marginBottom: 2,
-    },
-    titleText: {
         fontSize: Typography.size.s,
-        color: Palette.text.secondary,
     },
-    subtitleText: {
-        fontSize: Typography.size.xs,
-        color: Palette.text.disabled,
-    },
-    checkIcon: {
-        marginLeft: Spacing.s,
+
+    // Status Styles
+    completedBorder: {
+        borderWidth: 1,
+        borderColor: Palette.primary.main,
     },
 });
