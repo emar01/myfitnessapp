@@ -4,7 +4,7 @@ import { SYSTEM_PROMPT_TEMPLATE } from '@/utils/aiContext';
 // VIKTIGT: Byt ut denna sträng mot din riktiga Google AI Studio / Firebase API-nyckel
 // Du kan skaffa en på https://aistudio.google.com/app/apikey
 // ---------------------------------------------------------
-const WEEKLY_PLAN_API_KEY = 'AIzaSyCbewjLZjTvCZ9XS7gBrhYwfVVVCwC9irw';
+const WEEKLY_PLAN_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_AI_KEY || '';
 
 export interface ChatMessage {
     role: 'system' | 'user' | 'assistant';

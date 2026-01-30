@@ -1,7 +1,7 @@
 import { makeRedirectUri } from 'expo-auth-session';
 
-const STRAVA_CLIENT_ID = '198162';
-const STRAVA_CLIENT_SECRET = '8301469c07bfbf7ceaef581a55145ecc7a6164e5';
+const STRAVA_CLIENT_ID = process.env.EXPO_PUBLIC_STRAVA_CLIENT_ID || '';
+const STRAVA_CLIENT_SECRET = process.env.EXPO_PUBLIC_STRAVA_CLIENT_SECRET || '';
 
 const discovery = {
     authorizationEndpoint: 'https://www.strava.com/oauth/authorize',
