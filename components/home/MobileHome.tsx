@@ -1,4 +1,5 @@
 import DayCard, { DayCardType } from '@/components/DayCard';
+import StravaSyncModal from '@/components/StravaSyncModal';
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
@@ -52,6 +53,7 @@ export default function MobileHome() {
     const [listData, setListData] = useState<ListItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentDate, setCurrentDate] = useState(new Date());
+    const [isStravaModalVisible, setStravaModalVisible] = useState(false);
 
     useEffect(() => {
         if (!sessionLoading) {
@@ -182,13 +184,22 @@ export default function MobileHome() {
     };
 
     const renderStartWorkoutButton = () => (
-        <TouchableOpacity
-            onPress={() => router.push({ pathname: '/workout/log', params: { workoutName: 'New Workout' } })}
-            style={{ flexDirection: 'row', alignItems: 'center' }}
-        >
-            <Ionicons name="add" size={20} color={Palette.text.secondary} />
-            <Text style={{ fontSize: Typography.size.s, color: Palette.text.secondary, marginLeft: 4 }}>Lägg till pass</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity
+                onPress={() => setStravaModalVisible(true)}
+                style={{ flexDirection: 'row', alignItems: 'center', marginRight: 16 }}
+            >
+                <Ionicons name="sync" size={20} color="#FC4C02" />
+                {/* <Text style={{ fontSize: Typography.size.s, color: Palette.text.secondary, marginLeft: 4 }}>Synka</Text> */}
+            </TouchableOpacity>
+            <TouchableOpacity
+                onPress={() => router.push({ pathname: '/workout/log', params: { workoutName: 'New Workout' } })}
+                style={{ flexDirection: 'row', alignItems: 'center' }}
+            >
+                <Ionicons name="add" size={20} color={Palette.text.secondary} />
+                <Text style={{ fontSize: Typography.size.s, color: Palette.text.secondary, marginLeft: 4 }}>Lägg till pass</Text>
+            </TouchableOpacity>
+        </View>
     );
 
     const renderHeader = () => {
@@ -285,6 +296,11 @@ export default function MobileHome() {
                     />
                 )}
             </SafeAreaView>
+            <StravaSyncModal
+                visible={isStravaModalVisible}
+                onClose={() => setStravaModalVisible(false)}
+                userId={user?.uid || ''}
+            />
         </View>
     );
 }

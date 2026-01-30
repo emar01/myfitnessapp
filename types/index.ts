@@ -18,6 +18,9 @@ export interface WorkoutSet {
     isCompleted: boolean;
     isPr?: boolean;
     type?: 'warmup' | 'normal' | 'drop' | 'failure';
+    // Running specific fields
+    distance?: number; // in km
+    duration?: number; // in seconds
 }
 
 export interface WorkoutExercise {
@@ -49,6 +52,20 @@ export interface UserProfile {
     email: string;
     weight?: number;
     height?: number;
+    age?: number;
+    gender?: 'Man' | 'Kvinna' | 'Annat';
+    aiEnabled?: boolean;
+    aiTotalCost?: number; // Accumulated cost in USD
+}
+
+export interface PersonalRecord {
+    id?: string;
+    exerciseId: string;
+    exerciseName: string;
+    weight: number;
+    reps: number;
+    date: any; // Timestamp
+    workoutId?: string;
 }
 
 export interface ProgramScheduleItem {

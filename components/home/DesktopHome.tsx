@@ -1,4 +1,5 @@
 import DayCard, { DayCardType } from '@/components/DayCard';
+import StravaSyncModal from '@/components/StravaSyncModal';
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
@@ -19,6 +20,7 @@ export default function DesktopHome() {
     const [loading, setLoading] = useState(true);
     const [currentDate, setCurrentDate] = useState(new Date());
     const [listData, setListData] = useState<ListItem[]>([]);
+    const [isStravaModalVisible, setStravaModalVisible] = useState(false);
 
     useEffect(() => {
         if (!sessionLoading) {
@@ -192,16 +194,7 @@ export default function DesktopHome() {
 
     return (
         <View style={styles.container}>
-            {/* Sidebar */}
-            <View style={styles.sidebar}>
-                <Text style={styles.logoText}>MyFitness</Text>
-                <View style={styles.navLinks}>
-                    <TouchableOpacity style={styles.navItemActive}><Ionicons name="home" size={20} color={Palette.primary.main} style={{ marginRight: 8 }} /><Text style={styles.navTextActive}>Översikt</Text></TouchableOpacity>
-                    <TouchableOpacity style={styles.navItem} onPress={() => router.push('/(tabs)/library')}><Ionicons name="book" size={20} color={Palette.text.secondary} style={{ marginRight: 8 }} /><Text style={styles.navText}>Bibliotek</Text></TouchableOpacity>
-                    <TouchableOpacity style={styles.navItem} onPress={() => router.push('/(tabs)/calendar')}><Ionicons name="calendar" size={20} color={Palette.text.secondary} style={{ marginRight: 8 }} /><Text style={styles.navText}>Kalender</Text></TouchableOpacity>
-                    <TouchableOpacity style={styles.navItem} onPress={() => router.push('/(tabs)/settings')}><Ionicons name="settings" size={20} color={Palette.text.secondary} style={{ marginRight: 8 }} /><Text style={styles.navText}>Inställningar</Text></TouchableOpacity>
-                </View>
-            </View>
+            {/* Sidebar removed - now in global layout */}
 
             {/* Main Content */}
             <View style={styles.mainContent}>
@@ -218,6 +211,14 @@ export default function DesktopHome() {
                                 <Ionicons name="chevron-forward" size={20} color={Palette.text.primary} />
                             </TouchableOpacity>
                         </View>
+
+                        <TouchableOpacity
+                            style={[styles.startWorkoutButton, { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#EEE', marginRight: 16 }]}
+                            onPress={() => setStravaModalVisible(true)}
+                        >
+                            <Ionicons name="sync" size={20} color="#FC4C02" />
+                            <Text style={[styles.startWorkoutText, { color: Palette.text.primary }]}>Synka</Text>
+                        </TouchableOpacity>
 
                         <TouchableOpacity style={styles.startWorkoutButton} onPress={() => router.push({ pathname: '/workout/log', params: { workoutName: 'New Workout' } })}>
                             <Ionicons name="add" size={20} color="#FFF" />
@@ -277,6 +278,11 @@ export default function DesktopHome() {
                     </View>
                 </View>
             </View>
+            <StravaSyncModal
+                visible={isStravaModalVisible}
+                onClose={() => setStravaModalVisible(false)}
+                userId={user?.uid || ''}
+            />
         </View>
     );
 }
@@ -296,47 +302,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         backgroundColor: '#F5F7FA', // Lighter background for desktop
     },
-    sidebar: {
-        width: 250,
-        backgroundColor: '#FFF',
-        borderRightWidth: 1,
-        borderRightColor: Palette.border.default,
-        padding: Spacing.l,
-    },
-    logoText: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: Palette.primary.main,
-        marginBottom: Spacing.xl,
-    },
-    navLinks: {},
-    navItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: Spacing.m,
-        paddingHorizontal: Spacing.m,
-        borderRadius: BorderRadius.m,
-        marginBottom: Spacing.s,
-    },
-    navItemActive: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: Spacing.m,
-        paddingHorizontal: Spacing.m,
-        borderRadius: BorderRadius.m,
-        marginBottom: Spacing.s,
-        backgroundColor: '#F0F9FF', // Light blue tint
-    },
-    navText: {
-        fontSize: 16,
-        color: Palette.text.secondary,
-        fontWeight: '500',
-    },
-    navTextActive: {
-        fontSize: 16,
-        color: Palette.primary.main,
-        fontWeight: 'bold',
-    },
+
     mainContent: {
         flex: 1,
     },

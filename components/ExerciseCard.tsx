@@ -10,9 +10,14 @@ interface ExerciseCardProps {
     onUpdate: (updatedExercise: WorkoutExercise) => void;
     onRemove: () => void;
     onPlayVideo?: (url: string) => void;
+    currentPr?: number; // New Prop
 }
 
-export default function ExerciseCard({ exercise, onUpdate, onRemove, onPlayVideo }: ExerciseCardProps) {
+export default function ExerciseCard({ exercise, onUpdate, onRemove, onPlayVideo, currentPr }: ExerciseCardProps) {
+    // Determine if any set is a "Potential PR"
+    const isPrSet = (weight: number) => {
+        return currentPr ? weight > currentPr : false;
+    };
     // Separate sets
     const warmupSets = exercise.sets.filter(s => s.type === 'warmup');
     const workingSets = exercise.sets.filter(s => s.type !== 'warmup');
@@ -73,6 +78,7 @@ export default function ExerciseCard({ exercise, onUpdate, onRemove, onPlayVideo
                             setIndexWithinType={i + 1}
                             onUpdate={(updated) => updateSet(set.id, updated)}
                             onDelete={() => deleteSet(set.id)}
+                        // Warmup sets typically don't count for PR display here, but logic allows it
                         />
                     ))}
                 </View>
@@ -92,6 +98,7 @@ export default function ExerciseCard({ exercise, onUpdate, onRemove, onPlayVideo
                         setIndexWithinType={i + 1}
                         onUpdate={(updated) => updateSet(set.id, updated)}
                         onDelete={() => deleteSet(set.id)}
+                        isPr={isPrSet(set.weight) && set.isCompleted} // Pass isPr prop
                     />
                 ))}
 

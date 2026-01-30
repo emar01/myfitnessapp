@@ -20,7 +20,7 @@ export default function SettingsScreen() {
         {
             title: 'Account',
             items: [
-                { label: 'Profile', icon: 'person', route: '/profile' }, // Placeholder
+                { label: 'Profile', icon: 'person', route: '/settings/profile' },
                 { label: 'Log Out', icon: 'log-out', route: '/logout' }, // Placeholder
             ]
         }
@@ -44,7 +44,7 @@ export default function SettingsScreen() {
                                         styles.row,
                                         idx === section.items.length - 1 && styles.rowLast // Remove border for last item
                                     ]}
-                                    onPress={() => item.route !== '/logout' ? router.push(item.route) : alert('Log out not implemented')}
+                                    onPress={() => item.route !== '/logout' ? router.push(item.route as any) : alert('Log out not implemented')}
                                 >
                                     <View style={styles.rowLeft}>
                                         <View style={styles.iconContainer}>

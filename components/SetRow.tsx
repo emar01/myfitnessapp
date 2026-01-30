@@ -1,6 +1,6 @@
-import { Palette, Spacing, Typography } from '@/constants/DesignSystem';
+import { BorderRadius, Palette, Spacing, Typography } from '@/constants/DesignSystem';
 import { WorkoutSet } from '@/types';
-import { FontAwesome, Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface SetRowProps {
@@ -9,9 +9,10 @@ interface SetRowProps {
     setIndexWithinType: number; // 1, 2, 3... for normal sets
     onUpdate: (updatedSet: WorkoutSet) => void;
     onDelete: () => void;
+    isPr?: boolean; // New prop
 }
 
-export default function SetRow({ set, index, setIndexWithinType, onUpdate, onDelete }: SetRowProps) {
+export default function SetRow({ set, index, setIndexWithinType, onUpdate, onDelete, isPr }: SetRowProps) {
     const isWarmup = set.type === 'warmup';
     const isCompleted = set.isCompleted;
 
@@ -21,18 +22,20 @@ export default function SetRow({ set, index, setIndexWithinType, onUpdate, onDel
     };
 
     return (
-        <View style={styles.container}>
-
+        <View style={styles.row}>
             {/* Set Indicator / Check Button */}
             <TouchableOpacity
                 style={[
                     styles.setIndicator,
                     isCompleted && styles.setIndicatorCompleted,
-                    !isCompleted && isWarmup && styles.setIndicatorWarmupIncomplete
+                    !isCompleted && isWarmup && styles.setIndicatorWarmupIncomplete,
+                    isPr && styles.setIndicatorPr // Apply PR style
                 ]}
                 onPress={handleToggleComplete}
             >
-                {isWarmup ? (
+                {isPr ? (
+                    <Ionicons name="trophy" size={14} color="#FFF" />
+                ) : isWarmup ? (
                     <Ionicons name="body" size={14} color={isCompleted ? '#FFF' : Palette.accent.main} />
                 ) : (
                     <Text style={[styles.setNumberText, isCompleted && { color: '#FFF' }]}>
@@ -66,9 +69,9 @@ export default function SetRow({ set, index, setIndexWithinType, onUpdate, onDel
                 </View>
             </View>
 
-            {/* Menu Action (Three Dots) - No Checkmark here anymore */}
+            {/* Menu Action (Three Dots) */}
             <TouchableOpacity style={styles.menuButton} onPress={onDelete}>
-                <FontAwesome name="ellipsis-v" size={16} color={Palette.text.disabled} />
+                <Ionicons name="trash-outline" size={16} color={Palette.text.disabled} />
             </TouchableOpacity>
 
         </View>
@@ -76,11 +79,13 @@ export default function SetRow({ set, index, setIndexWithinType, onUpdate, onDel
 }
 
 const styles = StyleSheet.create({
-    container: {
+    row: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: 12, // Increased padding for touch targets
         backgroundColor: '#FFF',
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: '#F0F0F0',
     },
     setIndicator: {
         width: 36,
@@ -97,9 +102,13 @@ const styles = StyleSheet.create({
         backgroundColor: '#4CD964', // Success Green
         borderColor: '#4CD964',
     },
+    setIndicatorPr: {
+        backgroundColor: Palette.accent.main, // Gold/Yellow
+        borderColor: Palette.accent.main,
+    },
     setIndicatorWarmupIncomplete: {
-        // Special style for warmup incomplete? screenshots show green icon on white
-        borderColor: Palette.border.default, // or accents
+        // Special style for warmup incomplete?
+        borderColor: Palette.border.default,
     },
     setNumberText: {
         fontSize: Typography.size.s,
@@ -118,13 +127,19 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         width: 80,
         justifyContent: 'flex-end',
+        backgroundColor: '#F5F5F7',
+        borderRadius: BorderRadius.s,
+        paddingHorizontal: 8,
+        height: 36,
     },
     input: {
+        flex: 1,
         fontSize: Typography.size.m,
         fontWeight: 'bold',
         color: Palette.text.primary,
         textAlign: 'right',
         minWidth: 30,
+        paddingVertical: 0,
     },
     unitText: {
         fontSize: Typography.size.xs,

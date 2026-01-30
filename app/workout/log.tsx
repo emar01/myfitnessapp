@@ -1,12 +1,14 @@
 import ExerciseCard from '@/components/ExerciseCard';
+import RunningSession from '@/components/RunningSession';
 import VideoPlayer from '@/components/VideoPlayer';
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
-import { Exercise, Workout, WorkoutExercise } from '@/types';
+import { checkAndSavePrs, getUserPrs } from '@/services/prService';
+import { Exercise, PersonalRecord, Workout, WorkoutExercise } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { addDoc, collection, getDocs } from 'firebase/firestore';
+import { addDoc, collection, getDocs } from 'firebase/firestore'; // Check imports
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -18,10 +20,17 @@ const formatTime = (seconds: number) => {
     return `${h > 0 ? h + ':' : ''}${m < 10 && h > 0 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
 };
 
+
+
+
 export default function WorkoutLoggerScreen() {
     const { user } = useSession();
     const router = useRouter();
     const params = useLocalSearchParams();
+
+    const [workoutMode, setWorkoutMode] = useState<'strength' | 'running'>(
+        (params.category as string) === 'löpning' ? 'running' : 'strength'
+    );
 
     const [workout, setWorkout] = useState<Workout>({
         userId: user?.uid || '',
@@ -29,7 +38,55 @@ export default function WorkoutLoggerScreen() {
         date: new Date(),
         status: 'In Progress',
         exercises: params.initialExercises ? JSON.parse(params.initialExercises as string) : [],
+        category: (params.category as string) as any || 'styrketräning'
     });
+
+    // ... other state
+
+    const finishRun = async (distance: number, duration: number) => {
+        if (!user) return;
+        setIsLoading(true);
+        try {
+            const runningExercise: WorkoutExercise = {
+                exerciseId: 'running-session', // specific ID or generate one
+                name: 'Löpning',
+                isBodyweight: true,
+                sets: [{
+                    id: Date.now().toString(),
+                    reps: 0,
+                    weight: 0,
+                    isCompleted: true,
+                    distance: distance,
+                    duration: duration,
+                    type: 'normal'
+                }]
+            };
+
+            const workoutData = {
+                ...workout,
+                status: 'Completed',
+                date: new Date(),
+                userId: user.uid,
+                exercises: [runningExercise],
+                category: 'löpning',
+                subcategory: 'distans' // Default subcategory
+            } as any; // Cast to any to avoid strict type issues if mismatch
+
+            // Save Workout
+            const workoutsRef = collection(db, `users/${user.uid}/workouts`);
+            await addDoc(workoutsRef, workoutData);
+
+            alert(`Löpning sparad!\nDistans: ${distance} km\nTid: ${formatTime(duration)}`);
+            router.back();
+
+        } catch (e: any) {
+            console.error("Error saving run: ", e);
+            alert(`Failed to save run: ${e.message}`);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
 
     const [isModalVisible, setModalVisible] = useState(false);
     const [availableExercises, setAvailableExercises] = useState<Exercise[]>([]);
@@ -46,8 +103,17 @@ export default function WorkoutLoggerScreen() {
     const [videoModalVisible, setVideoModalVisible] = useState(false);
     const [currentVideoUrl, setCurrentVideoUrl] = useState<string | null>(null);
 
+    // PR State
+    const [existingPrs, setExistingPrs] = useState<Record<string, PersonalRecord>>({});
+
     useEffect(() => {
         fetchExercises();
+
+        // Fetch PRs
+        if (user) {
+            getUserPrs(user.uid).then(setExistingPrs);
+        }
+
         // Timer
         const interval = setInterval(() => {
             if (!isPaused) {
@@ -55,7 +121,7 @@ export default function WorkoutLoggerScreen() {
             }
         }, 1000);
         return () => clearInterval(interval);
-    }, [isPaused]);
+    }, [isPaused, user]);
 
     const fetchExercises = async () => {
         setIsLoading(true);
@@ -79,7 +145,7 @@ export default function WorkoutLoggerScreen() {
             name: exercise.name,
             sets: [], // Start empty, let user add
             isBodyweight: exercise.isBodyweight,
-            videoLink: exercise.videoLink // Start persisting this!
+            videoLink: exercise.defaultVideoUrl // Map from Exercise to WorkoutExercise
         };
         // Logic to maybe copy sets if copySets is true could go here (mocked for now)
         if (copySets) {
@@ -120,9 +186,16 @@ export default function WorkoutLoggerScreen() {
 
             // Save Workout to Firestore
             const workoutsRef = collection(db, `users/${user.uid}/workouts`);
-            await addDoc(workoutsRef, workoutData);
+            const docRef = await addDoc(workoutsRef, workoutData);
 
-            alert('Workout saved successfully!');
+            // Check for New PRs
+            const newPrs = await checkAndSavePrs(user.uid, workoutData.exercises, existingPrs, docRef.id);
+
+            if (newPrs.length > 0) {
+                alert(`Workout saved! 🎉 NEW RECORDS: \n${newPrs.join('\n')}`);
+            } else {
+                alert('Workout saved successfully!');
+            }
             router.back();
 
         } catch (e: any) {
@@ -155,65 +228,86 @@ export default function WorkoutLoggerScreen() {
                     <Ionicons name="close" size={24} color={Palette.text.secondary} />
                 </TouchableOpacity>
 
-                <View style={styles.timerContainer}>
-                    <Text style={styles.timerText}>{formatTime(secondsElapsed)}</Text>
-                </View>
-
-                <View style={{ flexDirection: 'row' }}>
-                    <TouchableOpacity style={[styles.iconButton, { marginRight: 8 }]} onPress={() => setIsPaused(!isPaused)}>
-                        <Ionicons name={isPaused ? "play" : "pause"} size={18} color={Palette.text.primary} />
+                {/* Mode Selector */}
+                <View style={styles.modeSelector}>
+                    <TouchableOpacity
+                        style={[styles.modeButton, workoutMode === 'strength' && styles.modeButtonActive]}
+                        onPress={() => setWorkoutMode('strength')}
+                    >
+                        <Text style={[styles.modeText, workoutMode === 'strength' && styles.modeTextActive]}>Styrka</Text>
                     </TouchableOpacity>
-
-                    <TouchableOpacity style={[styles.iconButton, { marginRight: 8 }]}>
-                        <Ionicons name="settings-sharp" size={18} color={Palette.text.primary} />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.finishCircle} onPress={finishWorkout}>
-                        <Ionicons name="checkmark" size={18} color={Palette.primary.main} />
+                    <TouchableOpacity
+                        style={[styles.modeButton, workoutMode === 'running' && styles.modeButtonActive]}
+                        onPress={() => setWorkoutMode('running')}
+                    >
+                        <Text style={[styles.modeText, workoutMode === 'running' && styles.modeTextActive]}>Löpning</Text>
                     </TouchableOpacity>
                 </View>
+
+                {workoutMode === 'strength' && (
+                    <View style={{ flexDirection: 'row' }}>
+                        <TouchableOpacity style={[styles.iconButton, { marginRight: 8 }]} onPress={() => setIsPaused(!isPaused)}>
+                            <Ionicons name={isPaused ? "play" : "pause"} size={18} color={Palette.text.primary} />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={[styles.iconButton, { marginRight: 8 }]}>
+                            <Ionicons name="settings-sharp" size={18} color={Palette.text.primary} />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.finishCircle} onPress={finishWorkout}>
+                            <Ionicons name="checkmark" size={18} color={Palette.primary.main} />
+                        </TouchableOpacity>
+                    </View>
+                )}
             </View>
 
-            <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-                {/* Workout Name */}
-                {/* <Text style={styles.workoutName}>{workout.name}</Text> */}
-
-                {workout.exercises.map((exercise, index) => (
-                    <ExerciseCard
-                        key={`${exercise.exerciseId}-${index}`}
-                        exercise={exercise}
-                        onUpdate={(updated) => updateExercise(index, updated)}
-                        onRemove={() => removeExercise(index)}
-                        onPlayVideo={openVideo}
-                    />
-                ))}
-
-                {/* Action Buttons */}
-                <View style={styles.actionsRow}>
-                    <TouchableOpacity style={styles.largeButton} onPress={() => setModalVisible(true)}>
-                        <Ionicons name="add" size={20} color={Palette.accent.main} />
-                        <Text style={styles.largeButtonText}>Exercise</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={[styles.largeButton, { marginLeft: Spacing.m }]}>
-                        <Ionicons name="add" size={20} color={Palette.accent.main} />
-                        <Text style={styles.largeButtonText}>Special set</Text>
-                    </TouchableOpacity>
+            {workoutMode === 'running' ? (
+                <View style={styles.container}>
+                    <RunningSession onSave={finishRun} />
                 </View>
+            ) : (
+                <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+                    {/* Workout Name */}
+                    {/* <Text style={styles.workoutName}>{workout.name}</Text> */}
 
-                {/* Summary / Map Placeholder */}
-                <View style={styles.summaryCard}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                        <Text style={styles.summaryTitle}>Summary</Text>
-                        <Ionicons name="help-circle-outline" size={20} color={Palette.text.secondary} />
-                    </View>
-                    <View style={{ height: 100, alignItems: 'center', justifyContent: 'center' }}>
-                        <Ionicons name="body-outline" size={64} color={Palette.text.disabled} />
-                        {/* Placeholder for muscle map */}
-                    </View>
-                </View>
+                    {workout.exercises.map((exercise, index) => (
+                        <ExerciseCard
+                            key={`${exercise.exerciseId}-${index}`}
+                            exercise={exercise}
+                            onUpdate={(updated) => updateExercise(index, updated)}
+                            onRemove={() => removeExercise(index)}
+                            onPlayVideo={openVideo}
+                            currentPr={existingPrs[exercise.exerciseId]?.weight}
+                        />
+                    ))}
 
-            </ScrollView>
+                    {/* Action Buttons */}
+                    <View style={styles.actionsRow}>
+                        <TouchableOpacity style={styles.largeButton} onPress={() => setModalVisible(true)}>
+                            <Ionicons name="add" size={20} color={Palette.accent.main} />
+                            <Text style={styles.largeButtonText}>Exercise</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={[styles.largeButton, { marginLeft: Spacing.m }]}>
+                            <Ionicons name="add" size={20} color={Palette.accent.main} />
+                            <Text style={styles.largeButtonText}>Special set</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Summary / Map Placeholder */}
+                    <View style={styles.summaryCard}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                            <Text style={styles.summaryTitle}>Summary</Text>
+                            <Ionicons name="help-circle-outline" size={20} color={Palette.text.secondary} />
+                        </View>
+                        <View style={{ height: 100, alignItems: 'center', justifyContent: 'center' }}>
+                            <Ionicons name="body-outline" size={64} color={Palette.text.disabled} />
+                            {/* Placeholder for muscle map */}
+                        </View>
+                    </View>
+
+                </ScrollView>
+            )}
 
             {/* Bottom Bar (Mock) */}
             <View style={styles.bottomBar}>
@@ -301,7 +395,7 @@ export default function WorkoutLoggerScreen() {
                                         <Text style={styles.exerciseName}>{item.name}</Text>
                                     </View>
                                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                        <TouchableOpacity style={{ padding: 4 }} onPress={() => openVideo(item.videoLink)}>
+                                        <TouchableOpacity style={{ padding: 4 }} onPress={() => openVideo(item.defaultVideoUrl)}>
                                             <Ionicons name="play-circle-outline" size={24} color={Palette.primary.main} />
                                         </TouchableOpacity>
                                     </View>
@@ -379,6 +473,28 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         color: Palette.text.primary,
         fontVariant: ['tabular-nums'],
+    },
+    modeSelector: {
+        flexDirection: 'row',
+        backgroundColor: '#E0E0E0',
+        borderRadius: 20,
+        padding: 2,
+    },
+    modeButton: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 18,
+    },
+    modeButtonActive: {
+        backgroundColor: '#FFF',
+    },
+    modeText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: Palette.text.secondary,
+    },
+    modeTextActive: {
+        color: Palette.text.primary,
     },
     container: {
         flex: 1,
