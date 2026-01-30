@@ -2,7 +2,13 @@ import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants
 import { FontAwesome } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { Dimensions, ImageBackground, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, ImageBackground, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+import { useSession } from '@/context/ctx'; // Added import
+import { db } from '@/lib/firebaseConfig';
+import { Workout, WorkoutTemplate } from '@/types';
+import { doc, getDoc, updateDoc } from 'firebase/firestore'; // Added updateDoc
+import { useEffect, useState } from 'react';
 
 const { width } = Dimensions.get('window');
 
@@ -11,14 +17,76 @@ export default function WorkoutDetailsScreen() {
     const params = useLocalSearchParams();
     const { id, title, date, status, type } = params;
 
-    // Mock data to match screenshot
-    // In a real app we would fetch this by ID
-    const isCompleted = status === 'completed';
+    const { user } = useSession(); // Get user for auth and paths
+    const [data, setData] = useState<Workout | WorkoutTemplate | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [completing, setCompleting] = useState(false);
+
+    const isCompleted = status === 'completed' || (data as Workout)?.status === 'Completed';
+    const isRunning = data?.category === 'löpning';
+
+    useEffect(() => {
+        const fetchData = async () => {
+            if (!id || typeof id !== 'string') return;
+            setLoading(true);
+            try {
+                if (type === 'template') {
+                    const docRef = doc(db, 'workout_templates', id);
+                    const snap = await getDoc(docRef);
+                    if (snap.exists()) {
+                        setData({ id: snap.id, ...snap.data() } as WorkoutTemplate);
+                    }
+                } else if (user) {
+                    // Fetch User Workout
+                    const docRef = doc(db, 'users', user.uid, 'workouts', id);
+                    const snap = await getDoc(docRef);
+                    if (snap.exists()) {
+                        setData({ id: snap.id, ...snap.data() } as Workout);
+                    }
+                }
+            } catch (e) {
+                console.error("Error fetching workout details:", e);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, [id, type, user]);
+
+    const handleQuickComplete = async () => {
+        if (!user || !id || typeof id !== 'string') return;
+        setCompleting(true);
+        try {
+            const docRef = doc(db, 'users', user.uid, 'workouts', id);
+            await updateDoc(docRef, {
+                status: 'Completed',
+                completedAt: new Date()
+            });
+            Alert.alert('Bra jobbat!', 'Passet är klarmarkerat.');
+            router.back();
+        } catch (e: any) {
+            Alert.alert('Fel', 'Kunde inte spara: ' + e.message);
+        } finally {
+            setCompleting(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <View style={[styles.center, { flex: 1 }]}>
+                <ActivityIndicator size="large" color={Palette.primary.main} />
+            </View>
+        );
+    }
+
+    // Fallback title if data fetch failed or mock mode
+    const displayTitle = data?.name || title || 'Träningspass';
+    const displayDesc = (data as any)?.notes || (data as any)?.note || (data as any)?.description || 'Ingen beskrivning.';
 
     return (
         <View style={styles.container}>
             <ImageBackground
-                source={{ uri: 'https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?q=80&w=2070&auto=format&fit=crop' }}
+                source={{ uri: isRunning ? 'https://images.unsplash.com/photo-1552674605-46d52677663d?q=80&w=2070&auto=format&fit=crop' : 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=2070&auto=format&fit=crop' }}
                 style={styles.headerImage}
             >
                 <View style={styles.headerOverlay}>
@@ -28,8 +96,9 @@ export default function WorkoutDetailsScreen() {
                         </TouchableOpacity>
 
                         <View style={styles.headerContent}>
-                            <Text style={styles.headerDate}>{date || 'Måndag 18 Mars'}</Text>
-                            <Text style={styles.headerTitle}>{title || 'Långpass'}</Text>
+                            <Text style={styles.headerDate}>{date || 'Översikt'}</Text>
+                            <Text style={styles.headerTitle}>{displayTitle}</Text>
+                            {isRunning && <Text style={{ color: '#EEE', marginTop: 4 }}>Löpning</Text>}
                         </View>
                     </SafeAreaView>
                 </View>
@@ -45,113 +114,101 @@ export default function WorkoutDetailsScreen() {
                                 <FontAwesome name="check-circle" size={20} color="#FFF" style={{ marginRight: 8 }} />
                                 <Text style={styles.summaryTitle}>Pass klarmarkerat!</Text>
                             </View>
-                            <FontAwesome name="ellipsis-v" size={20} color="#FFF" />
                         </View>
-
-                        <View style={styles.statsRow}>
-                            <View>
-                                <Text style={styles.statLabel}>Tid</Text>
-                                <Text style={styles.statValue}>32:17</Text>
-                            </View>
-                            <View>
-                                <Text style={styles.statLabel}>Dist</Text>
-                                <Text style={styles.statValue}>7.7 <Text style={{ fontSize: 14, fontWeight: 'normal' }}>km</Text></Text>
-                            </View>
-                            <View>
-                                <Text style={styles.statLabel}>Fart <Text style={{ fontSize: 10, fontWeight: 'normal' }}>(min/km)</Text></Text>
-                                <Text style={styles.statValue}>4:42</Text>
-                            </View>
-                        </View>
-
-                        <View style={[styles.statsRow, { marginTop: Spacing.m }]}>
-                            <View>
-                                <Text style={styles.statLabel}>Glädje</Text>
-                                <Text style={styles.statValue}>😁</Text>
-                            </View>
-                            <View>
-                                <Text style={styles.statLabel}>Ansträngning</Text>
-                                <Text style={styles.statValue}>3/10 <Text style={{ fontSize: 14, fontWeight: 'normal' }}>Medel</Text></Text>
-                            </View>
-                        </View>
-
-                        <View style={styles.commentContainer}>
-                            <Text style={styles.statLabel}>Kommentar</Text>
-                            <Text style={styles.commentText}>Kul pass i månskenet :)</Text>
-                        </View>
+                        <Text style={{ color: 'white', opacity: 0.9 }}>Bra jobbat!</Text>
                     </View>
                 )}
 
-                {/* PLANNED CARD (Actions) */}
-                {!isCompleted && (
-                    <View style={styles.actionContainer}>
-                        <TouchableOpacity style={styles.actionButton}>
-                            <Text style={styles.actionText}>Skippa</Text>
-                        </TouchableOpacity>
+                {/* LOGIC SPLIT: RUNNING VS OTHER */}
 
-                        <TouchableOpacity style={styles.actionButton}>
-                            <Text style={styles.actionText}>Byt</Text>
-                        </TouchableOpacity>
+                {isRunning ? (
+                    /* --- RUNNING VIEW (Simple) --- */
+                    <View>
+                        <View style={styles.detailsContainer}>
+                            <View style={[styles.detailsHeader, { backgroundColor: Palette.primary.main }]}>
+                                <Text style={styles.detailsTitle}>Om Passet</Text>
+                            </View>
+                            <View style={styles.detailSection}>
+                                <Text style={styles.descriptionText}>{displayDesc}</Text>
+                            </View>
+                        </View>
 
-                        <TouchableOpacity
-                            style={[styles.actionButton, styles.primaryAction]}
-                            onPress={() => router.push({ pathname: '/workout/log', params: { workoutName: title } })}
-                        >
-                            <Text style={[styles.actionText, { color: Palette.text.primary }]}>Klarmarkera</Text>
-                        </TouchableOpacity>
+                        {!isCompleted && (
+                            <TouchableOpacity
+                                style={[styles.actionButton, styles.completeButton, { marginTop: Spacing.xl }]}
+                                onPress={handleQuickComplete}
+                                disabled={completing}
+                            >
+                                {completing ? <ActivityIndicator color="#FFF" /> : (
+                                    <>
+                                        <FontAwesome name="check" size={24} color="#FFF" style={{ marginRight: 12 }} />
+                                        <Text style={styles.completeButtonText}>Klarmarkera Pass</Text>
+                                    </>
+                                )}
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                ) : (
+                    /* --- STRENGTH/OTHER VIEW (Detailed) --- */
+                    <View>
+                        {!isCompleted && (
+                            <View style={styles.actionContainer}>
+                                <TouchableOpacity style={styles.actionButton}>
+                                    <Text style={styles.actionText}>Skippa</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity style={styles.actionButton}>
+                                    <Text style={styles.actionText}>Byt</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[styles.actionButton, styles.primaryAction]}
+                                    onPress={() => {
+                                        const initialExercises = data?.exercises ? JSON.stringify(data.exercises) : undefined;
+                                        router.push({
+                                            pathname: '/workout/log',
+                                            params: {
+                                                workoutName: displayTitle,
+                                                initialExercises: initialExercises
+                                            }
+                                        });
+                                    }}
+                                >
+                                    <Text style={[styles.actionText, { color: Palette.text.primary }]}>Logga pass</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+
+                        <View style={styles.detailsContainer}>
+                            <View style={styles.detailsHeader}>
+                                <Text style={styles.detailsTitle}>{displayTitle}</Text>
+                            </View>
+
+                            <View style={styles.detailSection}>
+                                {data?.exercises && data.exercises.length > 0 ? (
+                                    data.exercises.map((ex: any, idx: number) => (
+                                        <View key={idx} style={{ marginBottom: 12, borderBottomWidth: idx === data.exercises.length - 1 ? 0 : 1, borderBottomColor: '#EEE', paddingBottom: 8 }}>
+                                            <Text style={[styles.detailLabel, { fontSize: 16 }]}>{ex.name}</Text>
+                                            <Text style={styles.detailValue}>{ex.sets?.length || 3} set</Text>
+                                        </View>
+                                    ))
+                                ) : (
+                                    <Text style={styles.detailValue}>Inga övningar specificerade.</Text>
+                                )}
+                            </View>
+
+                            {displayDesc && (
+                                <>
+                                    <View style={styles.divider} />
+                                    <View style={styles.detailSection}>
+                                        <Text style={styles.detailLabel}>Notering</Text>
+                                        <Text style={styles.descriptionText}>{displayDesc}</Text>
+                                    </View>
+                                </>
+                            )}
+                        </View>
                     </View>
                 )}
-
-                {/* DETAILS SECTION */}
-                <View style={styles.detailsContainer}>
-                    <View style={styles.detailsHeader}>
-                        <Text style={styles.detailsTitle}>Långpass - 75 min</Text>
-                    </View>
-
-                    <View style={styles.detailRow}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.detailLabel}>Tid</Text>
-                            <Text style={styles.detailValue}>60 - 70 min</Text>
-                        </View>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.detailLabel}>Fart</Text>
-                            <Text style={styles.detailValue}>Långsamt fokus på...</Text>
-                        </View>
-                    </View>
-
-                    <View style={styles.divider} />
-
-                    <View style={styles.detailSection}>
-                        <Text style={styles.detailLabel}>Vila under passet</Text>
-                        <Text style={styles.detailValue}>Ingen, men stanna, gå eller gå ner... om du är trött.</Text>
-                    </View>
-
-                    <View style={styles.divider} />
-
-                    <View style={styles.detailSection}>
-                        <Text style={styles.detailLabel}>Ansträngning</Text>
-                        <View style={styles.sliderVisual}>
-                            <View style={[styles.sliderTrack, { backgroundColor: '#E0E0E0' }]} />
-                            <View style={[styles.sliderFill, { width: '40%', backgroundColor: '#5D9CEC' }]} />
-                        </View>
-                        <Text style={styles.detailSmall}>4/10 lätt</Text>
-                    </View>
-
-                    <View style={styles.divider} />
-
-                    <View style={styles.detailSection}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                            <FontAwesome name="file-text-o" size={14} color={Palette.text.secondary} style={{ marginRight: 6 }} />
-                            <Text style={styles.detailLabel}>Beskrivning</Text>
-                        </View>
-                        <Text style={styles.descriptionText}>
-                            Beroende på känslan i kroppen kan du springa mellan 60 - 75 minuter. Långpasset är ett av de viktigaste passen...
-                        </Text>
-                        <Text style={[styles.descriptionText, { marginTop: 8 }]}>
-                            Det är ett njutarpass!
-                        </Text>
-                    </View>
-
-                </View>
 
             </ScrollView>
         </View>
@@ -332,5 +389,22 @@ const styles = StyleSheet.create({
         fontSize: Typography.size.s,
         color: Palette.text.secondary,
         lineHeight: 20,
+    },
+    center: {
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    completeButton: {
+        backgroundColor: Palette.primary.main, // Green
+        paddingVertical: Spacing.m,
+        height: 60,
+        justifyContent: 'center',
+        borderWidth: 0, // Override default white border
+        ...Shadows.medium,
+    },
+    completeButtonText: {
+        color: '#FFF',
+        fontSize: Typography.size.l,
+        fontWeight: 'bold',
     }
 });

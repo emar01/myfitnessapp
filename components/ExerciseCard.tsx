@@ -9,9 +9,15 @@ interface ExerciseCardProps {
     exercise: WorkoutExercise;
     onUpdate: (updatedExercise: WorkoutExercise) => void;
     onRemove: () => void;
+    onPlayVideo?: (url: string) => void;
+    currentPr?: number; // New Prop
 }
 
-export default function ExerciseCard({ exercise, onUpdate, onRemove }: ExerciseCardProps) {
+export default function ExerciseCard({ exercise, onUpdate, onRemove, onPlayVideo, currentPr }: ExerciseCardProps) {
+    // Determine if any set is a "Potential PR"
+    const isPrSet = (weight: number) => {
+        return currentPr ? weight > currentPr : false;
+    };
     // Separate sets
     const warmupSets = exercise.sets.filter(s => s.type === 'warmup');
     const workingSets = exercise.sets.filter(s => s.type !== 'warmup');
@@ -46,8 +52,8 @@ export default function ExerciseCard({ exercise, onUpdate, onRemove }: ExerciseC
                     <Text style={styles.title}>{exercise.name}</Text>
                 </View>
                 <View style={styles.headerActions}>
-                    <TouchableOpacity onPress={() => alert('Info')}>
-                        <Ionicons name="help-circle-outline" size={24} color={Palette.text.secondary} style={{ marginRight: Spacing.s }} />
+                    <TouchableOpacity onPress={() => onPlayVideo && exercise.videoLink ? onPlayVideo(exercise.videoLink) : alert('No video available')}>
+                        <Ionicons name="play-circle-outline" size={24} color={Palette.primary.main} style={{ marginRight: Spacing.s }} />
                     </TouchableOpacity>
 
                     <TouchableOpacity onPress={onRemove}>
@@ -72,6 +78,7 @@ export default function ExerciseCard({ exercise, onUpdate, onRemove }: ExerciseC
                             setIndexWithinType={i + 1}
                             onUpdate={(updated) => updateSet(set.id, updated)}
                             onDelete={() => deleteSet(set.id)}
+                        // Warmup sets typically don't count for PR display here, but logic allows it
                         />
                     ))}
                 </View>
@@ -79,14 +86,9 @@ export default function ExerciseCard({ exercise, onUpdate, onRemove }: ExerciseC
 
             {/* Default/Working Sets */}
             <View style={styles.section}>
-                {/* Only show header if we have mixed sets, or always? Screenshot implies list of numbered sets */}
-                {/* Only showing header if strictly separating or empty */}
-                {(warmupSets.length > 0 || workingSets.length === 0) && (
-                    <TouchableOpacity style={styles.sectionHeader} onPress={() => addSet('normal')}>
-                        <Ionicons name="add" size={16} color={Palette.accent.main} />
-                        <Text style={styles.sectionTitle}>Set</Text>
-                    </TouchableOpacity>
-                )}
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Set</Text>
+                </View>
 
                 {workingSets.map((set, i) => (
                     <SetRow
@@ -96,15 +98,14 @@ export default function ExerciseCard({ exercise, onUpdate, onRemove }: ExerciseC
                         setIndexWithinType={i + 1}
                         onUpdate={(updated) => updateSet(set.id, updated)}
                         onDelete={() => deleteSet(set.id)}
+                        isPr={isPrSet(set.weight) && set.isCompleted} // Pass isPr prop
                     />
                 ))}
 
-                {/* Bottom Add Button if no sets yet? Or always? */}
-                {exercise.sets.length === 0 && (
-                    <TouchableOpacity style={styles.emptyAddButton} onPress={() => addSet('normal')}>
-                        <Text style={styles.emptyAddText}>+ Add First Set</Text>
-                    </TouchableOpacity>
-                )}
+                <TouchableOpacity style={styles.footerAddButton} onPress={() => addSet('normal')}>
+                    <Ionicons name="add" size={18} color={Palette.primary.main} />
+                    <Text style={styles.footerAddText}>Lägg till set</Text>
+                </TouchableOpacity>
             </View>
 
         </View>
@@ -151,12 +152,19 @@ const styles = StyleSheet.create({
         color: Palette.text.secondary, // Light gray/reddish tint?
         marginLeft: 4,
     },
-    emptyAddButton: {
-        padding: Spacing.m,
+    footerAddButton: {
+        flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: Spacing.s,
+        marginTop: Spacing.xs,
+        backgroundColor: Palette.background.default,
+        borderRadius: BorderRadius.m,
     },
-    emptyAddText: {
+    footerAddText: {
         color: Palette.primary.main,
         fontWeight: 'bold',
+        fontSize: Typography.size.s,
+        marginLeft: Spacing.xs,
     }
 });

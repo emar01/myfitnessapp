@@ -1,7 +1,7 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
@@ -45,25 +45,55 @@ export default function RootLayout() {
   return <RootLayoutNav />;
 }
 
-import { SessionProvider } from './ctx';
+import { SessionProvider, useSession } from '@/context/ctx';
+
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 function RootLayoutNav() {
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SessionProvider>
+        <ProtectedLayout />
+      </SessionProvider>
+    </GestureHandlerRootView>
+  );
+}
+
+function ProtectedLayout() {
+  const { user, isLoading } = useSession();
+  const segments = useSegments();
+  const router = useRouter();
   const colorScheme = useColorScheme();
 
+  useEffect(() => {
+    if (isLoading) return;
+
+    const inPublicRoute = segments[0] === 'login' || segments[0] === 'onboarding';
+
+    if (!user && !inPublicRoute) {
+      // Redirect to the login page if the user is not authenticated
+      // and is trying to access a protected route
+      router.replace('/login');
+    } else if (user && segments[0] === 'login') {
+      // Redirect to the home page if the user is authenticated
+      // and is trying to access the login page
+      router.replace('/(tabs)');
+    }
+  }, [user, segments, isLoading]);
+
   return (
-    <SessionProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="onboarding/plans" options={{ headerShown: false }} />
-          <Stack.Screen name="onboarding/questionnaire" options={{ headerShown: false }} />
-          <Stack.Screen name="workout/[id]" options={{ headerShown: false }} />
-          <Stack.Screen name="workout/log" options={{ headerShown: false }} />
-          <Stack.Screen name="program/settings" options={{ headerShown: false }} />
-          <Stack.Screen name="login" options={{ headerShown: false }} />
-        </Stack>
-      </ThemeProvider>
-    </SessionProvider>
+    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <Stack>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="onboarding/plans" options={{ headerShown: false }} />
+        <Stack.Screen name="onboarding/questionnaire" options={{ headerShown: false }} />
+        <Stack.Screen name="workout/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="workout/log" options={{ headerShown: false }} />
+        <Stack.Screen name="program/settings" options={{ headerShown: false }} />
+        <Stack.Screen name="settings/profile" options={{ headerShown: false }} />
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+      </Stack>
+    </ThemeProvider>
   );
 }
