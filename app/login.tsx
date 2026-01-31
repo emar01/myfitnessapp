@@ -3,9 +3,9 @@ import { auth } from '@/lib/firebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
 // import { GoogleSignin } from '@react-native-google-signin/google-signin'; // TODO: Enable when installed/configured
 import { useRouter } from 'expo-router';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 // Google Signin Config Placeholder
 // GoogleSignin.configure({
@@ -17,8 +17,23 @@ export default function LoginScreen() {
     const [loading, setLoading] = useState(false);
 
     const handleGoogleLogin = async () => {
-        // Validation check for real Google Auth
-        Alert.alert('Google Login', 'Google Sign-In kräver konfiguration i Firebase Console. I dev-läge, använd "Dev Login" om du inte har nycklar.');
+        if (Platform.OS === 'web') {
+            try {
+                setLoading(true);
+                const provider = new GoogleAuthProvider();
+                await signInWithPopup(auth, provider);
+                router.replace('/(tabs)');
+            } catch (error: any) {
+                console.error("Google Web Login Error:", error);
+                if (error.code === 'auth/popup-closed-by-user') return;
+                Alert.alert('Inloggning misslyckades', error.message);
+            } finally {
+                setLoading(false);
+            }
+        } else {
+            // Validation check for real Google Auth
+            Alert.alert('Google Login', 'Google Sign-In kräver konfiguration i Firebase Console. I dev-läge, använd "Dev Login" om du inte har nycklar.');
+        }
     };
 
     const handleDevLogin = async () => {

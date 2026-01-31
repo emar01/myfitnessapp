@@ -30,9 +30,9 @@
       "bundler": "metro",
       "output": "static",
       "favicon": "./assets/images/favicon.png",
-      "name": "myfitnessap-dev",
-      "shortName": "MyFitness",
-      "title": "myfitnessap-dev"
+      "name": "MyFitnessApp",
+      "shortName": "MyFitnessApp",
+      "title": "MyFitnessApp"
     },
     "plugins": [
       "expo-router"

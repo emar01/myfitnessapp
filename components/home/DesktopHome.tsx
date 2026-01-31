@@ -1,6 +1,6 @@
 import DayCard, { DayCardType } from '@/components/DayCard';
 import StravaSyncModal from '@/components/StravaSyncModal';
-import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
+import { BorderRadius, Palette, Shadows, Spacing } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
 import { Program, Workout } from '@/types';
@@ -10,7 +10,6 @@ import { collection, doc, getDocs, limit, query, updateDoc, where } from 'fireba
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
-import { TouchableOpacity as GHTouchableOpacity } from 'react-native-gesture-handler';
 import { getWeekDates, ListItem } from './MobileHome';
 
 export default function DesktopHome() {
@@ -224,9 +223,9 @@ export default function DesktopHome() {
                             <Ionicons name="add" size={20} color="#FFF" />
                             <Text style={styles.startWorkoutText}>Starta pass</Text>
                         </TouchableOpacity>
-                        <GHTouchableOpacity onPress={handleSignOut} style={styles.profileAvatar}>
+                        <TouchableOpacity onPress={handleSignOut} style={styles.profileAvatar}>
                             <FontAwesome name="user" size={20} color={Palette.text.secondary} />
-                        </GHTouchableOpacity>
+                        </TouchableOpacity>
                     </View>
                 </View>
 
@@ -273,6 +272,7 @@ export default function DesktopHome() {
                                 renderItem={renderItem}
                                 containerStyle={{ flex: 1 }}
                                 autoscrollThreshold={50}
+                                showsVerticalScrollIndicator={false}
                             />
                         )}
                     </View>
@@ -339,17 +339,22 @@ const styles = StyleSheet.create({
     weekControl: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F5F5F7',
-        borderRadius: BorderRadius.m,
+        backgroundColor: '#FFF',
+        borderRadius: 30, // Pill shape
         padding: 4,
         marginRight: Spacing.l,
+        borderWidth: 1,
+        borderColor: '#EEE',
+        ...Shadows.small,
     },
     arrowBtn: {
         padding: 8,
+        backgroundColor: '#F7F7F7',
+        borderRadius: 20,
     },
     weekLabel: {
         fontSize: 14,
-        fontWeight: '600',
+        fontWeight: 'bold',
         color: Palette.text.primary,
         marginHorizontal: Spacing.m,
         minWidth: 70,
@@ -403,29 +408,35 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFF',
         borderRadius: BorderRadius.l,
         padding: Spacing.l,
-        alignItems: 'center',
-        ...Shadows.small,
+        alignItems: 'flex-start', // Left align
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#EFEFEF',
+        // No shadow for flatter look
     },
-    statValue: { fontSize: 32, fontWeight: 'bold', color: Palette.text.primary },
-    statLabel: { fontSize: 14, color: Palette.text.secondary },
+    statValue: { fontSize: 36, fontWeight: '800', color: Palette.primary.main, marginBottom: 4 },
+    statLabel: { fontSize: 13, color: Palette.text.secondary, textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: '600' },
     sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: Spacing.l, color: Palette.text.primary },
 
     // Draggable List Styles
     dayHeader: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
         paddingVertical: Spacing.s,
-        marginTop: Spacing.m,
-        borderBottomWidth: 1,
-        borderBottomColor: Palette.border.default,
-        marginBottom: Spacing.s,
+        marginTop: Spacing.l,
+        marginBottom: Spacing.xs,
+        paddingHorizontal: Spacing.xs,
     },
     dayHeaderText: {
-        fontSize: Typography.size.m,
-        fontWeight: 'bold',
+        fontSize: 16,
+        fontWeight: '800',
         color: Palette.text.primary,
+        marginRight: 8,
     },
     dayDateText: {
-        fontSize: Typography.size.s,
+        fontSize: 14,
         color: Palette.text.secondary,
+        fontWeight: '500',
     },
     itemContainer: {
         marginBottom: Spacing.s,

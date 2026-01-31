@@ -3,7 +3,7 @@ import { useSession } from '@/context/ctx';
 import { auth, db } from '@/lib/firebaseConfig';
 import { Program, WorkoutTemplate } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { collection, doc, getDoc, getDocs, query, where, writeBatch } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -256,8 +256,17 @@ export default function ProgramDetailsScreen() {
 
     return (
         <ScrollView style={styles.container}>
+            <Stack.Screen options={{ headerShown: false }} />
+
             {/* Header Image / Pattern Placeholder */}
             <View style={styles.headerBanner}>
+                <TouchableOpacity
+                    style={styles.backButton}
+                    onPress={() => router.back()}
+                >
+                    <Ionicons name="arrow-back" size={24} color="#FFF" />
+                </TouchableOpacity>
+
                 <Ionicons name="trophy" size={64} color="rgba(255,255,255,0.8)" />
                 <Text style={styles.bannerTitle}>{program.title}</Text>
                 <Text style={styles.bannerSubtitle}>{program.category} • {program.duration}</Text>
@@ -311,6 +320,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         minHeight: 200,
+        position: 'relative', // Ensure absolute children position relative to this
+    },
+    backButton: {
+        position: 'absolute',
+        top: 20,
+        left: 20,
+        backgroundColor: 'rgba(0,0,0,0.2)', // Subtle background
+        padding: 8,
+        borderRadius: 20,
+        zIndex: 10,
     },
     bannerTitle: {
         fontSize: Typography.size.xl,
