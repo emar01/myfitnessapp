@@ -1,3 +1,4 @@
+import { MarkdownDisplay } from '@/components/MarkdownDisplay';
 import { BorderRadius, Palette, Spacing, Typography } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
@@ -19,7 +20,6 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import Markdown from 'react-native-markdown-display';
 
 interface Message {
     id: string;
@@ -204,9 +204,9 @@ export default function CoachScreen() {
                     </Text>
                 ) : (
                     <View style={{ flex: 1 }}>
-                        <Markdown style={markdownStyles}>
+                        <MarkdownDisplay style={markdownStyles}>
                             {item.text}
-                        </Markdown>
+                        </MarkdownDisplay>
                     </View>
                 )}
             </View>
