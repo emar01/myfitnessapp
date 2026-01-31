@@ -17,6 +17,14 @@ import { useWindowDimensions, View } from 'react-native';
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const { width } = useWindowDimensions();
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) return null;
+
   const isDesktop = width > 768;
 
   if (isDesktop) {
