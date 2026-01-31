@@ -91,7 +91,6 @@ function ProtectedLayout() {
         <Stack.Screen name="workout/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="workout/log" options={{ headerShown: false }} />
         <Stack.Screen name="program/settings" options={{ headerShown: false }} />
-        <Stack.Screen name="settings/profile" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
       </Stack>
     </ThemeProvider>
