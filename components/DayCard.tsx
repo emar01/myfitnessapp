@@ -1,8 +1,8 @@
-import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
-import { FontAwesome } from '@expo/vector-icons';
+import { BorderRadius, Palette, Spacing, Typography } from '@/constants/DesignSystem';
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { TouchableOpacity } from 'react-native-gesture-handler';
+import { TouchableOpacity } from 'react-native-gesture-handler'; // Ensure this matches platform
 
 export type DayCardType =
     | 'distans' | 'långpass' | 'intervall'
@@ -35,6 +35,7 @@ export default function DayCard({
     onPress,
     onLongPress,
     onMenuPress,
+    showDragHandle,
 }: DayCardProps) {
 
     const isRest = type === 'rest';
@@ -63,7 +64,7 @@ export default function DayCard({
         <View style={styles.container}>
             {isRest ? (
                 <View style={styles.restCard}>
-                    <FontAwesome name="leaf" size={16} color={Palette.text.secondary} style={{ marginRight: 8 }} />
+                    <Ionicons name="leaf-outline" size={16} color={Palette.text.secondary} style={{ marginRight: 8 }} />
                     <Text style={styles.restText}>Vilodag</Text>
                 </View>
             ) : (
@@ -79,19 +80,40 @@ export default function DayCard({
                         onLongPress={onLongPress}
                         activeOpacity={0.7}
                     >
-                        <Text style={styles.title} numberOfLines={1}>{title}</Text>
-                        {!!subtitle && <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>}
-                        {/* If we wanted to show specific tags or small text, we could do it here */}
-                        <Text style={styles.caption}>{String(type).charAt(0).toUpperCase() + String(type).slice(1)}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.title} numberOfLines={1}>{title}</Text>
+                                {!!subtitle && <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>}
+                                <View style={styles.chipContainer}>
+                                    <Text style={[styles.caption, { color: accentColor }]}>
+                                        {String(type).charAt(0).toUpperCase() + String(type).slice(1)}
+                                    </Text>
+                                </View>
+                            </View>
+                        </View>
                     </TouchableOpacity>
 
-                    <TouchableOpacity
-                        style={styles.actionButton}
-                        onPress={onMenuPress}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                        <FontAwesome name="ellipsis-v" size={16} color={Palette.text.secondary} />
-                    </TouchableOpacity>
+                    {/* Right Action Area: Menu OR Drag Handle */}
+                    {showDragHandle ? (
+                        <TouchableOpacity
+                            style={styles.actionButton}
+                            onLongPress={onLongPress} // Trigger drag on hold
+                            delayLongPress={100} // Faster response
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                            <Ionicons name="reorder-two-outline" size={24} color={Palette.text.disabled} />
+                        </TouchableOpacity>
+                    ) : (
+                        onMenuPress && (
+                            <TouchableOpacity
+                                style={styles.actionButton}
+                                onPress={onMenuPress}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            >
+                                <Ionicons name="ellipsis-vertical" size={20} color={Palette.text.secondary} />
+                            </TouchableOpacity>
+                        )
+                    )}
                 </View>
             )}
         </View>
@@ -106,21 +128,23 @@ const styles = StyleSheet.create({
     cardContainer: {
         backgroundColor: Palette.background.paper,
         borderRadius: BorderRadius.m,
-        ...Shadows.small,
+        // ...Shadows.small, // Removed shadow for cleaner Google-style flat look with border
+        borderWidth: 1,
+        borderColor: Palette.border.default,
         flexDirection: 'row', // Main Flex Layout
         alignItems: 'stretch', // Stretch vertically to match height
         overflow: 'hidden',
-        minHeight: 70, // Ensure good touch area
+        minHeight: 76, // Ensure good touch area
     },
     // Left Accent Border
     accentStrip: {
-        width: 6, // Robust solid visible strip
+        width: 4, // Slimmer accent strip
         height: '100%',
     },
     // Content Area
     contentContainer: {
         flex: 1, // Takes all available space
-        paddingVertical: Spacing.s,
+        paddingVertical: Spacing.m, // More airy padding
         paddingHorizontal: Spacing.m,
         justifyContent: 'center',
     },
@@ -135,43 +159,54 @@ const styles = StyleSheet.create({
     // Typography
     title: {
         fontSize: Typography.size.m, // Slightly larger for better read
-        fontWeight: '600',
+        fontWeight: 'bold', // Stronger title
         color: Palette.text.primary,
-        marginBottom: 2,
+        marginBottom: 4,
     },
     subtitle: {
         fontSize: Typography.size.s,
         color: Palette.text.secondary,
-        marginBottom: 2,
+        marginBottom: 4,
+    },
+    chipContainer: {
+        alignSelf: 'flex-start',
+        backgroundColor: '#F5F5F5',
+        borderRadius: 4,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        marginTop: 4,
     },
     caption: {
-        fontSize: Typography.size.xs,
-        color: Palette.text.disabled,
+        fontSize: 10,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
-        fontWeight: '600',
-        marginTop: 2,
+        fontWeight: 'bold',
     },
 
     // Rest Day
     restCard: {
-        backgroundColor: '#F5F5F5',
+        backgroundColor: '#F9FAFB', // Very subtle grey
         borderRadius: BorderRadius.m,
         padding: Spacing.s,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         height: 48,
+        borderWidth: 1,
+        borderColor: '#EEE', // Subtle border
+        borderStyle: 'dashed', // Dashed border for Rest
     },
     restText: {
         color: Palette.text.secondary,
         fontStyle: 'italic',
         fontSize: Typography.size.s,
+        fontWeight: '500',
     },
 
     // Status Styles
     completedBorder: {
         borderWidth: 1,
         borderColor: Palette.primary.main,
+        backgroundColor: '#F0FFF4', // Slight green tint
     },
 });

@@ -1,5 +1,6 @@
 import DayCard, { DayCardType } from '@/components/DayCard';
 import StravaSyncModal from '@/components/StravaSyncModal';
+import WorkoutDetailsView from '@/components/WorkoutDetailsView';
 import { BorderRadius, Palette, Shadows, Spacing } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
@@ -8,7 +9,7 @@ import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { collection, doc, getDocs, limit, query, updateDoc, where } from 'firebase/firestore';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
 import { getWeekDates, ListItem } from './MobileHome';
 
@@ -20,6 +21,7 @@ export default function DesktopHome() {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [listData, setListData] = useState<ListItem[]>([]);
     const [isStravaModalVisible, setStravaModalVisible] = useState(false);
+    const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
 
     useEffect(() => {
         if (!sessionLoading) {
@@ -183,7 +185,7 @@ export default function DesktopHome() {
                     type={item.workout.category === 'löpning' ? (item.workout.subcategory as DayCardType || 'distans') : (item.workout.category === 'styrketräning' ? (item.workout.subcategory as DayCardType || 'styrka') : 'rest')}
                     // @ts-ignore
                     status={item.workout.status === 'Completed' ? 'completed' : 'pending'}
-                    onPress={() => router.push({ pathname: '/workout/[id]', params: { id: item.workout.id!, title: item.workout.name, status: item.workout.status === 'Completed' ? 'completed' : 'planned' } })}
+                    onPress={() => setSelectedWorkout(item.workout)}
                     onLongPress={drag}
                     showDragHandle={true}
                 />
@@ -278,11 +280,34 @@ export default function DesktopHome() {
                     </View>
                 </View>
             </View>
+
+            {/* Strava Modal */}
             <StravaSyncModal
                 visible={isStravaModalVisible}
                 onClose={() => setStravaModalVisible(false)}
                 userId={user?.uid || ''}
             />
+
+            {/* Workout Detail Modal */}
+            <Modal
+                visible={!!selectedWorkout}
+                animationType="fade"
+                transparent={true}
+                onRequestClose={() => setSelectedWorkout(null)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        {selectedWorkout && (
+                            <WorkoutDetailsView
+                                workoutId={selectedWorkout.id!}
+                                initialData={selectedWorkout}
+                                onClose={() => setSelectedWorkout(null)}
+                                isModal={true}
+                            />
+                        )}
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -376,7 +401,6 @@ const styles = StyleSheet.create({
     },
     leftColumn: {
         flex: 2,
-        // gap handled in contentContainerStyle
     },
     rightColumn: {
         flex: 3,
@@ -440,5 +464,22 @@ const styles = StyleSheet.create({
     },
     itemContainer: {
         marginBottom: Spacing.s,
+    },
+
+    // Modal Styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalContent: {
+        width: '90%',
+        maxWidth: 600,
+        height: '80%',
+        backgroundColor: Palette.background.default,
+        borderRadius: BorderRadius.l,
+        overflow: 'hidden',
+        ...Shadows.large,
     },
 });
