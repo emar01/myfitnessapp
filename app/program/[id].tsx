@@ -52,7 +52,7 @@ export default function ProgramDetailsScreen() {
             const docRef = doc(db, 'programs', programId);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
-                setProgram({ id: docSnap.id, ...docSnap.data() } as Program);
+                setProgram({ ...docSnap.data(), id: docSnap.id } as Program);
             } else {
                 Alert.alert('Fel', 'Programmet hittades inte.');
                 router.back();
@@ -83,18 +83,16 @@ export default function ProgramDetailsScreen() {
             try {
                 // CLEANUP: If restarting, remove old planned workouts for this program
                 if (isFollowing) {
-                    console.log("Restarting program - cleaning up old planned workouts...");
                     const workoutsRef = collection(db, 'users', currentUser.uid, 'workouts');
                     const qExisting = query(
                         workoutsRef,
-                        where('programId', '==', program.id),
+                        where('programId', '==', programId),
                         where('status', '==', 'Planned')
                     );
                     const snap = await getDocs(qExisting);
                     const cleanupBatch = writeBatch(db);
                     snap.docs.forEach(d => cleanupBatch.delete(d.ref));
                     await cleanupBatch.commit();
-                    console.log(`Cleaned up ${snap.size} old workouts.`);
                 }
 
                 const startDate = new Date();
@@ -136,7 +134,7 @@ export default function ProgramDetailsScreen() {
                         exercises: exerciseData,
                         category: category,
                         subcategory: subcategory,
-                        programId: program.id,
+                        programId: programId,
                         notes: item.description || templateNote || `Del av program: ${program.title}`
                     });
                 }
@@ -154,9 +152,9 @@ export default function ProgramDetailsScreen() {
 
                     // Also save/update active_programs in the first batch
                     if (i === 0) {
-                        const activeRef = doc(db, 'users', currentUser.uid, 'active_programs', program.id!);
+                        const activeRef = doc(db, 'users', currentUser.uid, 'active_programs', programId);
                         batch.set(activeRef, {
-                            programId: program.id,
+                            programId: programId,
                             startedAt: new Date(),
                             title: program.title
                         }, { merge: true });

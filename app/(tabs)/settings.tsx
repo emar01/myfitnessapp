@@ -2,10 +2,13 @@ import { Palette, Spacing, Typography } from '@/constants/DesignSystem';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+import { useSession } from '@/context/ctx';
 
 export default function SettingsScreen() {
     const router = useRouter();
+    const { signOut } = useSession();
 
     const sections = [
         {
@@ -16,15 +19,30 @@ export default function SettingsScreen() {
                 { label: 'Manage Workouts', icon: 'fitness', route: '/settings/workouts' },
             ]
         },
-        // Account section placeholder
+        // Account section
         {
             title: 'Account',
             items: [
                 { label: 'Profile', icon: 'person', route: '/settings/profile' },
-                { label: 'Log Out', icon: 'log-out', route: '/logout' }, // Placeholder
+                { label: 'Log Out', icon: 'log-out', route: 'logout' },
             ]
         }
     ];
+
+    const handlePress = (item: any) => {
+        if (item.route === 'logout') {
+            Alert.alert(
+                'Logga ut',
+                'Är du säker på att du vill logga ut?',
+                [
+                    { text: 'Avbryt', style: 'cancel' },
+                    { text: 'Logga ut', style: 'destructive', onPress: () => signOut() }
+                ]
+            );
+        } else {
+            router.push(item.route);
+        }
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -44,7 +62,7 @@ export default function SettingsScreen() {
                                         styles.row,
                                         idx === section.items.length - 1 && styles.rowLast // Remove border for last item
                                     ]}
-                                    onPress={() => item.route !== '/logout' ? router.push(item.route as any) : alert('Log out not implemented')}
+                                    onPress={() => handlePress(item)}
                                 >
                                     <View style={styles.rowLeft}>
                                         <View style={styles.iconContainer}>

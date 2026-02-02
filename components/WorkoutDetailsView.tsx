@@ -1,13 +1,14 @@
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
 import { FontAwesome } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ImageBackground, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ImageBackground, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
 import { Workout, WorkoutTemplate } from '@/types';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, updateDoc } from 'firebase/firestore';
 
 interface WorkoutDetailsViewProps {
     workoutId: string;
@@ -33,6 +34,22 @@ export default function WorkoutDetailsView({
     const [data, setData] = useState<Workout | WorkoutTemplate | null>(initialData || null);
     const [loading, setLoading] = useState(!initialData);
     const [completing, setCompleting] = useState(false);
+    const [scheduling, setScheduling] = useState(false);
+
+    // Scheduling state
+    const [scheduledDate, setScheduledDate] = useState(new Date());
+    const [showDatePicker, setShowDatePicker] = useState(false);
+
+    const onChangeDate = (event: any, selectedDate?: Date) => {
+        const currentDate = selectedDate || scheduledDate;
+        setShowDatePicker(Platform.OS === 'ios'); // Keep open on iOS if desired, or close. Typically close on Android.
+        if (event.type === 'set' || Platform.OS === 'ios') {
+            setScheduledDate(currentDate);
+        }
+        if (Platform.OS === 'android') {
+            setShowDatePicker(false);
+        }
+    };
 
     const isCompleted = (data as Workout)?.status === 'Completed';
     const isRunning = data?.category === 'löpning';
@@ -76,13 +93,47 @@ export default function WorkoutDetailsView({
                 status: 'Completed',
                 completedAt: new Date()
             });
-            Alert.alert('Bra jobbat!', 'Passet är klarmarkerat.');
+            // Alert.alert('Bra jobbat!', 'Passet är klarmarkerat.');
             if (onClose) onClose();
             else router.back();
         } catch (e: any) {
-            Alert.alert('Fel', 'Kunde inte spara: ' + e.message);
+            console.error("Failed to complete:", e);
+            // Fallback for error simply logging it for now as Alert is broken
         } finally {
             setCompleting(false);
+        }
+    };
+
+    const handleSchedule = async () => {
+        if (!user) return;
+        if (!data) return;
+
+        setScheduling(true);
+        try {
+            // Create a new workout instance from template
+            const workoutData: Partial<Workout> = {
+                userId: user.uid,
+                name: data.name,
+                date: new Date(), // Created date
+                scheduledDate: scheduledDate, // Selected date
+                status: 'Planned',
+                exercises: (data as any).exercises || [],
+                category: data.category,
+                subcategory: data.subcategory,
+                notes: (data as any).note || (data as any).notes || (data as any).description,
+
+            };
+
+            await addDoc(collection(db, 'users', user.uid, 'workouts'), workoutData);
+
+            // Alert.alert(...) removed. Just close/back.
+            if (onClose) onClose();
+            else router.back();
+
+        } catch (e: any) {
+            console.error("Failed to schedule:", e);
+        } finally {
+            setScheduling(false);
         }
     };
 
@@ -152,52 +203,127 @@ export default function WorkoutDetailsView({
                             </View>
                         </View>
 
-                        {!isCompleted && (
+                        {/* ACTION BUTTONS FOR RUNNING */}
+                        {workoutType === 'template' ? (
                             <TouchableOpacity
-                                style={[styles.actionButton, styles.completeButton, { marginTop: Spacing.xl }]}
-                                onPress={handleQuickComplete}
-                                disabled={completing}
+                                style={[styles.actionButton, styles.primaryAction, { marginTop: Spacing.xl, paddingVertical: Spacing.m }]}
+                                onPress={handleSchedule}
+                                disabled={scheduling}
                             >
-                                {completing ? <ActivityIndicator color="#FFF" /> : (
+                                {scheduling ? <ActivityIndicator color={Palette.text.primary} /> : (
                                     <>
-                                        <FontAwesome name="check" size={24} color="#FFF" style={{ marginRight: 12 }} />
-                                        <Text style={styles.completeButtonText}>Klarmarkera Pass</Text>
+                                        {/* Date Picker Trigger (Simple text above or integrated) */}
+                                        <View style={{ marginBottom: 12, alignItems: 'center' }}>
+                                            <Text style={{ color: Palette.text.secondary, marginBottom: 4 }}>Planerat datum:</Text>
+                                            <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.datePickerButton}>
+                                                <FontAwesome name="calendar" size={16} color={Palette.primary.main} style={{ marginRight: 8 }} />
+                                                <Text style={styles.datePickerText}>{scheduledDate.toLocaleDateString()}</Text>
+                                            </TouchableOpacity>
+                                        </View>
+
+                                        {showDatePicker && (
+                                            <DateTimePicker
+                                                testID="dateTimePicker"
+                                                value={scheduledDate}
+                                                mode="date"
+                                                display={Platform.OS === 'ios' ? 'inline' : 'default'} // 'inline' is nice for iOS 14+
+                                                onChange={onChangeDate}
+                                                style={{ width: '100%' }}
+                                            />
+                                        )}
+
+                                        <Text style={[styles.actionText, { fontSize: 18 }]}>Planera in pass</Text>
                                     </>
                                 )}
                             </TouchableOpacity>
+                        ) : (
+                            !isCompleted && (
+                                <TouchableOpacity
+                                    style={[styles.actionButton, styles.completeButton, { marginTop: Spacing.xl }]}
+                                    onPress={handleQuickComplete}
+                                    disabled={completing}
+                                >
+                                    {completing ? <ActivityIndicator color="#FFF" /> : (
+                                        <>
+                                            <FontAwesome name="check" size={24} color="#FFF" style={{ marginRight: 12 }} />
+                                            <Text style={styles.completeButtonText}>Klarmarkera Pass</Text>
+                                        </>
+                                    )}
+                                </TouchableOpacity>
+                            )
                         )}
                     </View>
                 ) : (
                     /* --- STRENGTH/OTHER VIEW (Detailed) --- */
                     <View>
-                        {!isCompleted && (
+
+                        {/* ACTIONS FOR STRENGTH/OTHER */}
+                        {workoutType === 'template' ? (
                             <View style={styles.actionContainer}>
-                                <TouchableOpacity style={styles.actionButton}>
-                                    <Text style={styles.actionText}>Skippa</Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity style={styles.actionButton}>
-                                    <Text style={styles.actionText}>Byt</Text>
-                                </TouchableOpacity>
-
                                 <TouchableOpacity
                                     style={[styles.actionButton, styles.primaryAction]}
-                                    onPress={() => {
-                                        const initialExercises = (data as any)?.exercises ? JSON.stringify((data as any).exercises) : undefined;
-                                        // If modal, we might want to close modal?
-                                        if (onClose) onClose();
-                                        router.push({
-                                            pathname: '/workout/log',
-                                            params: {
-                                                workoutName: displayTitle,
-                                                initialExercises: initialExercises
-                                            }
-                                        });
-                                    }}
+                                    onPress={handleSchedule}
+                                    disabled={scheduling}
                                 >
-                                    <Text style={[styles.actionText, { color: Palette.text.primary }]}>Logga pass</Text>
+                                    {scheduling ? <ActivityIndicator color={Palette.text.primary} /> : (
+                                        <View style={{ alignItems: 'center', width: '100%' }}>
+                                            {/* Date Picker Trigger Integration for Other Types */}
+                                            <View style={{ marginBottom: 12, alignItems: 'center' }}>
+                                                <Text style={{ color: Palette.text.secondary, marginBottom: 4 }}>Planerat datum:</Text>
+                                                <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.datePickerButton}>
+                                                    <FontAwesome name="calendar" size={16} color={Palette.primary.main} style={{ marginRight: 8 }} />
+                                                    <Text style={styles.datePickerText}>{scheduledDate.toLocaleDateString()}</Text>
+                                                </TouchableOpacity>
+                                            </View>
+
+                                            {showDatePicker && (
+                                                <DateTimePicker
+                                                    testID="dateTimePicker"
+                                                    value={scheduledDate}
+                                                    mode="date"
+                                                    display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                                                    onChange={onChangeDate}
+                                                    style={{ width: '100%', marginBottom: 8 }}
+                                                />
+                                            )}
+
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                                                <Text style={[styles.actionText, { color: Palette.text.primary }]}>Planera in pass</Text>
+                                            </View>
+                                        </View>
+                                    )}
                                 </TouchableOpacity>
                             </View>
+                        ) : (
+                            !isCompleted && (
+                                <View style={styles.actionContainer}>
+                                    <TouchableOpacity style={styles.actionButton}>
+                                        <Text style={styles.actionText}>Skippa</Text>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity style={styles.actionButton}>
+                                        <Text style={styles.actionText}>Byt</Text>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        style={[styles.actionButton, styles.primaryAction]}
+                                        onPress={() => {
+                                            const initialExercises = (data as any)?.exercises ? JSON.stringify((data as any).exercises) : undefined;
+                                            // If modal, we might want to close modal?
+                                            if (onClose) onClose();
+                                            router.push({
+                                                pathname: '/workout/log',
+                                                params: {
+                                                    workoutName: displayTitle,
+                                                    initialExercises: initialExercises
+                                                }
+                                            });
+                                        }}
+                                    >
+                                        <Text style={[styles.actionText, { color: Palette.text.primary }]}>Logga pass</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )
                         )}
 
                         <View style={styles.detailsContainer}>
@@ -231,8 +357,8 @@ export default function WorkoutDetailsView({
                     </View>
                 )}
 
-            </ScrollView>
-        </View>
+            </ScrollView >
+        </View >
     );
 }
 
@@ -417,5 +543,20 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontSize: Typography.size.l,
         fontWeight: 'bold',
+    },
+    datePickerButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: Palette.background.paper,
+        paddingHorizontal: Spacing.m,
+        paddingVertical: Spacing.s,
+        borderRadius: BorderRadius.s,
+        borderWidth: 1,
+        borderColor: Palette.border.default,
+    },
+    datePickerText: {
+        fontSize: Typography.size.m,
+        color: Palette.text.primary,
+        fontWeight: '600'
     }
 });

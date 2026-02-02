@@ -1,119 +1,48 @@
 import DayCard, { DayCardType } from '@/components/DayCard';
+import ProfileMenuModal from '@/components/ProfileMenuModal';
 import StravaSyncModal from '@/components/StravaSyncModal';
 import WorkoutDetailsView from '@/components/WorkoutDetailsView';
 import { BorderRadius, Palette, Shadows, Spacing } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
-import { db } from '@/lib/firebaseConfig';
-import { Program, Workout } from '@/types';
+import { ListItem, useHomeData } from '@/hooks/useHomeData';
+import { workoutService } from '@/services/workoutService';
+import { Workout } from '@/types';
+import { getScaleWeekNumber } from '@/utils/dateUtils';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { collection, doc, getDocs, limit, query, updateDoc, where } from 'firebase/firestore';
-import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
-import { getWeekDates, ListItem } from './MobileHome';
 
 export default function DesktopHome() {
     const router = useRouter();
     const { user, signOut, isLoading: sessionLoading } = useSession();
-    const [dailyProgram, setDailyProgram] = useState<Program | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [currentDate, setCurrentDate] = useState(new Date());
-    const [listData, setListData] = useState<ListItem[]>([]);
+
+    // Use Custom Hook
+    const {
+        dailyProgram,
+        listData,
+        loading,
+        currentDate,
+        changeWeek,
+        setListData
+    } = useHomeData(user);
+
     const [isStravaModalVisible, setStravaModalVisible] = useState(false);
+    const [isProfileMenuVisible, setProfileMenuVisible] = useState(false);
     const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
 
-    useEffect(() => {
-        if (!sessionLoading) {
-            if (user) {
-                fetchData();
-            } else {
-                setLoading(false);
-            }
-        }
-    }, [user, sessionLoading, currentDate]);
-
     const handleSignOut = () => {
-        Alert.alert(
-            'Logga ut',
-            `Är du säker på att du vill logga ut från ${user?.email}?`,
-            [
-                { text: 'Avbryt', style: 'cancel' },
-                {
-                    text: 'Logga ut',
-                    style: 'destructive',
-                    onPress: () => {
-                        signOut();
-                        // router.replace('/login'); 
-                    }
-                }
-            ]
-        );
+        setProfileMenuVisible(false);
+        signOut();
     };
 
-    const fetchData = async () => {
-        setLoading(true);
-        try {
-            const qDaily = query(collection(db, 'programs'), where('type', '==', 'daily'), limit(1));
-            const dailySnap = await getDocs(qDaily);
-            if (!dailySnap.empty) {
-                setDailyProgram({ id: dailySnap.docs[0].id, ...dailySnap.docs[0].data() } as Program);
-            }
-
-            // Fetch user workouts
-            if (user) {
-                // Fetch ALL workouts to ensure nothing is missed due to date logic
-                const userWorkoutsRef = collection(db, 'users', user.uid, 'workouts');
-                const qWorkouts = query(userWorkoutsRef);
-                const wSnap = await getDocs(qWorkouts);
-                const workouts = wSnap.docs.map(d => ({ id: d.id, ...d.data() } as Workout));
-
-                // Construct List Data
-                const dates = getWeekDates(currentDate);
-                const newList: ListItem[] = [];
-
-                dates.forEach(date => {
-                    // Create Header
-                    const dayName = date.toLocaleDateString('sv-SE', { weekday: 'long' });
-                    const dateLabel = date.toLocaleDateString('sv-SE', { day: 'numeric', month: 'long' });
-                    const dateStr = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
-
-                    // Push Header
-                    newList.push({
-                        type: 'header',
-                        id: `header-${dateStr}`,
-                        dayName: dayName.charAt(0).toUpperCase() + dayName.slice(1),
-                        dateLabel,
-                        dateObj: date
-                    });
-
-                    // Find workouts for this date
-                    const daysWorkouts = workouts.filter(w => {
-                        if (!w.scheduledDate) return false;
-                        const wDate = w.scheduledDate instanceof Date ? w.scheduledDate : (w.scheduledDate as any).toDate();
-                        return wDate.getFullYear() === date.getFullYear() &&
-                            wDate.getMonth() === date.getMonth() &&
-                            wDate.getDate() === date.getDate();
-                    });
-
-                    daysWorkouts.forEach(w => {
-                        newList.push({ type: 'workout', id: w.id!, workout: w });
-                    });
-                });
-
-                setListData(newList);
-            }
-        } catch (e) {
-            console.error('Failed to fetch data', e);
-        } finally {
-            setLoading(false);
-        }
+    const handleProfileNavigation = () => {
+        setProfileMenuVisible(false);
+        router.push('/settings/profile');
     };
 
     const handleDragEnd = async ({ data }: { data: ListItem[] }) => {
-        console.log('DesktopHome: Drag Ended. New List Length:', data.length);
-        console.log('Ids:', data.map(i => i.id).join(', '));
-
         setListData(data);
 
         // Logic to update dates
@@ -123,7 +52,6 @@ export default function DesktopHome() {
         for (const item of data) {
             if (item.type === 'header') {
                 currentHeaderDate = item.dateObj;
-                // console.log('Found Header:', item.dateLabel);
             } else if (item.type === 'workout' && currentHeaderDate) {
                 // Check if this workout's date needs update
                 const oldDate = item.workout.scheduledDate instanceof Date
@@ -135,34 +63,22 @@ export default function DesktopHome() {
                     oldDate.getDate() === currentHeaderDate.getDate();
 
                 if (!isSameDay) {
-                    console.log(`Moving workout ${item.workout.name} from ${oldDate.toDateString()} to ${currentHeaderDate.toDateString()}`);
                     // Update Local State (optimistic)
                     item.workout.scheduledDate = currentHeaderDate;
                     if (item.workout.id && user) {
-                        const ref = doc(db, 'users', user.uid, 'workouts', item.workout.id);
-                        updates.push(updateDoc(ref, { scheduledDate: currentHeaderDate }));
+                        updates.push(workoutService.updateWorkoutDate(user.uid, item.workout.id, currentHeaderDate));
                     }
                 }
             }
         }
 
         if (updates.length > 0) {
-            console.log(`Pushing ${updates.length} updates to Firestore...`);
             try {
                 await Promise.all(updates);
-                console.log('Firestore updates successful');
             } catch (e) {
                 console.error("Failed to batch update workouts", e);
             }
-        } else {
-            console.log('No date changes detected.');
         }
-    };
-
-    const changeWeek = (direction: 'next' | 'prev') => {
-        const newDate = new Date(currentDate);
-        newDate.setDate(newDate.getDate() + (direction === 'next' ? 7 : -7));
-        setCurrentDate(newDate);
     };
 
     const renderItem = useCallback(({ item, drag, isActive }: RenderItemParams<ListItem>) => {
@@ -225,7 +141,7 @@ export default function DesktopHome() {
                             <Ionicons name="add" size={20} color="#FFF" />
                             <Text style={styles.startWorkoutText}>Starta pass</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={handleSignOut} style={styles.profileAvatar}>
+                        <TouchableOpacity onPress={() => setProfileMenuVisible(true)} style={styles.profileAvatar}>
                             <FontAwesome name="user" size={20} color={Palette.text.secondary} />
                         </TouchableOpacity>
                     </View>
@@ -268,8 +184,6 @@ export default function DesktopHome() {
                             <DraggableFlatList
                                 data={listData}
                                 onDragEnd={handleDragEnd}
-                                onDragBegin={() => console.log('DesktopHome: Drag Began')}
-                                onPlaceholderIndexChange={(index) => console.log('DesktopHome: Placeholder Index Changed to:', index)}
                                 keyExtractor={(item) => item.id}
                                 renderItem={renderItem}
                                 containerStyle={{ flex: 1 }}
@@ -286,6 +200,13 @@ export default function DesktopHome() {
                 visible={isStravaModalVisible}
                 onClose={() => setStravaModalVisible(false)}
                 userId={user?.uid || ''}
+            />
+            <ProfileMenuModal
+                visible={isProfileMenuVisible}
+                onClose={() => setProfileMenuVisible(false)}
+                onProfile={handleProfileNavigation}
+                onLogout={handleSignOut}
+                userEmail={user?.email}
             />
 
             {/* Workout Detail Modal */}
@@ -312,14 +233,7 @@ export default function DesktopHome() {
     );
 }
 
-// Reuse helper for week number 
-function getScaleWeekNumber(d: Date) {
-    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-    const dayNum = date.getUTCDay() || 7;
-    date.setUTCDate(date.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-    return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-}
+// function getScaleWeekNumber removed
 
 const styles = StyleSheet.create({
     container: {

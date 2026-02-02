@@ -126,10 +126,8 @@ export default function WorkoutLoggerScreen() {
     const fetchExercises = async () => {
         setIsLoading(true);
         try {
-            console.log("Fetching exercises...");
             const querySnapshot = await getDocs(collection(db, "exercises"));
             const exercisesList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Exercise));
-            console.log(`Fetched ${exercisesList.length} exercises`);
             setAvailableExercises(exercisesList);
         } catch (e: any) {
             console.error("Error fetching exercises: ", e);

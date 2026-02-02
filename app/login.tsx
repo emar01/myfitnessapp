@@ -1,16 +1,10 @@
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
 import { auth } from '@/lib/firebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
-// import { GoogleSignin } from '@react-native-google-signin/google-signin'; // TODO: Enable when installed/configured
 import { useRouter } from 'expo-router';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Platform, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
-// Google Signin Config Placeholder
-// GoogleSignin.configure({
-//     webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-// });
 
 export default function LoginScreen() {
     const router = useRouter();
@@ -41,14 +35,10 @@ export default function LoginScreen() {
         const DEV_EMAIL = "dev_admin@myfitnessapp.com";
         const DEV_PASS = "DevPass123!";
 
-        console.log("Attempting Dev Login...");
-
         try {
             await signInWithEmailAndPassword(auth, DEV_EMAIL, DEV_PASS);
             router.replace('/(tabs)');
         } catch (loginError: any) {
-            console.log("Dev Login failed, attempting creation...", loginError.code);
-
             // auth/invalid-credential or auth/user-not-found means user doesn't exist (or wrong pass, but we use const pass)
             if (loginError.code === 'auth/invalid-credential' || loginError.code === 'auth/user-not-found' || loginError.code === 'auth/invalid-email') {
                 try {

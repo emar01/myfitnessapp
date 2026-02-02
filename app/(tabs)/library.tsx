@@ -29,6 +29,7 @@ export default function LibraryScreen() {
     // View State
     const [activeTab, setActiveTab] = useState<'workouts' | 'programs'>('workouts');
     const [activeFilter, setActiveFilter] = useState<string | null>(null);
+    const [subFilter, setSubFilter] = useState<string | null>(null);
 
     useEffect(() => {
         fetchData();
@@ -62,9 +63,11 @@ export default function LibraryScreen() {
         fetchData();
     };
 
-    const filteredWorkouts = activeFilter
-        ? workouts.filter(w => w.category === activeFilter)
-        : workouts;
+    const filteredWorkouts = workouts.filter(w => {
+        if (activeFilter && w.category !== activeFilter) return false;
+        if (subFilter && w.subcategory !== subFilter) return false;
+        return true;
+    });
 
     const renderHeader = () => (
         <View>
@@ -98,9 +101,36 @@ export default function LibraryScreen() {
                             <TouchableOpacity
                                 key={tag}
                                 style={[styles.filterChip, activeFilter === tag && styles.filterChipActive]}
-                                onPress={() => setActiveFilter(tag)}
+                                onPress={() => {
+                                    setActiveFilter(tag);
+                                    setSubFilter(null); // Reset subfilter when changing main filter
+                                }}
                             >
                                 <Text style={[styles.filterText, activeFilter === tag && styles.filterTextActive]}>
+                                    {tag.charAt(0).toUpperCase() + tag.slice(1)}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                </View>
+            )}
+            {/* Sub-Filters (Only for Running) */}
+            {activeTab === 'workouts' && activeFilter === 'löpning' && (
+                <View style={styles.filterContainer}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                        <TouchableOpacity
+                            style={[styles.filterChip, subFilter === null && styles.filterChipActive]}
+                            onPress={() => setSubFilter(null)}
+                        >
+                            <Text style={[styles.filterText, subFilter === null && styles.filterTextActive]}>Alla typer</Text>
+                        </TouchableOpacity>
+                        {['distans', 'intervall', 'långpass'].map(tag => (
+                            <TouchableOpacity
+                                key={tag}
+                                style={[styles.filterChip, subFilter === tag && styles.filterChipActive]}
+                                onPress={() => setSubFilter(tag)}
+                            >
+                                <Text style={[styles.filterText, subFilter === tag && styles.filterTextActive]}>
                                     {tag.charAt(0).toUpperCase() + tag.slice(1)}
                                 </Text>
                             </TouchableOpacity>
@@ -118,12 +148,13 @@ export default function LibraryScreen() {
         return (
             <TouchableOpacity
                 style={styles.itemCard}
-                onPress={() => router.push({ pathname: '/workout/[id]', params: { id: item.id || 'new', title: item.name } })}
+                onPress={() => router.push({ pathname: '/workout/[id]', params: { id: item.id || 'new', title: item.name, type: 'template' } })}
             >
                 <View>
                     <Text style={styles.itemTitle}>{item.name}</Text>
                     <Text style={styles.itemSubtitle}>
-                        {displayCat} • {item.exercises ? item.exercises.length : 0} Övningar
+                        {displayCat}
+                        {cat !== 'löpning' && item.exercises ? ` • ${item.exercises.length} Övningar` : ''}
                     </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={Palette.text.disabled} />
@@ -158,9 +189,9 @@ export default function LibraryScreen() {
                 </View>
             ) : (
                 <FlatList
-                    data={getListData()}
+                    data={getListData() as any}
                     keyExtractor={(item) => item.id || Math.random().toString()}
-                    renderItem={activeTab === 'workouts' ? renderWorkoutItem : renderProgramItem}
+                    renderItem={(activeTab === 'workouts' ? renderWorkoutItem : renderProgramItem) as any}
                     ListHeaderComponent={renderHeader}
                     contentContainerStyle={styles.listContent}
                     ListEmptyComponent={

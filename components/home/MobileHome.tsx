@@ -1,162 +1,43 @@
 import DayCard, { DayCardType } from '@/components/DayCard';
+import ProfileMenuModal from '@/components/ProfileMenuModal';
 import StravaSyncModal from '@/components/StravaSyncModal';
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
-import { db } from '@/lib/firebaseConfig';
-import { Program, Workout } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { collection, getDocs, limit, query, where } from 'firebase/firestore';
-import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { ActivityIndicator, FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-// Helper to get week dates based on a reference date
-export const getWeekDates = (referenceDate: Date = new Date()) => {
-    const curr = new Date(referenceDate);
-    const week = [];
-    // Ensure we start on Monday
-    const p = curr.getDate() - curr.getDay() + 1;
-    // If today is Sunday (0), day is 0. 1-0+1 = 2 (Tuesday?) - wait.
-    // JS: Sunday=0, Monday=1...Saturday=6.
-    // If Sunday (0): getDate() - 0 + 1 => Next day? No.
-    // We want previous Monday.
-    // If Sunday: setDate(getDate() - 6)
+// Helper to get week dates - now imported from hook logic but we keep this local helper if needed or import it
+// import { getWeekDates } from '@/hooks/useHomeData'; (Not strictly needed if hook handles it)
 
-    // Correct simpler math for Monday start:
-    const day = curr.getDay() || 7; // M=1, Su=7
-    if (day !== 1) {
-        curr.setHours(-24 * (day - 1));
-    } else {
-        // already monday
-    }
-
-    // Reset to midnight
-    curr.setHours(0, 0, 0, 0);
-
-    for (let i = 0; i < 7; i++) {
-        const next = new Date(curr);
-        next.setDate(curr.getDate() + i);
-        week.push(next);
-    }
-    return week;
-};
-
-// Types for the FlatList
-export type ListItem =
-    | { type: 'header'; id: string; dayName: string; dateLabel: string; dateObj: Date }
-    | { type: 'workout'; id: string; workout: Workout; };
+import { ListItem, useHomeData } from '@/hooks/useHomeData';
+import { getScaleWeekNumber } from '@/utils/dateUtils';
 
 export default function MobileHome() {
-    const router = useRouter();
     const { user, signOut, isLoading: sessionLoading } = useSession();
-    const [dailyProgram, setDailyProgram] = useState<Program | null>(null);
-    const [listData, setListData] = useState<ListItem[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [currentDate, setCurrentDate] = useState(new Date());
+    const router = useRouter();
+
+    // Use Custom Hook for Data & Logic
+    const {
+        dailyProgram,
+        listData,
+        loading,
+        currentDate,
+        changeWeek
+    } = useHomeData(user);
+
+    const [isProfileMenuVisible, setProfileMenuVisible] = useState(false);
     const [isStravaModalVisible, setStravaModalVisible] = useState(false);
 
-    useEffect(() => {
-        if (!sessionLoading) {
-            if (!user) {
-                // Redirect to login if no user session
-                // router.replace('/login'); // Handled by ProtectedLayout now
-            } else {
-                fetchData();
-            }
-        }
-    }, [user, sessionLoading, currentDate]);
-
     const handleSignOut = () => {
-        Alert.alert(
-            'Logga ut',
-            `Är du säker på att du vill logga ut från ${user?.email}?`,
-            [
-                { text: 'Avbryt', style: 'cancel' },
-                {
-                    text: 'Logga ut',
-                    style: 'destructive',
-                    onPress: () => {
-                        signOut();
-                        // router.replace('/login'); // Handled by ProtectedLayout
-                    }
-                }
-            ]
-        );
+        setProfileMenuVisible(false);
+        signOut();
     };
 
-    const fetchData = async () => {
-        setLoading(true);
-        try {
-            // 1. Fetch Daily Program
-            const qDaily = query(collection(db, 'programs'), where('type', '==', 'daily'), limit(1));
-            const dailySnap = await getDocs(qDaily);
-            if (!dailySnap.empty) {
-                setDailyProgram({ id: dailySnap.docs[0].id, ...dailySnap.docs[0].data() } as Program);
-            }
-
-            // 2. Fetch User's Workouts (Only if user exists)
-            let workouts: Workout[] = [];
-            if (user) {
-                // Fetch ALL workouts to ensure nothing is missed due to date logic
-                const userWorkoutsRef = collection(db, 'users', user.uid, 'workouts');
-                const qWorkouts = query(userWorkoutsRef);
-
-                try {
-                    const wSnap = await getDocs(qWorkouts);
-                    workouts = wSnap.docs.map(d => ({ id: d.id, ...d.data() } as Workout));
-                } catch (err) {
-                    // console.error("Error fetching workouts query", err);
-                }
-            }
-
-            // 3. Construct List Data
-            const dates = getWeekDates(currentDate);
-            const newList: ListItem[] = [];
-
-            dates.forEach(date => {
-                // Create Header
-                const dayName = date.toLocaleDateString('sv-SE', { weekday: 'long' });
-                const dateLabel = date.toLocaleDateString('sv-SE', { day: 'numeric', month: 'long' });
-                const dateStr = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
-
-                // Push Header
-                newList.push({
-                    type: 'header',
-                    id: `header-${dateStr}`,
-                    dayName: dayName.charAt(0).toUpperCase() + dayName.slice(1),
-                    dateLabel,
-                    dateObj: date
-                });
-
-                // Find workouts for this date
-                const daysWorkouts = workouts.filter(w => {
-                    if (!w.scheduledDate) return false;
-                    const wDate = w.scheduledDate instanceof Date ? w.scheduledDate : (w.scheduledDate as any).toDate();
-                    return wDate.getFullYear() === date.getFullYear() &&
-                        wDate.getMonth() === date.getMonth() &&
-                        wDate.getDate() === date.getDate();
-                });
-
-                daysWorkouts.forEach(w => {
-                    newList.push({ type: 'workout', id: w.id!, workout: w });
-                });
-            });
-
-            setListData(newList);
-
-        } catch (e) {
-            console.error('Failed to fetch data', e);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-
-
-    const changeWeek = (direction: 'next' | 'prev') => {
-        const newDate = new Date(currentDate);
-        newDate.setDate(newDate.getDate() + (direction === 'next' ? 7 : -7));
-        setCurrentDate(newDate);
+    const handleProfileNavigation = () => {
+        setProfileMenuVisible(false);
+        router.push('/settings/profile');
     };
 
     const renderDailyCard = () => {
@@ -264,13 +145,18 @@ export default function MobileHome() {
 
     const weekNumber = getScaleWeekNumber(currentDate);
 
+    // showProfileMenu removed
+
     return (
         <View style={{ flex: 1 }}>
             <SafeAreaView style={styles.safeArea}>
                 {/* Main App Header */}
                 <View style={styles.mainHeader}>
                     <Text style={styles.mainHeaderTitle}>MyFitness</Text>
-                    <TouchableOpacity onPress={handleSignOut} style={styles.mainHeaderProfile}>
+                    <TouchableOpacity
+                        onPress={() => setProfileMenuVisible(true)}
+                        style={styles.mainHeaderProfile}
+                    >
                         <Ionicons name="person-circle" size={32} color={Palette.primary.main} />
                     </TouchableOpacity>
                 </View>
@@ -301,18 +187,19 @@ export default function MobileHome() {
                 onClose={() => setStravaModalVisible(false)}
                 userId={user?.uid || ''}
             />
+            <ProfileMenuModal
+                visible={isProfileMenuVisible}
+                onClose={() => setProfileMenuVisible(false)}
+                onProfile={handleProfileNavigation}
+                onLogout={handleSignOut}
+                userEmail={user?.email}
+            />
         </View>
     );
 }
 
-// Simple week number helper
-function getScaleWeekNumber(d: Date) {
-    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-    const dayNum = date.getUTCDay() || 7;
-    date.setUTCDate(date.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-    return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-}
+// function getScaleWeekNumber removed
+
 
 const styles = StyleSheet.create({
     safeArea: {
