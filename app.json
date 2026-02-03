@@ -33,7 +33,11 @@
       "name": "MyFitnessApp",
       "shortName": "MyFitnessApp",
       "title": "MyFitnessApp",
+      "description": "Din personliga träningsapp för löpning och styrka.",
       "display": "standalone",
+      "orientation": "portrait",
+      "lang": "sv",
+      "startUrl": "/",
       "backgroundColor": "#ffffff",
       "themeColor": "#4a90e2",
       "meta": {
