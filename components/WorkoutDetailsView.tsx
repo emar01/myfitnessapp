@@ -1,9 +1,11 @@
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
+import { exchangeToken, getStravaActivities, getStravaAuthRequestConfig, StravaActivity } from '@/services/stravaService';
 import { FontAwesome } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useAuthRequest } from 'expo-auth-session';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ImageBackground, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, ImageBackground, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
@@ -39,6 +41,76 @@ export default function WorkoutDetailsView({
     // Scheduling state
     const [scheduledDate, setScheduledDate] = useState(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
+
+    // Logging State (Running)
+    const [completionDistance, setCompletionDistance] = useState('');
+    const [completionDuration, setCompletionDuration] = useState('');
+    const [isStravaLoading, setIsStravaLoading] = useState(false);
+
+    // Strava Picker
+    const [showStravaPicker, setShowStravaPicker] = useState(false);
+    const [stravaActivities, setStravaActivities] = useState<StravaActivity[]>([]);
+
+    // Strava Auth
+    const [request, response, promptAsync] = useAuthRequest(
+        getStravaAuthRequestConfig(),
+        { authorizationEndpoint: 'https://www.strava.com/oauth/authorize', tokenEndpoint: 'https://www.strava.com/oauth/token' }
+    );
+
+    useEffect(() => {
+        if (response?.type === 'success') {
+            const { code } = response.params;
+            handleStravaAuth(code);
+        }
+    }, [response]);
+
+    const handleStravaAuth = async (code: string) => {
+        setIsStravaLoading(true);
+        try {
+            await exchangeToken(code);
+            await exchangeToken(code);
+            // After auth, try fetching immediately
+            fetchStravaActivitiesForPicker();
+        } catch (e) {
+            console.error(e);
+            alert("Strava login failed.");
+            setIsStravaLoading(false);
+        }
+    };
+
+    const fetchStravaActivitiesForPicker = async () => {
+        setIsStravaLoading(true);
+        try {
+            const activities = await getStravaActivities(1, 30); // Get latest 30
+            if (activities && activities.length > 0) {
+                setStravaActivities(activities);
+                setShowStravaPicker(true);
+            } else {
+                alert("Inga aktiviteter hittades på Strava.");
+            }
+        } catch (e) {
+            // If manual fetch fails, it might be auth
+            console.log("Fetch failed, user might need to log in via button");
+            // Optionally throw to trigger auth prompt in caller
+            throw e;
+        } finally {
+            setIsStravaLoading(false);
+        }
+    };
+
+    const handleFetchStrava = () => {
+        fetchStravaActivitiesForPicker().catch(() => {
+            promptAsync();
+        });
+    };
+
+    const selectStravaActivity = (act: StravaActivity) => {
+        const km = (act.distance / 1000).toFixed(2);
+        const min = Math.round(act.moving_time / 60).toString();
+        setCompletionDistance(km);
+        setCompletionDuration(min);
+        setShowStravaPicker(false);
+    };
 
     const onChangeDate = (event: any, selectedDate?: Date) => {
         const currentDate = selectedDate || scheduledDate;
@@ -89,10 +161,19 @@ export default function WorkoutDetailsView({
         setCompleting(true);
         try {
             const docRef = doc(db, 'users', user.uid, 'workouts', workoutId);
-            await updateDoc(docRef, {
+
+            const updatePayload: any = {
                 status: 'Completed',
                 completedAt: new Date()
-            });
+            };
+
+            // If running, add logging data
+            if (isRunning) {
+                if (completionDistance) updatePayload.distance = parseFloat(completionDistance.replace(',', '.'));
+                if (completionDuration) updatePayload.duration = parseInt(completionDuration, 10) * 60; // store in seconds
+            }
+
+            await updateDoc(docRef, updatePayload);
             // Alert.alert('Bra jobbat!', 'Passet är klarmarkerat.');
             if (onClose) onClose();
             else router.back();
@@ -273,18 +354,62 @@ export default function WorkoutDetailsView({
                             </View>
                         ) : (
                             !isCompleted && (
-                                <TouchableOpacity
-                                    style={[styles.actionButton, styles.completeButton, { marginTop: Spacing.xl }]}
-                                    onPress={handleQuickComplete}
-                                    disabled={completing}
-                                >
-                                    {completing ? <ActivityIndicator color="#FFF" /> : (
-                                        <>
-                                            <FontAwesome name="check" size={24} color="#FFF" style={{ marginRight: 12 }} />
-                                            <Text style={styles.completeButtonText}>Klarmarkera Pass</Text>
-                                        </>
-                                    )}
-                                </TouchableOpacity>
+                                <View style={{ marginTop: Spacing.xl }}>
+
+                                    {/* LOGGING INPUTS */}
+                                    <View style={{ marginBottom: Spacing.l }}>
+                                        <Text style={{ fontWeight: 'bold', marginBottom: Spacing.s, color: Palette.text.primary }}>Logga resultat (valfritt)</Text>
+                                        <View style={{ flexDirection: 'row', gap: Spacing.m }}>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={{ fontSize: Typography.size.xs, color: Palette.text.secondary, marginBottom: 4 }}>Sträcka (km)</Text>
+                                                <TextInput
+                                                    style={styles.input}
+                                                    placeholder="0.0"
+                                                    keyboardType="numeric"
+                                                    value={completionDistance}
+                                                    onChangeText={setCompletionDistance}
+                                                />
+                                            </View>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={{ fontSize: Typography.size.xs, color: Palette.text.secondary, marginBottom: 4 }}>Tid (min)</Text>
+                                                <TextInput
+                                                    style={styles.input}
+                                                    placeholder="0"
+                                                    keyboardType="numeric"
+                                                    value={completionDuration}
+                                                    onChangeText={setCompletionDuration}
+                                                />
+                                            </View>
+                                        </View>
+
+                                        {/* STRAVA BUTTON */}
+                                        <TouchableOpacity
+                                            style={[styles.actionButton, { marginTop: Spacing.m, backgroundColor: '#FC4C02', borderWidth: 0 }]}
+                                            onPress={handleFetchStrava}
+                                            disabled={isStravaLoading}
+                                        >
+                                            {isStravaLoading ? <ActivityIndicator color="#FFF" /> : (
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                                                    <FontAwesome name="cloud-download" size={16} color="#FFF" style={{ marginRight: 8 }} />
+                                                    <Text style={[styles.actionText, { color: '#FFF' }]}>Hämta från Strava</Text>
+                                                </View>
+                                            )}
+                                        </TouchableOpacity>
+                                    </View>
+
+                                    <TouchableOpacity
+                                        style={[styles.actionButton, styles.completeButton]}
+                                        onPress={handleQuickComplete}
+                                        disabled={completing}
+                                    >
+                                        {completing ? <ActivityIndicator color="#FFF" /> : (
+                                            <>
+                                                <FontAwesome name="check" size={24} color="#FFF" style={{ marginRight: 12 }} />
+                                                <Text style={styles.completeButtonText}>Klarmarkera Pass</Text>
+                                            </>
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
                             )
                         )}
                     </View>
@@ -420,6 +545,39 @@ export default function WorkoutDetailsView({
                 )}
 
             </ScrollView >
+
+            {/* STRAVA PICKER MODAL */}
+            <Modal visible={showStravaPicker} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowStravaPicker(false)}>
+                <View style={[styles.container, { backgroundColor: '#F5F5F7' }]}>
+                    <View style={styles.header}>
+                        {/* Reusing some header styles or inline styles for simplicity */}
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing.m, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#EEE' }}>
+                            <Text style={{ fontSize: Typography.size.l, fontWeight: 'bold' }}>Välj Strava-pass</Text>
+                            <TouchableOpacity onPress={() => setShowStravaPicker(false)}>
+                                <FontAwesome name="close" size={24} color={Palette.text.primary} />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    <FlatList
+                        data={stravaActivities}
+                        keyExtractor={item => item.id.toString()}
+                        contentContainerStyle={{ padding: Spacing.m }}
+                        renderItem={({ item }) => (
+                            <TouchableOpacity
+                                style={{ backgroundColor: '#FFF', padding: Spacing.m, marginBottom: Spacing.s, borderRadius: BorderRadius.m, ...Shadows.small }}
+                                onPress={() => selectStravaActivity(item)}
+                            >
+                                <Text style={{ fontWeight: 'bold', fontSize: Typography.size.m, marginBottom: 4 }}>{item.name}</Text>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                                    <Text style={{ color: Palette.text.secondary }}>{(item.distance / 1000).toFixed(2)} km • {Math.floor(item.moving_time / 60)} min</Text>
+                                    <Text style={{ color: Palette.text.disabled, fontSize: 12 }}>{new Date(item.start_date).toLocaleDateString()}</Text>
+                                </View>
+                            </TouchableOpacity>
+                        )}
+                    />
+                </View>
+            </Modal>
         </View >
     );
 }
@@ -480,6 +638,10 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: Spacing.m,
+    },
+    // Picker Header
+    header: {
+        backgroundColor: '#FFF',
     },
     summaryTitle: {
         color: '#FFF',
@@ -620,5 +782,13 @@ const styles = StyleSheet.create({
         fontSize: Typography.size.m,
         color: Palette.text.primary,
         fontWeight: '600'
+    },
+    input: {
+        backgroundColor: Palette.background.paper,
+        borderWidth: 1,
+        borderColor: Palette.border.default,
+        borderRadius: BorderRadius.s,
+        padding: Spacing.s,
+        fontSize: Typography.size.m,
     }
 });

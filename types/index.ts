@@ -44,6 +44,8 @@ export interface Workout {
     notes?: string;
     programId?: string;
     stravaActivityId?: string;
+    distance?: number; // in km
+    duration?: number; // in seconds
 }
 
 export interface UserProfile {
