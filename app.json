@@ -32,7 +32,14 @@
       "favicon": "./assets/images/favicon.png",
       "name": "MyFitnessApp",
       "shortName": "MyFitnessApp",
-      "title": "MyFitnessApp"
+      "title": "MyFitnessApp",
+      "display": "standalone",
+      "backgroundColor": "#ffffff",
+      "themeColor": "#4a90e2",
+      "meta": {
+        "apple-mobile-web-app-capable": "yes",
+        "apple-mobile-web-app-status-bar-style": "black-translucent"
+      }
     },
     "plugins": [
       "expo-router",
