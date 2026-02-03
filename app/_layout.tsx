@@ -49,12 +49,16 @@ import { SessionProvider, useSession } from '@/context/ctx';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
 function RootLayoutNav() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SessionProvider>
-        <ProtectedLayout />
-      </SessionProvider>
+      <SafeAreaProvider>
+        <SessionProvider>
+          <ProtectedLayout />
+        </SessionProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

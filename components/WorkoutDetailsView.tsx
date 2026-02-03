@@ -205,17 +205,44 @@ export default function WorkoutDetailsView({
 
                         {/* ACTION BUTTONS FOR RUNNING */}
                         {workoutType === 'template' ? (
-                            <TouchableOpacity
-                                style={[styles.actionButton, styles.primaryAction, { marginTop: Spacing.xl, paddingVertical: Spacing.m }]}
-                                onPress={handleSchedule}
-                                disabled={scheduling}
-                            >
-                                {scheduling ? <ActivityIndicator color={Palette.text.primary} /> : (
+                            <View style={{ marginTop: Spacing.xl }}>
+                                {Platform.OS === 'web' ? (
+                                    <View style={{ marginBottom: 16, alignItems: 'center' }}>
+                                        <Text style={{ color: Palette.text.secondary, marginBottom: 8 }}>Planerat datum:</Text>
+                                        <View style={[styles.datePickerButton, { padding: 0 }]}>
+                                            {React.createElement('input', {
+                                                type: 'date',
+                                                value: scheduledDate.toLocaleDateString('sv-SE'), // Use local YYYY-MM-DD
+                                                onChange: (e: any) => {
+                                                    if (!e.target.value) return;
+                                                    const parts = e.target.value.split('-');
+                                                    // Create local date at noon to avoid DST/midnight issues
+                                                    const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0);
+                                                    setScheduledDate(d);
+                                                },
+                                                style: {
+                                                    border: 'none',
+                                                    background: 'transparent',
+                                                    padding: Spacing.m,
+                                                    paddingVertical: Spacing.s,
+                                                    fontSize: Typography.size.m,
+                                                    color: Palette.text.primary,
+                                                    fontFamily: 'inherit',
+                                                    outline: 'none',
+                                                    width: 'fit-content'
+                                                }
+                                            })}
+                                        </View>
+                                    </View>
+                                ) : (
                                     <>
-                                        {/* Date Picker Trigger (Simple text above or integrated) */}
-                                        <View style={{ marginBottom: 12, alignItems: 'center' }}>
-                                            <Text style={{ color: Palette.text.secondary, marginBottom: 4 }}>Planerat datum:</Text>
-                                            <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.datePickerButton}>
+                                        <View style={{ marginBottom: 16, alignItems: 'center' }}>
+                                            <Text style={{ color: Palette.text.secondary, marginBottom: 8 }}>Planerat datum:</Text>
+                                            <TouchableOpacity
+                                                onPress={() => setShowDatePicker(true)}
+                                                style={styles.datePickerButton}
+                                                activeOpacity={0.7}
+                                            >
                                                 <FontAwesome name="calendar" size={16} color={Palette.primary.main} style={{ marginRight: 8 }} />
                                                 <Text style={styles.datePickerText}>{scheduledDate.toLocaleDateString()}</Text>
                                             </TouchableOpacity>
@@ -226,16 +253,24 @@ export default function WorkoutDetailsView({
                                                 testID="dateTimePicker"
                                                 value={scheduledDate}
                                                 mode="date"
-                                                display={Platform.OS === 'ios' ? 'inline' : 'default'} // 'inline' is nice for iOS 14+
+                                                display={Platform.OS === 'ios' ? 'inline' : 'default'}
                                                 onChange={onChangeDate}
-                                                style={{ width: '100%' }}
+                                                style={{ width: '100%', marginBottom: Spacing.m }}
                                             />
                                         )}
-
-                                        <Text style={[styles.actionText, { fontSize: 18 }]}>Planera in pass</Text>
                                     </>
                                 )}
-                            </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[styles.actionButton, styles.primaryAction, { paddingVertical: Spacing.m }]}
+                                    onPress={handleSchedule}
+                                    disabled={scheduling}
+                                >
+                                    {scheduling ? <ActivityIndicator color={Palette.text.primary} /> : (
+                                        <Text style={[styles.actionText, { fontSize: 18 }]}>Planera in pass</Text>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
                         ) : (
                             !isCompleted && (
                                 <TouchableOpacity
@@ -260,15 +295,36 @@ export default function WorkoutDetailsView({
                         {/* ACTIONS FOR STRENGTH/OTHER */}
                         {workoutType === 'template' ? (
                             <View style={styles.actionContainer}>
-                                <TouchableOpacity
-                                    style={[styles.actionButton, styles.primaryAction]}
-                                    onPress={handleSchedule}
-                                    disabled={scheduling}
-                                >
-                                    {scheduling ? <ActivityIndicator color={Palette.text.primary} /> : (
-                                        <View style={{ alignItems: 'center', width: '100%' }}>
-                                            {/* Date Picker Trigger Integration for Other Types */}
-                                            <View style={{ marginBottom: 12, alignItems: 'center' }}>
+                                <View style={{ flex: 1 }}>
+
+                                    {/* Date Picker */}
+                                    {/* For layout in this container, we should probably stack: Date Picker -> Button */}
+
+                                    {Platform.OS === 'web' ? (
+                                        <View style={{ marginBottom: 16, alignItems: 'center' }}>
+                                            <Text style={{ color: Palette.text.secondary, marginBottom: 4 }}>Planerat datum:</Text>
+                                            <View style={[styles.datePickerButton, { padding: 0 }]}>
+                                                {React.createElement('input', {
+                                                    type: 'date',
+                                                    value: scheduledDate.toISOString().split('T')[0],
+                                                    onChange: (e: any) => setScheduledDate(new Date(e.target.value)),
+                                                    style: {
+                                                        border: 'none',
+                                                        background: 'transparent',
+                                                        padding: Spacing.m,
+                                                        paddingVertical: Spacing.s,
+                                                        fontSize: Typography.size.m,
+                                                        color: Palette.text.primary,
+                                                        fontFamily: 'inherit',
+                                                        outline: 'none',
+                                                        width: 'fit-content'
+                                                    }
+                                                })}
+                                            </View>
+                                        </View>
+                                    ) : (
+                                        <>
+                                            <View style={{ marginBottom: Spacing.m, alignItems: 'center' }}>
                                                 <Text style={{ color: Palette.text.secondary, marginBottom: 4 }}>Planerat datum:</Text>
                                                 <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.datePickerButton}>
                                                     <FontAwesome name="calendar" size={16} color={Palette.primary.main} style={{ marginRight: 8 }} />
@@ -286,13 +342,19 @@ export default function WorkoutDetailsView({
                                                     style={{ width: '100%', marginBottom: 8 }}
                                                 />
                                             )}
-
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-                                                <Text style={[styles.actionText, { color: Palette.text.primary }]}>Planera in pass</Text>
-                                            </View>
-                                        </View>
+                                        </>
                                     )}
-                                </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        style={[styles.actionButton, styles.primaryAction]}
+                                        onPress={handleSchedule}
+                                        disabled={scheduling}
+                                    >
+                                        {scheduling ? <ActivityIndicator color={Palette.text.primary} /> : (
+                                            <Text style={[styles.actionText, { color: Palette.text.primary }]}>Planera in pass</Text>
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
                             </View>
                         ) : (
                             !isCompleted && (

@@ -81,7 +81,7 @@ export function useHomeData(user: any) {
         dates.forEach(date => {
             // Create Header
             const dayName = date.toLocaleDateString('sv-SE', { weekday: 'long' });
-            const dateLabel = date.toLocaleDateString('sv-SE', { day: 'numeric', month: 'long' });
+            const dateLabel = `${date.getDate()}/${date.getMonth() + 1}`; // e.g. "3/2"
             const dateStr = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
 
             // Push Header
@@ -93,13 +93,15 @@ export function useHomeData(user: any) {
                 dateObj: date
             });
 
-            // Find workouts for this date
+            // Find workouts for this date - Robust Comparison
             const daysWorkouts = currentWorkouts.filter(w => {
                 if (!w.scheduledDate) return false;
+                // Normalize dates to local strings for comparison to avoid time issues
                 const wDate = w.scheduledDate instanceof Date ? w.scheduledDate : (w.scheduledDate as any).toDate();
-                return wDate.getFullYear() === date.getFullYear() &&
+
+                return wDate.getDate() === date.getDate() &&
                     wDate.getMonth() === date.getMonth() &&
-                    wDate.getDate() === date.getDate();
+                    wDate.getFullYear() === date.getFullYear();
             });
 
             daysWorkouts.forEach(w => {

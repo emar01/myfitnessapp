@@ -6,7 +6,8 @@ import { useSession } from '@/context/ctx';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Helper to get week dates - now imported from hook logic but we keep this local helper if needed or import it
 // import { getWeekDates } from '@/hooks/useHomeData'; (Not strictly needed if hook handles it)
@@ -121,8 +122,10 @@ export default function MobileHome() {
         if (item.type === 'header') {
             return (
                 <View style={styles.dayHeader}>
-                    <Text style={styles.dayHeaderText}>{item.dayName}</Text>
-                    <Text style={styles.dayDateText}>{item.dateLabel}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                        <Text style={styles.dayHeaderText}>{item.dayName}</Text>
+                        <Text style={[styles.dayDateText, { marginLeft: 6, display: 'flex' }]}>{item.dateLabel}</Text>
+                    </View>
                 </View>
             );
         }
