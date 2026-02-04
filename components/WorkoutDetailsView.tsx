@@ -1,11 +1,10 @@
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
-import { exchangeToken, getStravaActivities, getStravaAuthRequestConfig, StravaActivity } from '@/services/stravaService';
+import { getStravaActivities, StravaActivity } from '@/services/stravaService';
 import { FontAwesome } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useAuthRequest } from 'expo-auth-session';
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, ImageBackground, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, ImageBackground, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
@@ -52,56 +51,35 @@ export default function WorkoutDetailsView({
     const [stravaActivities, setStravaActivities] = useState<StravaActivity[]>([]);
 
     // Strava Auth
-    const [request, response, promptAsync] = useAuthRequest(
-        getStravaAuthRequestConfig(),
-        { authorizationEndpoint: 'https://www.strava.com/oauth/authorize', tokenEndpoint: 'https://www.strava.com/oauth/token' }
-    );
 
-    useEffect(() => {
-        if (response?.type === 'success') {
-            const { code } = response.params;
-            handleStravaAuth(code);
-        }
-    }, [response]);
 
-    const handleStravaAuth = async (code: string) => {
-        setIsStravaLoading(true);
-        try {
-            await exchangeToken(code);
-            await exchangeToken(code);
-            // After auth, try fetching immediately
-            fetchStravaActivitiesForPicker();
-        } catch (e) {
-            console.error(e);
-            alert("Strava login failed.");
-            setIsStravaLoading(false);
-        }
-    };
+
 
     const fetchStravaActivitiesForPicker = async () => {
+        if (!user) return;
         setIsStravaLoading(true);
         try {
-            const activities = await getStravaActivities(1, 30); // Get latest 30
+            const activities = await getStravaActivities(user.uid, 1, 30); // Get latest 30, pass userId
             if (activities && activities.length > 0) {
                 setStravaActivities(activities);
                 setShowStravaPicker(true);
             } else {
                 alert("Inga aktiviteter hittades på Strava.");
             }
-        } catch (e) {
-            // If manual fetch fails, it might be auth
-            console.log("Fetch failed, user might need to log in via button");
-            // Optionally throw to trigger auth prompt in caller
-            throw e;
+        } catch (e: any) {
+            console.log("Fetch failed", e);
+            if (e.message.includes("No Strava connection")) {
+                Alert.alert("Koppla Strava", "Du måste koppla ditt Strava-konto under Profil för att hämta pass.");
+            } else {
+                Alert.alert("Fel", "Kunde inte hämta aktiviteter.");
+            }
         } finally {
             setIsStravaLoading(false);
         }
     };
 
     const handleFetchStrava = () => {
-        fetchStravaActivitiesForPicker().catch(() => {
-            promptAsync();
-        });
+        fetchStravaActivitiesForPicker();
     };
 
     const selectStravaActivity = (act: StravaActivity) => {
@@ -129,32 +107,43 @@ export default function WorkoutDetailsView({
     useEffect(() => {
         if (initialData) return; // Skip if data provided
 
-        const fetchData = async () => {
-            if (!workoutId || typeof workoutId !== 'string') return;
-            setLoading(true);
-            try {
-                if (workoutType === 'template') {
-                    const docRef = doc(db, 'workout_templates', workoutId);
-                    const snap = await getDoc(docRef);
-                    if (snap.exists()) {
-                        setData({ id: snap.id, ...snap.data() } as WorkoutTemplate);
-                    }
-                } else if (user) {
-                    // Fetch User Workout
-                    const docRef = doc(db, 'users', user.uid, 'workouts', workoutId);
-                    const snap = await getDoc(docRef);
-                    if (snap.exists()) {
-                        setData({ id: snap.id, ...snap.data() } as Workout);
-                    }
-                }
-            } catch (e) {
-                console.error("Error fetching workout details:", e);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchData();
+        // Initial fetch handled by focus effect or this effect?
+        // Let's rely on useFocusEffect to handle both initial and return-focus.
+        // But useEffect is safer for initial mount if not focused yet?
+        // Actually, useFocusEffect runs on mount too.
     }, [workoutId, workoutType, user, initialData]);
+
+    useFocusEffect(
+        useCallback(() => {
+            if (initialData) return;
+            const fetchData = async () => {
+                if (!workoutId || typeof workoutId !== 'string') return;
+                // Don't set loading to true on refresh to avoid flickering if possible, or do?
+                // setLoading(true); 
+                try {
+                    if (workoutType === 'template') {
+                        const docRef = doc(db, 'workout_templates', workoutId);
+                        const snap = await getDoc(docRef);
+                        if (snap.exists()) {
+                            setData({ id: snap.id, ...snap.data() } as WorkoutTemplate);
+                        }
+                    } else if (user) {
+                        // Fetch User Workout
+                        const docRef = doc(db, 'users', user.uid, 'workouts', workoutId);
+                        const snap = await getDoc(docRef);
+                        if (snap.exists()) {
+                            setData({ id: snap.id, ...snap.data() } as Workout);
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error fetching workout details:", e);
+                } finally {
+                    setLoading(false);
+                }
+            };
+            fetchData();
+        }, [workoutId, workoutType, user, initialData])
+    );
 
     const handleQuickComplete = async () => {
         if (!user || !workoutId || typeof workoutId !== 'string') return;
@@ -246,14 +235,46 @@ export default function WorkoutDetailsView({
                             </TouchableOpacity>
                         )}
 
-                        <View style={styles.headerContent}>
+                        <View>
                             <Text style={styles.headerDate}>{displayDate || 'Översikt'}</Text>
                             <Text style={styles.headerTitle}>{displayTitle}</Text>
-                            {isRunning && <Text style={{ color: '#EEE', marginTop: 4 }}>Löpning</Text>}
+
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                                <View style={styles.tag}>
+                                    <Text style={styles.tagText}>{data?.category === 'löpning' ? 'Löpning' : 'Styrka'}</Text>
+                                </View>
+                                {data?.subcategory && (
+                                    <View style={[styles.tag, { backgroundColor: '#FFCA28' }]}>
+                                        <Text style={[styles.tagText, { color: '#000' }]}>{data.subcategory.charAt(0).toUpperCase() + data.subcategory.slice(1)}</Text>
+                                    </View>
+                                )}
+                                {data?.distance && (
+                                    <View style={styles.tag}>
+                                        <FontAwesome name="road" size={12} color="#FFF" style={{ marginRight: 4 }} />
+                                        <Text style={styles.tagText}>{data.distance} km</Text>
+                                    </View>
+                                )}
+                                {data?.duration && (
+                                    <View style={styles.tag}>
+                                        <FontAwesome name="clock-o" size={12} color="#FFF" style={{ marginRight: 4 }} />
+                                        <Text style={styles.tagText}>{data.duration} min</Text>
+                                    </View>
+                                )}
+                            </View>
                         </View>
+
+                        {/* Edit Button for Templates */}
+                        {workoutType === 'template' && (
+                            <TouchableOpacity
+                                onPress={() => router.push({ pathname: '/workout/edit-template', params: { id: workoutId } })}
+                                style={styles.editButton}
+                            >
+                                <FontAwesome name="pencil" size={24} color="#FFF" />
+                            </TouchableOpacity>
+                        )}
                     </SafeAreaView>
                 </View>
-            </ImageBackground>
+            </ImageBackground >
 
             <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
 
@@ -265,8 +286,32 @@ export default function WorkoutDetailsView({
                                 <FontAwesome name="check-circle" size={20} color="#FFF" style={{ marginRight: 8 }} />
                                 <Text style={styles.summaryTitle}>Pass klarmarkerat!</Text>
                             </View>
+                            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>
+                                {(data as any)?.completedAt instanceof Date ? (data as any).completedAt.toLocaleDateString() : ((data as any)?.completedAt?.toDate ? (data as any).completedAt.toDate().toLocaleDateString() : '')}
+                            </Text>
                         </View>
-                        <Text style={{ color: 'white', opacity: 0.9 }}>Bra jobbat!</Text>
+
+                        {(data?.distance || data?.duration) && (
+                            <View style={{ flexDirection: 'row', marginTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.2)', paddingTop: 12 }}>
+                                {data?.distance && (
+                                    <View style={{ marginRight: 24 }}>
+                                        <Text style={styles.statLabel}>STRÄCKA</Text>
+                                        <Text style={styles.statValue}>{data.distance} km</Text>
+                                    </View>
+                                )}
+                                {data?.duration && (
+                                    <View>
+                                        <Text style={styles.statLabel}>TID</Text>
+                                        <Text style={styles.statValue}>
+                                            {Math.floor(data.duration / 3600) > 0 ? `${Math.floor(data.duration / 3600)}h ` : ''}
+                                            {Math.round((data.duration % 3600) / 60)} min
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
+                        )}
+
+                        <Text style={{ color: 'white', opacity: 0.9, marginTop: (data?.distance || data?.duration) ? 12 : 0 }}>Bra jobbat!</Text>
                     </View>
                 )}
 
@@ -604,8 +649,29 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.2)',
         borderRadius: 20,
     },
+    tag: {
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 4,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    tagText: {
+        color: '#FFF',
+        fontSize: Typography.size.xs,
+        fontWeight: 'bold',
+    },
     headerContent: {
         marginBottom: Spacing.l,
+    },
+    editButton: {
+        position: 'absolute',
+        top: 60, // approximate safe area
+        right: Spacing.m,
+        padding: 8,
+        backgroundColor: 'rgba(0,0,0,0.2)',
+        borderRadius: 20,
     },
     headerDate: {
         color: '#E0E0E0',

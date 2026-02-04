@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { collection, doc, getDoc, getDocs, query, where, writeBatch } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ProgramDetailsScreen() {
     const { id } = useLocalSearchParams();
@@ -188,6 +188,68 @@ export default function ProgramDetailsScreen() {
         }
     };
 
+    const handleUnfollowProgram = async () => {
+        const currentUser = user || auth.currentUser;
+        if (!currentUser) return;
+
+        const performUnfollow = async () => {
+            setJoining(true);
+            try {
+                // 1. Delete Planned Workouts
+                const workoutsRef = collection(db, 'users', currentUser.uid, 'workouts');
+                const qExisting = query(
+                    workoutsRef,
+                    where('programId', '==', programId),
+                    where('status', '==', 'Planned')
+                );
+                const snap = await getDocs(qExisting);
+                const batch = writeBatch(db);
+                snap.docs.forEach(d => batch.delete(d.ref));
+
+                // 2. Remove Active Program Status
+                const activeRef = doc(db, 'users', currentUser.uid, 'active_programs', programId as string);
+                batch.delete(activeRef);
+
+                await batch.commit();
+
+                setIsFollowing(false);
+                if (Platform.OS === 'web') {
+                    alert('Program Avslutat. Du följer inte längre detta program.');
+                } else {
+                    Alert.alert('Program Avslutat', 'Du följer inte längre detta program.');
+                }
+            } catch (e) {
+                console.error("Error unfollowing:", e);
+                if (Platform.OS === 'web') {
+                    alert('Något gick fel. Kunde inte avsluta programmet.');
+                } else {
+                    Alert.alert('Fel', 'Kunde inte avsluta programmet.');
+                }
+            } finally {
+                setJoining(false);
+            }
+        };
+
+        if (Platform.OS === 'web') {
+            if (window.confirm("Är du säker på att du vill sluta följa detta program? Alla dina framtida planerade pass för detta program kommer att tas bort.")) {
+                performUnfollow();
+            }
+        } else {
+            Alert.alert(
+                'Avsluta Program',
+                'Är du säker på att du vill sluta följa detta program? Alla dina framtida planerade pass för detta program kommer att tas bort.',
+                [
+                    { text: 'Avbryt', style: 'cancel' },
+                    {
+                        text: 'Avsluta',
+                        style: 'destructive',
+                        onPress: performUnfollow
+                    }
+                ]
+            );
+        }
+    };
+
     if (loading) {
         return (
             <View style={styles.center}>
@@ -274,24 +336,43 @@ export default function ProgramDetailsScreen() {
                 <Text style={styles.sectionTitle}>Om Programmet</Text>
                 <Text style={styles.description}>{program.description}</Text>
 
-                <TouchableOpacity
-                    style={[
-                        styles.followButton,
-                        isFollowing && styles.followingButton,
-                        (joining) && styles.disabledButton
-                    ]}
-                    onPress={handleFollowProgram}
-                    disabled={joining} // Allow pressing even if following!
-                    activeOpacity={0.7}
-                >
-                    {joining ? (
-                        <ActivityIndicator color="#FFF" />
+                <View style={{ gap: 12, marginVertical: Spacing.m }}>
+                    {!isFollowing ? (
+                        <TouchableOpacity
+                            style={[
+                                styles.followButton,
+                                joining && styles.disabledButton
+                            ]}
+                            onPress={handleFollowProgram}
+                            disabled={joining}
+                            activeOpacity={0.7}
+                        >
+                            {joining ? (
+                                <ActivityIndicator color="#FFF" />
+                            ) : (
+                                <Text style={styles.followButtonText}>Starta Program</Text>
+                            )}
+                        </TouchableOpacity>
                     ) : (
-                        <Text style={styles.followButtonText}>
-                            {isFollowing ? 'Starta om Program' : 'Starta Program'}
-                        </Text>
+                        <>
+                            <TouchableOpacity
+                                style={[styles.followButton, styles.restartButton]}
+                                onPress={handleFollowProgram}
+                                disabled={joining}
+                            >
+                                <Text style={[styles.followButtonText, { color: Palette.primary.main }]}>Starta om Program</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.followButton, styles.unfollowButton]}
+                                onPress={handleUnfollowProgram}
+                                disabled={joining}
+                            >
+                                <Text style={styles.followButtonText}>Avsluta Program</Text>
+                            </TouchableOpacity>
+                        </>
                     )}
-                </TouchableOpacity>
+                </View>
 
                 <Text style={styles.sectionTitle}>Upplägg</Text>
                 <View style={styles.scheduleList}>
@@ -377,6 +458,14 @@ const styles = StyleSheet.create({
         fontSize: Typography.size.m,
         fontWeight: 'bold',
         color: '#FFF',
+    },
+    restartButton: {
+        backgroundColor: '#FFF',
+        borderWidth: 1,
+        borderColor: Palette.primary.main,
+    },
+    unfollowButton: {
+        backgroundColor: '#FF5252', // Red
     },
     scheduleList: {
         marginTop: Spacing.s,

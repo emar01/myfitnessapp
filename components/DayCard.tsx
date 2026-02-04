@@ -82,7 +82,17 @@ export default function DayCard({
                     >
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                             <View style={{ flex: 1 }}>
-                                <Text style={styles.title} numberOfLines={1}>{title}</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <Text style={styles.title} numberOfLines={1}>{title}</Text>
+                                    {status === 'completed' && (
+                                        <Ionicons
+                                            name="checkmark-circle"
+                                            size={20}
+                                            color={Palette.primary.main}
+                                            style={{ marginLeft: 6 }}
+                                        />
+                                    )}
+                                </View>
                                 {!!subtitle && <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>}
                                 <View style={styles.chipContainer}>
                                     <Text style={[styles.caption, { color: accentColor }]}>

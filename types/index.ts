@@ -1,5 +1,5 @@
 export type WorkoutCategory = 'löpning' | 'styrketräning' | 'rehab' | 'övrigt';
-export type RunningSubcategory = 'distans' | 'långpass' | 'intervall';
+export type RunningSubcategory = 'distans' | 'långpass' | 'intervall' | 'fartpass' | 'testlopp';
 export type StrengthSubcategory = 'crossfit' | 'styrka' | 'rörlighet';
 
 export interface Exercise {
@@ -46,6 +46,7 @@ export interface Workout {
     stravaActivityId?: string;
     distance?: number; // in km
     duration?: number; // in seconds
+    completedAt?: Date | any; // Firestore timestamp or Date
 }
 
 export interface UserProfile {
@@ -58,6 +59,7 @@ export interface UserProfile {
     gender?: 'Man' | 'Kvinna' | 'Annat';
     aiEnabled?: boolean;
     aiTotalCost?: number; // Accumulated cost in USD
+    role?: 'user' | 'admin';
 }
 
 export interface PersonalRecord {
@@ -95,4 +97,6 @@ export interface WorkoutTemplate {
     subcategory?: RunningSubcategory | StrengthSubcategory;
     exercises: WorkoutExercise[];
     note?: string;
+    distance?: number; // km
+    duration?: number; // minutes
 }

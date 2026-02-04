@@ -68,14 +68,7 @@ export default function MobileHome() {
     const renderStartWorkoutButton = () => (
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <TouchableOpacity
-                onPress={() => setStravaModalVisible(true)}
-                style={{ flexDirection: 'row', alignItems: 'center', marginRight: 16 }}
-            >
-                <Ionicons name="sync" size={20} color="#FC4C02" />
-                {/* <Text style={{ fontSize: Typography.size.s, color: Palette.text.secondary, marginLeft: 4 }}>Synka</Text> */}
-            </TouchableOpacity>
-            <TouchableOpacity
-                onPress={() => router.push({ pathname: '/workout/log', params: { workoutName: 'New Workout' } })}
+                onPress={() => router.push('/workout/select')}
                 style={{ flexDirection: 'row', alignItems: 'center' }}
             >
                 <Ionicons name="add" size={20} color={Palette.text.secondary} />
