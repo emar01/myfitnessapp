@@ -1,7 +1,7 @@
 
-import 'dotenv/config';
-import { initializeApp } from 'firebase/app';
-import { addDoc, collection, deleteDoc, doc, getDocs, getFirestore, query, setDoc, where } from 'firebase/firestore';
+require('dotenv').config();
+const { initializeApp } = require('firebase/app');
+const { getFirestore, collection, getDocs, doc, setDoc, deleteDoc, addDoc, query, where } = require('firebase/firestore');
 
 // Config
 const firebaseConfig = {
@@ -57,15 +57,14 @@ const workouts = [
         exercises: [],
         note: `Dags att få upp farten! Förbered dig som om det vore tävling och försök springa 5 kilometer tempo som går i runt din milfart!`
     },
-    // Add more if needed, but these basics cover the logic
 ];
 
 async function main() {
-    console.log("Starting Marathon Rebuild...");
+    console.log("Starting Marathon Rebuild (CommonJS)...");
 
     // 1. Upsert Templates
     const templatesRef = collection(db, 'workout_templates');
-    const validTemplateIds: string[] = [];
+    const validTemplateIds = [];
 
     for (const w of workouts) {
         const ref = doc(templatesRef, w.id);
@@ -75,7 +74,12 @@ async function main() {
         if (w.subcategory === 'långpass') duration = 90;
         if (w.subcategory === 'distans') duration = 50;
 
-        await setDoc(ref, { ...w, duration, distance }, { merge: true });
+        // Use standard JS object spread (no TS types)
+        await setDoc(ref, {
+            ...w,
+            duration,
+            distance
+        }, { merge: true });
         console.log(`Upserted Template: ${w.name}`);
         validTemplateIds.push(w.id);
     }
@@ -84,7 +88,6 @@ async function main() {
     const schedule = [];
     const weeks = 12;
 
-    // We cycle through our static list for variety
     const speed = workouts.filter(w => w.subcategory === 'intervall');
     const dist = workouts.filter(w => w.subcategory === 'distans');
     const long = workouts.filter(w => w.subcategory === 'långpass');
@@ -96,13 +99,13 @@ async function main() {
                 dayOffset: (w * 7) + 1, // Tue
                 workoutTitle: "Lätt Fartlek (Taper)",
                 description: "Korta intervaller för att hålla benen pigga inför loppet.",
-                workoutTemplateId: speed[0]?.id
+                workoutTemplateId: speed.length > 0 ? speed[0].id : undefined
             });
             schedule.push({
                 dayOffset: (w * 7) + 3, // Thu
                 workoutTitle: "Jogg 20 min (Taper)",
                 description: "Mycket lugn jogg för att väcka kroppen.",
-                workoutTemplateId: dist[0]?.id
+                workoutTemplateId: dist.length > 0 ? dist[0].id : undefined
             });
             schedule.push({
                 dayOffset: (w * 7) + 6, // Sun
@@ -149,6 +152,15 @@ async function main() {
         console.log(`Deleting old program version: ${d.id}`);
         await deleteDoc(d.ref);
     }
+
+    // Also delete any with 'bas' if it exists to be clean
+    const qBas = query(programsRef, where('title', '==', 'Maratonprogram (Bas)'));
+    const oldSnapBas = await getDocs(qBas);
+    for (const d of oldSnapBas.docs) {
+        console.log(`Deleting old program version (Bas): ${d.id}`);
+        await deleteDoc(d.ref);
+    }
+
 
     // 4. Create New Program
     const newProgram = {
