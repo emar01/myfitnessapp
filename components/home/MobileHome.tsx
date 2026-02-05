@@ -1,19 +1,20 @@
+import React, { useCallback, useState } from 'react';
+import { ActivityIndicator, FlatList, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-native-draggable-flatlist';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import DayCard, { DayCardType } from '@/components/DayCard';
 import ProfileMenuModal from '@/components/ProfileMenuModal';
 import StravaSyncModal from '@/components/StravaSyncModal';
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
+import { ListItem, useHomeData } from '@/hooks/useHomeData';
+import { workoutService } from '@/services/workoutService'; // Import Service
+import { getScaleWeekNumber } from '@/utils/dateUtils';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
-// Helper to get week dates - now imported from hook logic but we keep this local helper if needed or import it
-// import { getWeekDates } from '@/hooks/useHomeData'; (Not strictly needed if hook handles it)
-
-import { ListItem, useHomeData } from '@/hooks/useHomeData';
-import { getScaleWeekNumber } from '@/utils/dateUtils';
+// ... (keep helper imports if any were missed, but I think I got them)
 
 export default function MobileHome() {
     const { user, signOut, isLoading: sessionLoading } = useSession();
@@ -25,7 +26,8 @@ export default function MobileHome() {
         listData,
         loading,
         currentDate,
-        changeWeek
+        changeWeek,
+        setListData // We need this to update local state optimistically
     } = useHomeData(user);
 
     const [isProfileMenuVisible, setProfileMenuVisible] = useState(false);
@@ -111,10 +113,10 @@ export default function MobileHome() {
         )
     }
 
-    const renderItem = useCallback(({ item }: { item: ListItem }) => {
+    const renderItem = useCallback(({ item, drag, isActive }: RenderItemParams<ListItem>) => {
         if (item.type === 'header') {
             return (
-                <View style={styles.dayHeader}>
+                <View style={[styles.dayHeader, { opacity: isActive ? 0.5 : 1 }]}>
                     <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
                         <Text style={styles.dayHeaderText}>{item.dayName}</Text>
                         <Text style={[styles.dayDateText, { marginLeft: 6, display: 'flex' }]}>{item.dateLabel}</Text>
@@ -124,8 +126,8 @@ export default function MobileHome() {
         }
 
         // Workout Item
-        return (
-            <View style={styles.itemContainer}>
+        const content = (
+            <View style={[styles.itemContainer, { opacity: isActive ? 0.8 : 1 }]}>
                 <DayCard
                     day="" // Hidden in list view as header handles it
                     date=""
@@ -134,10 +136,62 @@ export default function MobileHome() {
                     // @ts-ignore
                     status={item.workout.status === 'Completed' ? 'completed' : 'pending'}
                     onPress={() => router.push({ pathname: '/workout/[id]', params: { id: item.workout.id!, title: item.workout.name, status: item.workout.status === 'Completed' ? 'completed' : 'planned' } })}
+                    onLongPress={drag} // Enable drag on long press
+                    showDragHandle={false} // User requested "Hela träningen...", so we use natural long press
                 />
             </View>
         );
-    }, [user, currentDate]);
+
+        if (Platform.OS === 'web') {
+            return content;
+        }
+
+        return (
+            <ScaleDecorator>
+                {content}
+            </ScaleDecorator>
+        );
+    }, [user, currentDate]); // Added deps just in case
+
+    const onDragEnd = async ({ data }: { data: ListItem[] }) => {
+        setListData(data); // Optimistic update
+
+        let currentHeaderDate: Date | null = null;
+
+        for (const item of data) {
+            if (item.type === 'header') {
+                currentHeaderDate = item.dateObj;
+            } else if (item.type === 'workout') {
+                if (currentHeaderDate) {
+                    // Check if date changed
+                    const workoutDate = item.workout.scheduledDate instanceof Date ?
+                        item.workout.scheduledDate :
+                        (item.workout.scheduledDate as any).toDate();
+
+                    // Compare YYYY-MM-DD to avoid time diffs
+                    const isSameDay =
+                        workoutDate.getFullYear() === currentHeaderDate.getFullYear() &&
+                        workoutDate.getMonth() === currentHeaderDate.getMonth() &&
+                        workoutDate.getDate() === currentHeaderDate.getDate();
+
+                    if (!isSameDay) {
+                        console.log(`Moving ${item.workout.name} to ${currentHeaderDate.toDateString()}`);
+                        // Update Local Object Ref (for consistency until refresh)
+                        item.workout.scheduledDate = currentHeaderDate;
+                        // API Call
+                        if (user && item.workout.id) {
+                            try {
+                                await workoutService.updateWorkoutDate(user.uid, item.workout.id, currentHeaderDate);
+                            } catch (e) {
+                                console.error("Failed to update date", e);
+                                // Optional: revert list data if failure
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    };
 
     const weekNumber = getScaleWeekNumber(currentDate);
 
@@ -157,25 +211,30 @@ export default function MobileHome() {
                     </TouchableOpacity>
                 </View>
 
-                {/* Week Navigation Header - REMOVED / MERGED into ListHeader */}
-                {/* 
-                <View style={styles.header}>
-                    ...
-                </View> 
-                */}
-
                 {loading ? (
                     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                         <ActivityIndicator size="large" color={Palette.primary.main} />
                     </View>
                 ) : (
-                    <FlatList
-                        data={listData}
-                        keyExtractor={(item) => item.id}
-                        renderItem={renderItem}
-                        ListHeaderComponent={renderHeader}
-                        contentContainerStyle={{ paddingBottom: 100 }}
-                    />
+                    Platform.OS === 'web' ? (
+                        <FlatList
+                            data={listData}
+                            keyExtractor={(item) => item.id}
+                            renderItem={({ item }) => renderItem({ item, drag: () => { }, isActive: false } as any)}
+                            ListHeaderComponent={renderHeader}
+                            contentContainerStyle={{ paddingBottom: 100 }}
+                        />
+                    ) : (
+                        <DraggableFlatList
+                            data={listData}
+                            keyExtractor={(item) => item.id}
+                            renderItem={renderItem}
+                            ListHeaderComponent={renderHeader}
+                            contentContainerStyle={{ paddingBottom: 100 }}
+                            onDragEnd={onDragEnd}
+                            activationDistance={10} // Slight tolerance
+                        />
+                    )
                 )}
             </SafeAreaView>
             <StravaSyncModal

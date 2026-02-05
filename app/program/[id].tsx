@@ -133,7 +133,7 @@ export default function ProgramDetailsScreen() {
                         scheduledDate: scheduledDate,
                         exercises: exerciseData,
                         category: category,
-                        subcategory: subcategory,
+                        subcategory: subcategory || null, // Fix: Firestore hates undefined
                         programId: programId,
                         notes: item.description || templateNote || `Del av program: ${program.title}`
                     });
