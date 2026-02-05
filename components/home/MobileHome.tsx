@@ -70,7 +70,7 @@ export default function MobileHome() {
     const renderStartWorkoutButton = () => (
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <TouchableOpacity
-                onPress={() => router.push('/workout/select')}
+                onPress={() => router.push({ pathname: '/workout/log', params: { workoutName: 'New Workout' } })}
                 style={{ flexDirection: 'row', alignItems: 'center' }}
             >
                 <Ionicons name="add" size={20} color={Palette.text.secondary} />

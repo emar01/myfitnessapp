@@ -228,15 +228,7 @@ export default function ProfileScreen() {
                     </TouchableOpacity>
                 </View>
 
-                {/* Admin Tools */}
-                {isAdmin && (
-                    <>
-                        <Text style={styles.sectionTitle}>Admin</Text>
-                        <View style={styles.card}>
-                            <Text style={{ textAlign: 'center', color: Palette.text.secondary }}>Inga admin-funktioner tillgängliga.</Text>
-                        </View>
-                    </>
-                )}
+                {/* Admin Tools Removed (Moved to Library) */}
 
 
                 {/* Navigation to Stats */}

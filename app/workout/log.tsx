@@ -8,7 +8,7 @@ import { checkAndSavePrs, getUserPrs } from '@/services/prService';
 import { Exercise, PersonalRecord, Workout, WorkoutExercise } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { addDoc, collection, getDocs } from 'firebase/firestore'; // Check imports
+import { addDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -20,9 +20,6 @@ const formatTime = (seconds: number) => {
     return `${h > 0 ? h + ':' : ''}${m < 10 && h > 0 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
 };
 
-
-
-
 export default function WorkoutLoggerScreen() {
     const { user } = useSession();
     const router = useRouter();
@@ -32,6 +29,7 @@ export default function WorkoutLoggerScreen() {
         (params.category as string) === 'löpning' ? 'running' : 'strength'
     );
 
+    // Main Workout State - Defined EARLY to avoid hoisting issues
     const [workout, setWorkout] = useState<Workout>({
         userId: user?.uid || '',
         name: (params.workoutName as string) || 'New Workout',
@@ -41,14 +39,111 @@ export default function WorkoutLoggerScreen() {
         category: (params.category as string) as any || 'styrketräning'
     });
 
-    // ... other state
+    // Running Template State
+    const [runningTemplates, setRunningTemplates] = useState<any[]>([]);
+    const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+    const [runSubFilter, setRunSubFilter] = useState<string | null>(null);
+
+    // Other State
+    const [isModalVisible, setModalVisible] = useState(false);
+    const [availableExercises, setAvailableExercises] = useState<Exercise[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [secondsElapsed, setSecondsElapsed] = useState(0);
+    const [isPaused, setIsPaused] = useState(false);
+
+    // Modal State
+    const [searchQuery, setSearchQuery] = useState('');
+    const [modalTab, setModalTab] = useState<'MostUsed' | 'All'>('All');
+    const [copySets, setCopySets] = useState(true);
+
+    // Video Modal State
+    const [videoModalVisible, setVideoModalVisible] = useState(false);
+    const [currentVideoUrl, setCurrentVideoUrl] = useState<string | null>(null);
+
+    // PR State
+    const [existingPrs, setExistingPrs] = useState<Record<string, PersonalRecord>>({});
+
+    useEffect(() => {
+        if (workoutMode === 'running') {
+            fetchRunningTemplates();
+        }
+    }, [workoutMode]);
+
+    useEffect(() => {
+        fetchExercises();
+
+        // Fetch PRs
+        if (user) {
+            getUserPrs(user.uid).then(setExistingPrs);
+        }
+
+        // Timer
+        const interval = setInterval(() => {
+            if (!isPaused) {
+                setSecondsElapsed(prev => prev + 1);
+            }
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [isPaused, user]);
+
+    const fetchRunningTemplates = async () => {
+        if (!user) return;
+        setIsLoadingTemplates(true);
+        try {
+            const q = query(collection(db, 'workout_templates'), where('category', '==', 'löpning'));
+            const snap = await getDocs(q);
+            const list = snap.docs.map(d => d.data());
+            setRunningTemplates(list);
+        } catch (e) {
+            console.error("Failed to fetch running templates", e);
+        } finally {
+            setIsLoadingTemplates(false);
+        }
+    };
+
+    const fetchExercises = async () => {
+        setIsLoading(true);
+        try {
+            const querySnapshot = await getDocs(collection(db, "exercises"));
+            const exercisesList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Exercise));
+            setAvailableExercises(exercisesList);
+        } catch (e: any) {
+            console.error("Error fetching exercises: ", e);
+            alert(`Error loading exercises: ${e.message || JSON.stringify(e)}`);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const addExercise = (exercise: Exercise) => {
+        const newExercise: WorkoutExercise = {
+            exerciseId: exercise.id!,
+            name: exercise.name,
+            sets: [],
+            isBodyweight: exercise.isBodyweight,
+            videoLink: exercise.defaultVideoUrl
+        };
+        setWorkout(prev => ({ ...prev, exercises: [...prev.exercises, newExercise] }));
+        setModalVisible(false);
+    };
+
+    const updateExercise = (index: number, updatedExercise: WorkoutExercise) => {
+        const newExercises = [...workout.exercises];
+        newExercises[index] = updatedExercise;
+        setWorkout(prev => ({ ...prev, exercises: newExercises }));
+    };
+
+    const removeExercise = (index: number) => {
+        const newExercises = workout.exercises.filter((_, i) => i !== index);
+        setWorkout(prev => ({ ...prev, exercises: newExercises }));
+    };
 
     const finishRun = async (distance: number, duration: number) => {
         if (!user) return;
         setIsLoading(true);
         try {
             const runningExercise: WorkoutExercise = {
-                exerciseId: 'running-session', // specific ID or generate one
+                exerciseId: 'running-session',
                 name: 'Löpning',
                 isBodyweight: true,
                 sets: [{
@@ -69,10 +164,9 @@ export default function WorkoutLoggerScreen() {
                 userId: user.uid,
                 exercises: [runningExercise],
                 category: 'löpning',
-                subcategory: 'distans' // Default subcategory
-            } as any; // Cast to any to avoid strict type issues if mismatch
+                subcategory: runSubFilter || 'distans' // Use default if lost, but ideally from template
+            } as any;
 
-            // Save Workout
             const workoutsRef = collection(db, `users/${user.uid}/workouts`);
             await addDoc(workoutsRef, workoutData);
 
@@ -85,84 +179,6 @@ export default function WorkoutLoggerScreen() {
         } finally {
             setIsLoading(false);
         }
-    };
-
-
-    const [isModalVisible, setModalVisible] = useState(false);
-    const [availableExercises, setAvailableExercises] = useState<Exercise[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
-    const [secondsElapsed, setSecondsElapsed] = useState(0);
-    const [isPaused, setIsPaused] = useState(false);
-
-    // Modal State
-    const [searchQuery, setSearchQuery] = useState('');
-    const [modalTab, setModalTab] = useState<'MostUsed' | 'All'>('All');
-    const [copySets, setCopySets] = useState(true);
-
-    // Video Modal State
-    const [videoModalVisible, setVideoModalVisible] = useState(false);
-    const [currentVideoUrl, setCurrentVideoUrl] = useState<string | null>(null);
-
-    // PR State
-    const [existingPrs, setExistingPrs] = useState<Record<string, PersonalRecord>>({});
-
-    useEffect(() => {
-        fetchExercises();
-
-        // Fetch PRs
-        if (user) {
-            getUserPrs(user.uid).then(setExistingPrs);
-        }
-
-        // Timer
-        const interval = setInterval(() => {
-            if (!isPaused) {
-                setSecondsElapsed(prev => prev + 1);
-            }
-        }, 1000);
-        return () => clearInterval(interval);
-    }, [isPaused, user]);
-
-    const fetchExercises = async () => {
-        setIsLoading(true);
-        try {
-            const querySnapshot = await getDocs(collection(db, "exercises"));
-            const exercisesList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Exercise));
-            setAvailableExercises(exercisesList);
-        } catch (e: any) {
-            console.error("Error fetching exercises: ", e);
-            alert(`Error loading exercises: ${e.message || JSON.stringify(e)}`);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const addExercise = (exercise: Exercise) => {
-        const newExercise: WorkoutExercise = {
-            exerciseId: exercise.id!,
-            name: exercise.name,
-            sets: [], // Start empty, let user add
-            isBodyweight: exercise.isBodyweight,
-            videoLink: exercise.defaultVideoUrl // Map from Exercise to WorkoutExercise
-        };
-        // Logic to maybe copy sets if copySets is true could go here (mocked for now)
-        if (copySets) {
-            // Mock copying sets logic if needed
-        }
-
-        setWorkout(prev => ({ ...prev, exercises: [...prev.exercises, newExercise] }));
-        setModalVisible(false);
-    };
-
-    const updateExercise = (index: number, updatedExercise: WorkoutExercise) => {
-        const newExercises = [...workout.exercises];
-        newExercises[index] = updatedExercise;
-        setWorkout(prev => ({ ...prev, exercises: newExercises }));
-    };
-
-    const removeExercise = (index: number) => {
-        const newExercises = workout.exercises.filter((_, i) => i !== index);
-        setWorkout(prev => ({ ...prev, exercises: newExercises }));
     };
 
     const finishWorkout = async () => {
@@ -178,15 +194,12 @@ export default function WorkoutLoggerScreen() {
                 status: 'Completed',
                 date: new Date(),
                 userId: user.uid,
-                // Filter out empty exercises if any
                 exercises: workout.exercises.filter(ex => ex.sets.length > 0)
             };
 
-            // Save Workout to Firestore
             const workoutsRef = collection(db, `users/${user.uid}/workouts`);
             const docRef = await addDoc(workoutsRef, workoutData);
 
-            // Check for New PRs
             const newPrs = await checkAndSavePrs(user.uid, workoutData.exercises, existingPrs, docRef.id);
 
             if (newPrs.length > 0) {
@@ -211,6 +224,79 @@ export default function WorkoutLoggerScreen() {
         } else {
             alert('No video available for this exercise.');
         }
+    };
+
+    const renderRunningSelection = () => {
+        let filtered = runningTemplates;
+        if (runSubFilter) {
+            filtered = filtered.filter(t => t.subcategory === runSubFilter);
+        }
+
+        return (
+            <View style={{ flex: 1, padding: Spacing.m }}>
+                <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: Spacing.m, color: Palette.text.primary }}>
+                    Välj löppass
+                </Text>
+
+                {/* Filters */}
+                <View style={{ flexDirection: 'row', marginBottom: Spacing.m }}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                        <TouchableOpacity
+                            style={[styles.filterChip, runSubFilter === null && styles.filterChipActive]}
+                            onPress={() => setRunSubFilter(null)}
+                        >
+                            <Text style={[styles.filterText, runSubFilter === null && styles.filterTextActive]}>Alla</Text>
+                        </TouchableOpacity>
+                        {['distans', 'intervall', 'långpass'].map(tag => (
+                            <TouchableOpacity
+                                key={tag}
+                                style={[styles.filterChip, runSubFilter === tag && styles.filterChipActive]}
+                                onPress={() => setRunSubFilter(tag)}
+                            >
+                                <Text style={[styles.filterText, runSubFilter === tag && styles.filterTextActive]}>
+                                    {tag.charAt(0).toUpperCase() + tag.slice(1)}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                </View>
+
+                {isLoadingTemplates ? <ActivityIndicator color={Palette.primary.main} /> : (
+                    <FlatList
+                        data={filtered}
+                        keyExtractor={(item, index) => index.toString()}
+                        renderItem={({ item }) => (
+                            <TouchableOpacity
+                                style={styles.exerciseItem}
+                                onPress={() => setWorkout(prev => ({
+                                    ...prev,
+                                    name: item.name,
+                                    category: 'löpning',
+                                    subcategory: item.subcategory || 'distans'
+                                }))}
+                            >
+                                <View>
+                                    <Text style={styles.exerciseName}>{item.name}</Text>
+                                    <Text style={{ fontSize: 12, color: Palette.text.secondary }}>
+                                        {item.subcategory ? item.subcategory.charAt(0).toUpperCase() + item.subcategory.slice(1) : 'Distans'}
+                                    </Text>
+                                </View>
+                                <Ionicons name="chevron-forward" size={20} color={Palette.text.disabled} />
+                            </TouchableOpacity>
+                        )}
+                        ListEmptyComponent={<Text style={{ textAlign: 'center', color: Palette.text.secondary, marginTop: 20 }}>Inga mallar hittades. Skapa i biblioteket.</Text>}
+                    />
+                )}
+
+                <TouchableOpacity
+                    style={[styles.largeButton, { marginTop: Spacing.m }]}
+                    onPress={() => setWorkout(prev => ({ ...prev, name: 'Fritt pass', category: 'löpning', subcategory: 'distans' }))}
+                >
+                    <Ionicons name="play-outline" size={20} color={Palette.primary.main} />
+                    <Text style={styles.largeButtonText}>Starta fritt pass (utan mall)</Text>
+                </TouchableOpacity>
+            </View>
+        )
     };
 
     // Filter exercises based on search
@@ -260,9 +346,19 @@ export default function WorkoutLoggerScreen() {
             </View>
 
             {workoutMode === 'running' ? (
-                <View style={styles.container}>
-                    <RunningSession onSave={finishRun} />
-                </View>
+                workout.name === 'New Workout' ? (
+                    renderRunningSelection()
+                ) : (
+                    <View style={styles.container}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.m, marginBottom: Spacing.s }}>
+                            <Text style={styles.workoutName}>{workout.name}</Text>
+                            <TouchableOpacity onPress={() => setWorkout(prev => ({ ...prev, name: 'New Workout' }))}>
+                                <Text style={{ color: Palette.primary.main }}>Byt pass</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <RunningSession onSave={finishRun} />
+                    </View>
+                )
             ) : (
                 <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
                     {/* Workout Name */}
@@ -677,6 +773,33 @@ const styles = StyleSheet.create({
     exerciseName: {
         fontSize: Typography.size.m,
         fontWeight: '500',
+        color: Palette.text.primary,
+    },
+    // Filter Styles
+    filterChip: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: '#FFF',
+        marginRight: 8,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+    },
+    filterChipActive: {
+        backgroundColor: Palette.primary.dark,
+        borderColor: Palette.primary.dark,
+    },
+    filterText: {
+        fontSize: Typography.size.s,
+        color: Palette.text.primary,
+    },
+    filterTextActive: {
+        color: '#FFF',
+        fontWeight: 'bold',
+    },
+    workoutName: {
+        fontSize: Typography.size.l,
+        fontWeight: 'bold',
         color: Palette.text.primary,
     },
 });

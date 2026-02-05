@@ -129,13 +129,7 @@ export default function DesktopHome() {
                             </TouchableOpacity>
                         </View>
 
-                        <TouchableOpacity
-                            style={[styles.startWorkoutButton, { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#EEE', marginRight: 16 }]}
-                            onPress={() => setStravaModalVisible(true)}
-                        >
-                            <Ionicons name="sync" size={20} color="#FC4C02" />
-                            <Text style={[styles.startWorkoutText, { color: Palette.text.primary }]}>Synka</Text>
-                        </TouchableOpacity>
+
 
                         <TouchableOpacity style={styles.startWorkoutButton} onPress={() => router.push({ pathname: '/workout/log', params: { workoutName: 'New Workout' } })}>
                             <Ionicons name="add" size={20} color="#FFF" />

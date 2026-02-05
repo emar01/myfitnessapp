@@ -8,7 +8,10 @@ export interface Exercise {
     type: string;
     primaryMuscleGroup: string;
     isBodyweight: boolean;
-    defaultVideoUrl?: string;
+    videoLink?: string;
+    defaultVideoUrl?: string; // Legacy/Fallback
+    isPublic?: boolean;
+    createdBy?: string;
 }
 
 export interface WorkoutSet {
@@ -88,6 +91,8 @@ export interface Program {
     description?: string;
     workoutIds?: string[];
     schedule?: ProgramScheduleItem[];
+    isPublic?: boolean;
+    createdBy?: string;
 }
 
 export interface WorkoutTemplate {
@@ -99,4 +104,6 @@ export interface WorkoutTemplate {
     note?: string;
     distance?: number; // km
     duration?: number; // minutes
+    isPublic?: boolean;
+    createdBy?: string;
 }
