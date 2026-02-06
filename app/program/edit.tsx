@@ -1,10 +1,11 @@
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
+import { PROGRAM_DURATIONS, PROGRAM_TYPES, WORKOUT_CATEGORIES } from '@/constants/WorkoutTypes'; // Import constants
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
 import { Program, WorkoutTemplate } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { addDoc, collection, doc, getDoc, getDocs, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, updateDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -28,13 +29,14 @@ export default function ProgramEditorScreen() {
     const { user } = useSession();
 
     const [isLoading, setIsLoading] = useState(false);
+    const [deleting, setDeleting] = useState(false);
     const [initialLoading, setInitialLoading] = useState(!!id);
 
     // Form State
     const [formTitle, setFormTitle] = useState('');
-    const [formDuration, setFormDuration] = useState('');
-    const [formType, setFormType] = useState<'daily' | 'period'>('period');
-    const [formCategory, setFormCategory] = useState('Styrketräning');
+    const [formDuration, setFormDuration] = useState<string>(PROGRAM_DURATIONS[0]);
+    const [formType, setFormType] = useState<string>(PROGRAM_TYPES[0].value);
+    const [formCategory, setFormCategory] = useState<string>(WORKOUT_CATEGORIES[0].value);
     const [formDescription, setFormDescription] = useState('');
     const [formWorkoutIds, setFormWorkoutIds] = useState<string[]>([]);
     const [programId, setProgramId] = useState<string | null>(null);
@@ -62,7 +64,7 @@ export default function ProgramEditorScreen() {
                 setFormTitle(data.title);
                 setFormDuration(data.duration);
                 setFormType(data.type);
-                setFormCategory(data.category);
+                setFormCategory(data.category?.toLowerCase() || WORKOUT_CATEGORIES[0].value);
                 setFormDescription(data.description || '');
                 setFormWorkoutIds(data.workoutIds || []);
             } else {
@@ -97,7 +99,10 @@ export default function ProgramEditorScreen() {
             Alert.alert('Validation', 'Title and Duration are required.');
             return;
         }
-        if (!user) return;
+        if (!user) {
+            Alert.alert("Fel", "Du måste vara inloggad för att spara program.");
+            return;
+        }
 
         setIsLoading(true);
         try {
@@ -106,7 +111,7 @@ export default function ProgramEditorScreen() {
             const data: Partial<Program> = {
                 title: formTitle,
                 duration: formDuration,
-                type: formType,
+                type: formType as 'daily' | 'period',
                 category: formCategory,
                 description: formDescription,
                 workoutIds: formWorkoutIds,
@@ -132,6 +137,42 @@ export default function ProgramEditorScreen() {
             setIsLoading(false);
         }
     };
+
+    const handleDelete = async () => {
+        if (Platform.OS === 'web') {
+            if (window.confirm("Är du säker på att du vill ta bort detta program? Detta går inte att ångra.")) {
+                await performDelete();
+            }
+        } else {
+            Alert.alert(
+                "Ta bort program",
+                "Är du säker på att du vill ta bort detta program? Detta går inte att ångra.",
+                [
+                    { text: "Avbryt", style: "cancel" },
+                    {
+                        text: "Ta bort",
+                        style: "destructive",
+                        onPress: performDelete
+                    }
+                ]
+            );
+        }
+    };
+
+    const performDelete = async () => {
+        if (!programId) return;
+        setDeleting(true);
+        try {
+            await deleteDoc(doc(db, 'programs', programId));
+            router.back();
+        } catch (e) {
+            console.error(e);
+            Alert.alert("Fel", "Kunde inte ta bort programmet.");
+            setDeleting(false);
+        }
+    };
+
+
 
     const openTemplateSelector = () => {
         fetchTemplates();
@@ -204,16 +245,29 @@ export default function ProgramEditorScreen() {
                     />
 
                     <Text style={styles.label}>Category</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="e.g. Styrketräning, Löpning"
-                        value={formCategory}
-                        onChangeText={setFormCategory}
-                    />
+                    <View style={styles.categoryRow}>
+                        {WORKOUT_CATEGORIES.map((cat) => (
+                            <TouchableOpacity
+                                key={cat.value}
+                                style={[
+                                    styles.categoryChip,
+                                    formCategory === cat.value && styles.categoryChipActive
+                                ]}
+                                onPress={() => setFormCategory(cat.value)}
+                            >
+                                <Text style={[
+                                    styles.categoryChipText,
+                                    formCategory === cat.value && styles.categoryChipTextActive
+                                ]}>
+                                    {cat.label}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
 
                     <Text style={styles.label}>Duration</Text>
                     <View style={styles.categoryRow}>
-                        {['4 veckor', '6 veckor', '8 veckor', 'Tillsvidare'].map((dur) => (
+                        {PROGRAM_DURATIONS.map((dur) => (
                             <TouchableOpacity
                                 key={dur}
                                 style={[
@@ -243,20 +297,20 @@ export default function ProgramEditorScreen() {
 
                     <Text style={styles.label}>Program Structure (Type)</Text>
                     <View style={styles.categoryRow}>
-                        {['period', 'daily'].map((t) => (
+                        {PROGRAM_TYPES.map((t) => (
                             <TouchableOpacity
-                                key={t}
+                                key={t.value}
                                 style={[
                                     styles.categoryChip,
-                                    formType === t && styles.categoryChipActive
+                                    formType === t.value && styles.categoryChipActive
                                 ]}
-                                onPress={() => setFormType(t as any)}
+                                onPress={() => setFormType(t.value as any)}
                             >
                                 <Text style={[
                                     styles.categoryChipText,
-                                    formType === t && styles.categoryChipTextActive
+                                    formType === t.value && styles.categoryChipTextActive
                                 ]}>
-                                    {t === 'daily' ? 'Daily Challenge' : 'Periodization'}
+                                    {t.label}
                                 </Text>
                             </TouchableOpacity>
                         ))}
@@ -280,6 +334,16 @@ export default function ProgramEditorScreen() {
                     ))}
                     {formWorkoutIds.length === 0 && (
                         <Text style={styles.emptyText}>No workouts added yet.</Text>
+                    )}
+
+                    {programId && (
+                        <TouchableOpacity
+                            style={[styles.deleteButton, deleting && { opacity: 0.7 }]}
+                            onPress={handleDelete}
+                            disabled={isLoading || deleting}
+                        >
+                            {deleting ? <ActivityIndicator color="#FFF" /> : <Text style={styles.deleteButtonText}>Ta bort program</Text>}
+                        </TouchableOpacity>
                     )}
                 </ScrollView>
 
@@ -383,4 +447,17 @@ const styles = StyleSheet.create({
         padding: 16, borderBottomWidth: 1, borderBottomColor: '#EEE', backgroundColor: '#FFF'
     },
     selectorText: { fontSize: Typography.size.m },
+    deleteButton: {
+        backgroundColor: '#FF5252',
+        padding: Spacing.m,
+        borderRadius: BorderRadius.round,
+        alignItems: 'center',
+        marginTop: Spacing.xl,
+        marginBottom: Spacing.xl,
+    },
+    deleteButtonText: {
+        color: '#FFF',
+        fontSize: Typography.size.m,
+        fontWeight: 'bold',
+    },
 });

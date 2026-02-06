@@ -1,11 +1,12 @@
 import { BorderRadius, Palette, Spacing, Typography } from '@/constants/DesignSystem';
+import { RUNNING_SUBCATEGORIES, WORKOUT_CATEGORIES } from '@/constants/WorkoutTypes'; // Import constants
 import { useSession } from '@/context/ctx'; // Import Session
 import { db } from '@/lib/firebaseConfig';
 import { Exercise, Program, WorkoutTemplate } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
     FlatList,
     Linking,
@@ -42,9 +43,11 @@ export default function LibraryScreen() {
     const [createModalVisible, setCreateModalVisible] = useState(false);
 
 
-    useEffect(() => {
-        if (user) fetchData(); // Only fetch if user is logged in
-    }, [user]);
+    useFocusEffect(
+        useCallback(() => {
+            if (user) fetchData();
+        }, [user])
+    );
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -83,7 +86,7 @@ export default function LibraryScreen() {
             setWorkouts(wList);
 
             const pListRaw = await fetchDual('programs') as Program[];
-            const pList = pListRaw.filter(p => p.type !== 'daily');
+            const pList = pListRaw; // Show all programs
             pList.sort((a, b) => a.title.localeCompare(b.title));
             setPrograms(pList);
 
@@ -105,7 +108,7 @@ export default function LibraryScreen() {
     };
 
     const filteredWorkouts = workouts.filter(w => {
-        if (activeFilter && w.category !== activeFilter) return false;
+        if (activeFilter && w.category?.toLowerCase() !== activeFilter) return false;
         if (subFilter && w.subcategory !== subFilter) return false;
         return true;
     });
@@ -143,7 +146,7 @@ export default function LibraryScreen() {
 
     const renderHeader = () => (
         <View>
-            <View style={styles.headerTop}>
+            <View style={[styles.headerTop, Layout.contentContainer]}>
                 {/* Empty left to center title or just spacer */}
                 <View style={{ width: 40 }} />
                 <Text style={styles.headerTitle}>Bibliotek</Text>
@@ -155,7 +158,7 @@ export default function LibraryScreen() {
             </View>
 
             {/* Tabs */}
-            <View style={styles.tabsContainer}>
+            <View style={[styles.tabsContainer, Layout.contentContainer]}>
                 <TouchableOpacity
                     style={[styles.tab, activeTab === 'workouts' && styles.tabActive]}
                     onPress={() => setActiveTab('workouts')}
@@ -178,7 +181,7 @@ export default function LibraryScreen() {
 
             {/* Filters (Only for Workouts) */}
             {activeTab === 'workouts' && (
-                <View style={styles.filterContainer}>
+                <View style={[styles.filterContainer, Layout.contentContainer]}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                         <TouchableOpacity
                             style={[styles.filterChip, activeFilter === null && styles.filterChipActive]}
@@ -186,17 +189,17 @@ export default function LibraryScreen() {
                         >
                             <Text style={[styles.filterText, activeFilter === null && styles.filterTextActive]}>Alla</Text>
                         </TouchableOpacity>
-                        {['styrketräning', 'löpning', 'rehab'].map(tag => (
+                        {WORKOUT_CATEGORIES.map(cat => (
                             <TouchableOpacity
-                                key={tag}
-                                style={[styles.filterChip, activeFilter === tag && styles.filterChipActive]}
+                                key={cat.value}
+                                style={[styles.filterChip, activeFilter === cat.value && styles.filterChipActive]}
                                 onPress={() => {
-                                    setActiveFilter(tag);
+                                    setActiveFilter(cat.value);
                                     setSubFilter(null); // Reset subfilter when changing main filter
                                 }}
                             >
-                                <Text style={[styles.filterText, activeFilter === tag && styles.filterTextActive]}>
-                                    {tag.charAt(0).toUpperCase() + tag.slice(1)}
+                                <Text style={[styles.filterText, activeFilter === cat.value && styles.filterTextActive]}>
+                                    {cat.label}
                                 </Text>
                             </TouchableOpacity>
                         ))}
@@ -205,7 +208,7 @@ export default function LibraryScreen() {
             )}
             {/* Sub-Filters */}
             {activeTab === 'workouts' && activeFilter === 'löpning' && (
-                <View style={styles.filterContainer}>
+                <View style={[styles.filterContainer, Layout.contentContainer]}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                         <TouchableOpacity
                             style={[styles.filterChip, subFilter === null && styles.filterChipActive]}
@@ -213,14 +216,14 @@ export default function LibraryScreen() {
                         >
                             <Text style={[styles.filterText, subFilter === null && styles.filterTextActive]}>Alla typer</Text>
                         </TouchableOpacity>
-                        {['distans', 'intervall', 'långpass'].map(tag => (
+                        {RUNNING_SUBCATEGORIES.map(sub => (
                             <TouchableOpacity
-                                key={tag}
-                                style={[styles.filterChip, subFilter === tag && styles.filterChipActive]}
-                                onPress={() => setSubFilter(tag)}
+                                key={sub.value}
+                                style={[styles.filterChip, subFilter === sub.value && styles.filterChipActive]}
+                                onPress={() => setSubFilter(sub.value)}
                             >
-                                <Text style={[styles.filterText, subFilter === tag && styles.filterTextActive]}>
-                                    {tag.charAt(0).toUpperCase() + tag.slice(1)}
+                                <Text style={[styles.filterText, subFilter === sub.value && styles.filterTextActive]}>
+                                    {sub.label}
                                 </Text>
                             </TouchableOpacity>
                         ))}
@@ -230,7 +233,7 @@ export default function LibraryScreen() {
 
             {/* Filters (Exercises) */}
             {activeTab === 'exercises' && (
-                <View style={styles.filterContainer}>
+                <View style={[styles.filterContainer, Layout.contentContainer]}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                         <TouchableOpacity
                             style={[styles.filterChip, activeMuscleGroup === null && styles.filterChipActive]}
@@ -381,7 +384,10 @@ export default function LibraryScreen() {
     }
 
     const getEmptyText = () => {
-        if (activeTab === 'workouts') return 'Inga träningspass hittades.';
+        if (activeTab === 'workouts') {
+            const categories = Array.from(new Set(workouts.map(w => w.category))).join(', ');
+            return `Inga träningspass hittades.\n(Debug: Fetched ${workouts.length}, Filter: ${activeFilter}, Cats: ${categories})`;
+        }
         if (activeTab === 'exercises') return 'Inga övningar hittades.';
         return 'Inga program hittades.';
     }

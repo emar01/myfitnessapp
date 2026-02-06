@@ -4,7 +4,7 @@ import { db } from '@/lib/firebaseConfig';
 import { Exercise } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { addDoc, collection, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -27,6 +27,7 @@ export default function ExerciseEditorScreen() {
     const { user } = useSession();
 
     const [isLoading, setIsLoading] = useState(false);
+    const [deleting, setDeleting] = useState(false);
     const [initialLoading, setInitialLoading] = useState(!!id);
 
     // Form State
@@ -83,7 +84,7 @@ export default function ExerciseEditorScreen() {
                 primaryMuscleGroup: formMuscle,
                 type: formType,
                 isBodyweight: formIsBodyweight,
-                videoLink: formVideoLink || undefined,
+                ...(formVideoLink ? { videoLink: formVideoLink } : {}),
                 ...(exerciseId ? {} : {
                     isPublic: false,
                     createdBy: user.uid
@@ -106,6 +107,40 @@ export default function ExerciseEditorScreen() {
         }
     };
 
+
+    const handleDelete = async () => {
+        if (Platform.OS === 'web') {
+            if (window.confirm("Är du säker på att du vill ta bort denna övning? Detta går inte att ångra.")) {
+                await performDelete();
+            }
+        } else {
+            Alert.alert(
+                "Ta bort övning",
+                "Är du säker på att du vill ta bort denna övning? Detta går inte att ångra.",
+                [
+                    { text: "Avbryt", style: "cancel" },
+                    {
+                        text: "Ta bort",
+                        style: "destructive",
+                        onPress: performDelete
+                    }
+                ]
+            );
+        }
+    };
+
+    const performDelete = async () => {
+        if (!exerciseId) return;
+        setDeleting(true);
+        try {
+            await deleteDoc(doc(db, 'exercises', exerciseId));
+            router.back();
+        } catch (e) {
+            console.error(e);
+            Alert.alert("Fel", "Kunde inte ta bort övningen.");
+            setDeleting(false);
+        }
+    };
 
     if (initialLoading) {
         return (
@@ -165,6 +200,16 @@ export default function ExerciseEditorScreen() {
                             thumbColor={formIsBodyweight ? Palette.primary.main : '#f4f3f4'}
                         />
                     </View>
+
+                    {exerciseId && (
+                        <TouchableOpacity
+                            style={[styles.deleteButton, deleting && { opacity: 0.7 }]}
+                            onPress={handleDelete}
+                            disabled={isLoading || deleting}
+                        >
+                            {deleting ? <ActivityIndicator color="#FFF" /> : <Text style={styles.deleteButtonText}>Ta bort övning</Text>}
+                        </TouchableOpacity>
+                    )}
                 </ScrollView>
             </SafeAreaView>
         </KeyboardAvoidingView>
@@ -186,5 +231,18 @@ const styles = StyleSheet.create({
     switchRow: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16,
         backgroundColor: '#FFF', padding: 12, borderRadius: BorderRadius.s,
+    },
+    deleteButton: {
+        backgroundColor: '#FF5252',
+        padding: Spacing.m,
+        borderRadius: BorderRadius.round,
+        alignItems: 'center',
+        marginTop: Spacing.xl,
+        marginBottom: Spacing.xl,
+    },
+    deleteButtonText: {
+        color: '#FFF',
+        fontSize: Typography.size.m,
+        fontWeight: 'bold',
     },
 });

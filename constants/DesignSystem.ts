@@ -52,6 +52,22 @@ export const BorderRadius = {
     round: 9999,
 };
 
+export const Layout = {
+    maxWidth: 800,
+    container: {
+        flex: 1,
+        width: '100%' as any, // Cast to any to avoid DimensionValue issues across RN versions
+        maxWidth: 800,
+        alignSelf: 'center' as 'center',
+    },
+    // Useful for full-screen setups where we only want to constrain content
+    contentContainer: {
+        width: '100%' as any,
+        maxWidth: 800,
+        alignSelf: 'center' as 'center',
+    }
+};
+
 export const Typography = {
     fontFamily: {
         regular: 'SpaceMono', // Placeholder, we might want to swap this if user has other fonts

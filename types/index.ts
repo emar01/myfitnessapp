@@ -1,4 +1,4 @@
-export type WorkoutCategory = 'löpning' | 'styrketräning' | 'rehab' | 'övrigt';
+export type WorkoutCategory = 'löpning' | 'styrketräning' | 'rehab' | 'rörlighet' | 'övrigt';
 export type RunningSubcategory = 'distans' | 'långpass' | 'intervall' | 'fartpass' | 'testlopp';
 export type StrengthSubcategory = 'crossfit' | 'styrka' | 'rörlighet';
 

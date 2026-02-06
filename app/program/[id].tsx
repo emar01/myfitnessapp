@@ -1,4 +1,4 @@
-import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
+import { BorderRadius, Layout, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
 import { auth, db } from '@/lib/firebaseConfig';
 import { Program, WorkoutTemplate } from '@/types';
@@ -73,7 +73,11 @@ export default function ProgramDetailsScreen() {
         }
 
         if (!program || !program.schedule || program.schedule.length === 0) {
-            Alert.alert('Tomt Program', 'Detta program saknar träningspass.');
+            if (Platform.OS === 'web') {
+                window.alert('Tomt Program: Detta program saknar träningspass.');
+            } else {
+                Alert.alert('Tomt Program', 'Detta program saknar träningspass.');
+            }
             return;
         }
 
@@ -110,12 +114,29 @@ export default function ProgramDetailsScreen() {
                     let category = 'övrigt';
                     let templateNote = '';
 
+                    // DEBUG: Log processing
+                    // console.log(`Processing item: ${item.workoutTitle}, TemplateID: ${item.workoutTemplateId}`);
+
                     if (item.workoutTemplateId) {
                         try {
                             const tSnap = await getDoc(doc(db, 'workout_templates', item.workoutTemplateId));
                             if (tSnap.exists()) {
                                 const tData = tSnap.data() as WorkoutTemplate;
-                                exerciseData = tData.exercises || [];
+                                // Sanitize exercises (remove undefined)
+                                exerciseData = (tData.exercises || []).map(ex => {
+                                    const safeEx: any = { ...ex };
+                                    // Strip undefined
+                                    Object.keys(safeEx).forEach(k => safeEx[k] === undefined && delete safeEx[k]);
+                                    if (safeEx.sets) {
+                                        safeEx.sets = safeEx.sets.map((s: any) => {
+                                            const safeS = { ...s };
+                                            Object.keys(safeS).forEach(k => safeS[k] === undefined && delete safeS[k]);
+                                            return safeS;
+                                        });
+                                    }
+                                    return safeEx;
+                                });
+
                                 subcategory = tData.subcategory;
                                 category = tData.category;
                                 templateNote = tData.note || '';
@@ -132,8 +153,8 @@ export default function ProgramDetailsScreen() {
                         date: new Date(),
                         scheduledDate: scheduledDate,
                         exercises: exerciseData,
-                        category: category,
-                        subcategory: subcategory || null, // Fix: Firestore hates undefined
+                        category: category || 'övrigt', // Fallback
+                        subcategory: subcategory || null,
                         programId: programId,
                         notes: item.description || templateNote || `Del av program: ${program.title}`
                     });
@@ -168,7 +189,16 @@ export default function ProgramDetailsScreen() {
 
             } catch (e: any) {
                 console.error('Error following program:', e);
-                Alert.alert('Fel', `Kunde inte starta programmet: ${e.message}`);
+                // Enhanced Error Reporting for User
+                let errorMsg = e.message || 'Okänt fel';
+                if (e.code === 'permission-denied') errorMsg = 'Åtkomst nekad (Rättigheter).';
+                if (e.code === 'unavailable') errorMsg = 'Nätverksfel. Kontrollera din anslutning.';
+
+                if (Platform.OS === 'web') {
+                    window.alert(`Fel vid start av program: ${errorMsg}`);
+                } else {
+                    Alert.alert('Fel vid start av program', `Kunde inte starta programmet.\n\nDetaljer: ${errorMsg}\n\n(Vänligen ta en skärmbild om detta fortsätter)`);
+                }
             } finally {
                 setJoining(false);
             }
@@ -261,6 +291,11 @@ export default function ProgramDetailsScreen() {
     if (!program) return null;
 
     const renderSchedule = () => {
+        console.log('Rendering Schedule. Count:', program.schedule?.length);
+        if (program.schedule) {
+            program.schedule.forEach((s, i) => console.log(`Item ${i}: dayOffset=${s.dayOffset}, title=${s.workoutTitle}`));
+        }
+
         if (!program.schedule || program.schedule.length === 0) {
             return <Text style={{ color: Palette.text.secondary }}>Inga pass definierade än.</Text>;
         }
@@ -330,9 +365,20 @@ export default function ProgramDetailsScreen() {
                 <Ionicons name="trophy" size={64} color="rgba(255,255,255,0.8)" />
                 <Text style={styles.bannerTitle}>{program.title}</Text>
                 <Text style={styles.bannerSubtitle}>{program.category} • {program.duration}</Text>
+
+                {/* Edit Button (Only for owner) */}
+                {user?.uid === (program as any).createdBy && (
+                    <TouchableOpacity
+                        style={styles.editButton}
+                        onPress={() => router.push({ pathname: '/program/edit', params: { id: program.id } })}
+                    >
+                        <Ionicons name="pencil" size={20} color="#FFF" />
+                        <Text style={styles.editButtonText}>Redigera</Text>
+                    </TouchableOpacity>
+                )}
             </View>
 
-            <View style={styles.content}>
+            <View style={[styles.content, Layout.contentContainer]}>
                 <Text style={styles.sectionTitle}>Om Programmet</Text>
                 <Text style={styles.description}>{program.description}</Text>
 
@@ -421,6 +467,20 @@ const styles = StyleSheet.create({
         fontSize: Typography.size.m,
         color: 'rgba(255,255,255,0.8)',
         marginTop: Spacing.s,
+    },
+    editButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        paddingHorizontal: Spacing.m,
+        paddingVertical: 8,
+        borderRadius: 20,
+        marginTop: Spacing.m,
+    },
+    editButtonText: {
+        color: '#FFF',
+        fontWeight: '600',
+        marginLeft: 6,
     },
     content: {
         padding: Spacing.m,
