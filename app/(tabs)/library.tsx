@@ -1,4 +1,4 @@
-import { BorderRadius, Palette, Spacing, Typography } from '@/constants/DesignSystem';
+import { BorderRadius, Layout, Palette, Spacing, Typography } from '@/constants/DesignSystem';
 import { RUNNING_SUBCATEGORIES, WORKOUT_CATEGORIES } from '@/constants/WorkoutTypes'; // Import constants
 import { useSession } from '@/context/ctx'; // Import Session
 import { db } from '@/lib/firebaseConfig';
