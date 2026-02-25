@@ -75,15 +75,68 @@ Spring i ett behagligt tempo, men fokusera på fotnedsättningen och titta någr
         subcategory: "styrka",
         note: `Ett specifikt styrkepass för att klara av 90km löpning. En stark core och starka sätesmuskler är nyckeln till att hålla en god hållning när du är som tröttast.
 
-Utför 3-4 omgångar av följande:
-1. Draken (Enbensmarklyft utan eller med lätt vikt): 10 reps / ben
-2. Utfallssteg / Lunges: 10 reps / ben
-3. Tåhävningar i trappa: 15-20 reps / ben
-4. Plankan: Max tid (eller 60 sekunder)
-5. Sidoplankan: 45 sekunder / sida
-6. Höftlyft (gärna på ett ben): 15 reps / ben
-
-Vila 1 minut mellan varje omgång.`,
-        exercises: []
+Kör 3-4 omgångar. Vila 1 minut mellan varje omgång.`,
+        exercises: [
+            {
+                exerciseId: 'draken_enbensmarklyft',
+                name: 'Draken (Enbensmarklyft)',
+                isBodyweight: true,
+                sets: [
+                    { id: 's1', reps: 10, weight: 0, isCompleted: false },
+                    { id: 's2', reps: 10, weight: 0, isCompleted: false },
+                    { id: 's3', reps: 10, weight: 0, isCompleted: false },
+                ]
+            },
+            {
+                exerciseId: 'utfallssteg_lunges',
+                name: 'Utfallssteg / Lunges',
+                isBodyweight: true,
+                sets: [
+                    { id: 's1', reps: 10, weight: 0, isCompleted: false },
+                    { id: 's2', reps: 10, weight: 0, isCompleted: false },
+                    { id: 's3', reps: 10, weight: 0, isCompleted: false },
+                ]
+            },
+            {
+                exerciseId: 'tahavningar',
+                name: 'Tåhävningar',
+                isBodyweight: true,
+                sets: [
+                    { id: 's1', reps: 15, weight: 0, isCompleted: false },
+                    { id: 's2', reps: 15, weight: 0, isCompleted: false },
+                    { id: 's3', reps: 15, weight: 0, isCompleted: false },
+                ]
+            },
+            {
+                exerciseId: 'plankan',
+                name: 'Plankan',
+                isBodyweight: true,
+                sets: [
+                    { id: 's1', reps: 1, weight: 0, isCompleted: false, duration: 60 },
+                    { id: 's2', reps: 1, weight: 0, isCompleted: false, duration: 60 },
+                    { id: 's3', reps: 1, weight: 0, isCompleted: false, duration: 60 },
+                ]
+            },
+            {
+                exerciseId: 'sidoplankan',
+                name: 'Sidoplankan',
+                isBodyweight: true,
+                sets: [
+                    { id: 's1', reps: 1, weight: 0, isCompleted: false, duration: 45 },
+                    { id: 's2', reps: 1, weight: 0, isCompleted: false, duration: 45 },
+                    { id: 's3', reps: 1, weight: 0, isCompleted: false, duration: 45 },
+                ]
+            },
+            {
+                exerciseId: 'hoftlyft_enbens',
+                name: 'Höftlyft (ett ben)',
+                isBodyweight: true,
+                sets: [
+                    { id: 's1', reps: 15, weight: 0, isCompleted: false },
+                    { id: 's2', reps: 15, weight: 0, isCompleted: false },
+                    { id: 's3', reps: 15, weight: 0, isCompleted: false },
+                ]
+            },
+        ]
     }
 ];

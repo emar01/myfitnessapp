@@ -46,6 +46,7 @@ export interface Workout {
     subcategory?: RunningSubcategory | StrengthSubcategory;
     notes?: string;
     programId?: string;
+    workoutTemplateId?: string;
     stravaActivityId?: string;
     distance?: number; // in km
     duration?: number; // in seconds

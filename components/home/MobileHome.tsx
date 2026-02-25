@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-native-draggable-flatlist';
+import { ActivityIndicator, Alert, FlatList, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+// NOTE: DraggableFlatList kept imported to avoid breaking other potential uses, but no longer used in schedule list
+
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import DayCard, { DayCardType } from '@/components/DayCard';
@@ -152,6 +153,8 @@ export default function MobileHome() {
                                 <TouchableOpacity
                                     style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
                                     onPress={() => router.push({ pathname: '/workout/[id]', params: { id: w.id! } })}
+                                    onLongPress={() => handleDeleteActivity(w.id!)}
+                                    delayLongPress={500}
                                 >
                                     <View style={styles.recentActivityIcon}>
                                         <Ionicons name={iconName as any} size={20} color={Palette.text.secondary} />
@@ -166,13 +169,13 @@ export default function MobileHome() {
                                         </View>
                                     </View>
                                 </TouchableOpacity>
-                                <TouchableOpacity
+                                <Pressable
                                     onPress={() => handleDeleteActivity(w.id!)}
-                                    style={{ padding: 6 }}
-                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                    style={{ padding: 8 }}
+                                    hitSlop={12}
                                 >
                                     <Ionicons name="trash-outline" size={16} color={Palette.text.disabled} />
-                                </TouchableOpacity>
+                                </Pressable>
                             </View>
                         );
                     })}
@@ -245,83 +248,41 @@ export default function MobileHome() {
         )
     }
 
-    const renderItem = useCallback(({ item, drag, isActive }: RenderItemParams<ListItem>) => {
+    const renderItem = ({ item }: { item: ListItem }) => {
         if (item.type === 'header') {
             return (
-                <View style={[styles.dayHeader, { opacity: isActive ? 0.5 : 1 }]}>
+                <View style={styles.dayHeader}>
                     <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
                         <Text style={styles.dayHeaderText}>{item.dayName}</Text>
-                        <Text style={[styles.dayDateText, { marginLeft: 6, display: 'flex' }]}>{item.dateLabel}</Text>
+                        <Text style={[styles.dayDateText, { marginLeft: 6 }]}>{item.dateLabel}</Text>
                     </View>
                 </View>
             );
         }
 
         // Workout Item
-        const content = (
-            <View style={[styles.itemContainer, { opacity: isActive ? 0.8 : 1 }]}>
+        return (
+            <View style={styles.itemContainer}>
                 <DayCard
-                    day="" // Hidden in list view as header handles it
+                    day=""
                     date=""
                     title={item.workout.name}
-                    type={item.workout.category === 'löpning' ? (item.workout.subcategory as DayCardType || 'distans') : (item.workout.category === 'styrketräning' ? (item.workout.subcategory as DayCardType || 'styrka') : 'rest')}
+                    type={
+                        item.workout.category === 'löpning'
+                            ? (item.workout.subcategory as DayCardType || 'distans')
+                            : (item.workout.category === 'styrketräning'
+                                ? (item.workout.subcategory as DayCardType || 'styrka')
+                                : (item.workout.category === 'rörlighet' || item.workout.category === 'rehab'
+                                    ? 'rörlighet'
+                                    : 'rest'))
+                    }
                     // @ts-ignore
                     status={item.workout.status === 'Completed' ? 'completed' : 'pending'}
                     onPress={() => router.push({ pathname: '/workout/[id]', params: { id: item.workout.id!, title: item.workout.name, status: item.workout.status === 'Completed' ? 'completed' : 'planned' } })}
-                    onLongPress={drag} // Enable drag on long press
-                    showDragHandle={false} // User requested "Hela träningen...", so we use natural long press
+                    showDragHandle={false}
                 />
             </View>
         );
-
-        if (Platform.OS === 'web') {
-            return content;
-        }
-
-        return (
-            <ScaleDecorator>
-                {content}
-            </ScaleDecorator>
-        );
-    }, [user, currentDate]); // Added deps just in case
-
-    const onDragEnd = async ({ data }: { data: ListItem[] }) => {
-        setListData(data); // Optimistic update
-
-        let currentHeaderDate: Date | null = null;
-
-        for (const item of data) {
-            if (item.type === 'header') {
-                currentHeaderDate = item.dateObj;
-            } else if (item.type === 'workout') {
-                if (currentHeaderDate) {
-                    // Check if date changed
-                    const workoutDate = item.workout.scheduledDate instanceof Date ?
-                        item.workout.scheduledDate :
-                        (item.workout.scheduledDate as any).toDate();
-
-                    // Compare YYYY-MM-DD to avoid time diffs
-                    const isSameDay =
-                        workoutDate.getFullYear() === currentHeaderDate.getFullYear() &&
-                        workoutDate.getMonth() === currentHeaderDate.getMonth() &&
-                        workoutDate.getDate() === currentHeaderDate.getDate();
-
-                    if (!isSameDay) {
-                        // Update Local Object Ref (for consistency until refresh)
-                        item.workout.scheduledDate = currentHeaderDate;
-                        // API Call
-                        if (user && item.workout.id) {
-                            try {
-                                await workoutService.updateWorkoutDate(user.uid, item.workout.id, currentHeaderDate);
-                            } catch (e) {
-                                console.error("Failed to update date", e);
-                                // Optional: revert list data if failure
-                            }
-                        }
-                    }
-                }
-            }
-        }
     };
 
     const weekNumber = getScaleWeekNumber(currentDate);
@@ -347,25 +308,13 @@ export default function MobileHome() {
                         <ActivityIndicator size="large" color={Palette.primary.main} />
                     </View>
                 ) : (
-                    Platform.OS === 'web' ? (
-                        <FlatList
-                            data={listData}
-                            keyExtractor={(item) => item.id}
-                            renderItem={({ item }) => renderItem({ item, drag: () => { }, isActive: false } as any)}
-                            ListHeaderComponent={renderHeader}
-                            contentContainerStyle={{ paddingBottom: 100 }}
-                        />
-                    ) : (
-                        <DraggableFlatList
-                            data={listData}
-                            keyExtractor={(item) => item.id}
-                            renderItem={renderItem}
-                            ListHeaderComponent={renderHeader}
-                            contentContainerStyle={{ paddingBottom: 100 }}
-                            onDragEnd={onDragEnd}
-                            activationDistance={10} // Slight tolerance
-                        />
-                    )
+                    <FlatList
+                        data={listData}
+                        keyExtractor={(item) => item.id}
+                        renderItem={renderItem}
+                        ListHeaderComponent={renderHeader}
+                        contentContainerStyle={{ paddingBottom: 100 }}
+                    />
                 )}
             </SafeAreaView>
             <StravaSyncModal

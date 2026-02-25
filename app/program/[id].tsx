@@ -16,6 +16,7 @@ export default function ProgramDetailsScreen() {
     const [loading, setLoading] = useState(true);
     const [joining, setJoining] = useState(false);
     const [isFollowing, setIsFollowing] = useState(false);
+    const [workoutIdTemplates, setWorkoutIdTemplates] = useState<WorkoutTemplate[]>([]);
     const programId = Array.isArray(id) ? id[0] : id;
 
     useEffect(() => {
@@ -52,7 +53,19 @@ export default function ProgramDetailsScreen() {
             const docRef = doc(db, 'programs', programId);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
-                setProgram({ ...docSnap.data(), id: docSnap.id } as Program);
+                const prog = { ...docSnap.data(), id: docSnap.id } as Program;
+                setProgram(prog);
+                // If program uses workoutIds (not schedule), fetch those templates
+                if ((!prog.schedule || prog.schedule.length === 0) && prog.workoutIds && prog.workoutIds.length > 0) {
+                    const templates: WorkoutTemplate[] = [];
+                    for (const tId of prog.workoutIds) {
+                        try {
+                            const tSnap = await getDoc(doc(db, 'workout_templates', tId));
+                            if (tSnap.exists()) templates.push({ id: tSnap.id, ...tSnap.data() } as WorkoutTemplate);
+                        } catch (e) { /* skip */ }
+                    }
+                    setWorkoutIdTemplates(templates);
+                }
             } else {
                 Alert.alert('Fel', 'Programmet hittades inte.');
                 router.back();
@@ -72,7 +85,7 @@ export default function ProgramDetailsScreen() {
             return;
         }
 
-        if (!program || !program.schedule || program.schedule.length === 0) {
+        if (!program || ((!program.schedule || program.schedule.length === 0) && workoutIdTemplates.length === 0)) {
             if (Platform.OS === 'web') {
                 window.alert('Tomt Program: Detta program saknar träningspass.');
             } else {
@@ -105,7 +118,51 @@ export default function ProgramDetailsScreen() {
                 // Prepare Workouts
                 const workoutsToCreate: any[] = [];
 
-                for (const item of program!.schedule!) {
+                // Build effective schedule: use stored schedule OR fetch from workoutIds directly
+                let effectiveSchedule: any[] = [];
+                if (program!.schedule && program!.schedule.length > 0) {
+                    effectiveSchedule = program!.schedule;
+                } else if (program!.workoutIds && program!.workoutIds.length > 0) {
+                    // Fetch templates directly to avoid state timing issues
+                    const fetchedTemplates: any[] = [];
+                    for (const tId of program!.workoutIds) {
+                        try {
+                            const tSnap = await getDoc(doc(db, 'workout_templates', tId));
+                            if (tSnap.exists()) {
+                                fetchedTemplates.push({ id: tId, ...tSnap.data() });
+                            }
+                        } catch (e) { console.warn('Failed to fetch template', tId, e); }
+                    }
+
+                    if (program!.type === 'daily' && fetchedTemplates.length > 0) {
+                        // Daily program: one workout per day for the full duration
+                        const durationMap: Record<string, number> = {
+                            '4 veckor': 28, '6 veckor': 42, '8 veckor': 56, 'Tillsvidare': 365
+                        };
+                        const totalDays = durationMap[program!.duration] ?? 28;
+                        for (let day = 0; day < totalDays; day++) {
+                            const tmpl = fetchedTemplates[day % fetchedTemplates.length];
+                            effectiveSchedule.push({
+                                dayOffset: day,
+                                workoutTemplateId: tmpl.id,
+                                workoutTitle: tmpl.name,
+                                description: tmpl.note
+                            });
+                        }
+                    } else {
+                        // Period program: one entry per template
+                        fetchedTemplates.forEach((tmpl, i) => {
+                            effectiveSchedule.push({
+                                dayOffset: i,
+                                workoutTemplateId: tmpl.id,
+                                workoutTitle: tmpl.name,
+                                description: tmpl.note
+                            });
+                        });
+                    }
+                }
+
+                for (const item of effectiveSchedule) {
                     const scheduledDate = new Date(startDate);
                     scheduledDate.setDate(startDate.getDate() + item.dayOffset);
 
@@ -156,6 +213,7 @@ export default function ProgramDetailsScreen() {
                         category: category || 'övrigt', // Fallback
                         subcategory: subcategory || null,
                         programId: programId,
+                        workoutTemplateId: item.workoutTemplateId,
                         notes: item.description || templateNote || `Del av program: ${program.title}`
                     });
                 }
@@ -185,7 +243,12 @@ export default function ProgramDetailsScreen() {
                 }
 
                 setIsFollowing(true);
-                Alert.alert('Program Startat', `Programmet är nu ${isFollowing ? 'omstartat' : 'startat'}! Nya pass med uppdaterade beskrivningar har lagts till i din kalender.`);
+                const msg = `${workoutsToCreate.length} pass lades till i din kalender.`;
+                if (Platform.OS === 'web') {
+                    window.alert('Program startat! ' + msg);
+                } else {
+                    Alert.alert('Program Startat', msg);
+                }
 
             } catch (e: any) {
                 console.error('Error following program:', e);
@@ -197,7 +260,7 @@ export default function ProgramDetailsScreen() {
                 if (Platform.OS === 'web') {
                     window.alert(`Fel vid start av program: ${errorMsg}`);
                 } else {
-                    Alert.alert('Fel vid start av program', `Kunde inte starta programmet.\n\nDetaljer: ${errorMsg}\n\n(Vänligen ta en skärmbild om detta fortsätter)`);
+                    Alert.alert('Fel', errorMsg);
                 }
             } finally {
                 setJoining(false);
@@ -205,14 +268,20 @@ export default function ProgramDetailsScreen() {
         };
 
         if (isFollowing) {
-            Alert.alert(
-                'Starta om program?',
-                'Du följer redan detta program. Vill du starta om det? Detta kommer ta bort dina kommande planerade pass för detta program och lägga till dem på nytt (med uppdaterade beskrivningar). Historik sparas.',
-                [
-                    { text: 'Avbryt', style: 'cancel' },
-                    { text: 'Starta om', style: 'destructive', onPress: startProgram }
-                ]
-            );
+            if (Platform.OS === 'web') {
+                if (window.confirm('Starta om program? Detta tar bort kommande planerade pass och lägger till dem på nytt. Historik sparas.')) {
+                    startProgram();
+                }
+            } else {
+                Alert.alert(
+                    'Starta om program?',
+                    'Du följer redan detta program. Vill du starta om det? Historik sparas.',
+                    [
+                        { text: 'Avbryt', style: 'cancel' },
+                        { text: 'Starta om', style: 'destructive', onPress: startProgram }
+                    ]
+                );
+            }
         } else {
             startProgram();
         }
@@ -291,29 +360,57 @@ export default function ProgramDetailsScreen() {
     if (!program) return null;
 
     const renderSchedule = () => {
-        if (program.schedule) {
-        }
+        const hasSchedule = program.schedule && program.schedule.length > 0;
+        const hasWorkoutIdTemplates = workoutIdTemplates.length > 0;
 
-        if (!program.schedule || program.schedule.length === 0) {
+        if (!hasSchedule && !hasWorkoutIdTemplates) {
             return <Text style={{ color: Palette.text.secondary }}>Inga pass definierade än.</Text>;
         }
 
-        // Group by week
+        // workoutIds-based program (simple list, no week grouping)
+        if (!hasSchedule && hasWorkoutIdTemplates) {
+            return (
+                <View style={styles.weekContainer}>
+                    <Text style={styles.weekHeader}>Träningspass i detta program</Text>
+                    {workoutIdTemplates.map((tmpl, index) => (
+                        <TouchableOpacity
+                            key={index}
+                            style={styles.scheduleItem}
+                            onPress={() => router.push({
+                                pathname: '/workout/[id]' as any,
+                                params: { id: tmpl.id, title: tmpl.name, type: 'template' }
+                            })}
+                        >
+                            <View style={styles.dayBadge}>
+                                <Text style={styles.dayBadgeText}>{index + 1}</Text>
+                                <Text style={styles.dayBadgeSubText}>{tmpl.category}</Text>
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.workoutTitle}>{tmpl.name}</Text>
+                                <Text style={styles.workoutDesc}>{tmpl.note || 'Träningspass'}</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={16} color={Palette.text.disabled} />
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            );
+        }
+
+        // schedule-based program (week grouping)
         const weeks: { [key: number]: typeof program.schedule } = {};
-        program.schedule.forEach(item => {
+        program.schedule!.forEach(item => {
             const weekNum = Math.floor(item.dayOffset / 7) + 1;
             if (!weeks[weekNum]) weeks[weekNum] = [];
-            weeks[weekNum].push(item);
+            weeks[weekNum]!.push(item);
         });
 
-        // Sort weeks
         const sortedWeekNums = Object.keys(weeks).map(Number).sort((a, b) => a - b);
         const weekDays = ['Måndag', 'Tisdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lördag', 'Söndag'];
 
         return sortedWeekNums.map(weekNum => (
             <View key={weekNum} style={styles.weekContainer}>
                 <Text style={styles.weekHeader}>Vecka {weekNum}</Text>
-                {weeks[weekNum].sort((a, b) => a.dayOffset - b.dayOffset).map((item, index) => {
+                {weeks[weekNum]!.sort((a, b) => a.dayOffset - b.dayOffset).map((item, index) => {
                     const dayIndex = item.dayOffset % 7;
                     const dayName = weekDays[dayIndex];
 

@@ -12,7 +12,6 @@ import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
 
 export default function DesktopHome() {
     const router = useRouter();
@@ -28,7 +27,6 @@ export default function DesktopHome() {
         activePrograms,
         workouts,
         changeWeek,
-        setListData,
         refresh
     } = useHomeData(user);
 
@@ -60,72 +58,41 @@ export default function DesktopHome() {
         router.push('/settings/profile');
     };
 
-    const handleDragEnd = async ({ data }: { data: ListItem[] }) => {
-        setListData(data);
 
-        // Logic to update dates
-        let currentHeaderDate: Date | null = null;
-        const updates: Promise<any>[] = [];
 
-        for (const item of data) {
-            if (item.type === 'header') {
-                currentHeaderDate = item.dateObj;
-            } else if (item.type === 'workout' && currentHeaderDate) {
-                // Check if this workout's date needs update
-                const oldDate = item.workout.scheduledDate instanceof Date
-                    ? item.workout.scheduledDate
-                    : (item.workout.scheduledDate as any).toDate();
-
-                const isSameDay = oldDate.getFullYear() === currentHeaderDate.getFullYear() &&
-                    oldDate.getMonth() === currentHeaderDate.getMonth() &&
-                    oldDate.getDate() === currentHeaderDate.getDate();
-
-                if (!isSameDay) {
-                    // Update Local State (optimistic)
-                    item.workout.scheduledDate = currentHeaderDate;
-                    if (item.workout.id && user) {
-                        updates.push(workoutService.updateWorkoutDate(user.uid, item.workout.id, currentHeaderDate));
-                    }
-                }
-            }
-        }
-
-        if (updates.length > 0) {
-            try {
-                await Promise.all(updates);
-            } catch (e) {
-                console.error("Failed to batch update workouts", e);
-            }
-        }
-    };
-
-    const renderItem = useCallback(({ item, drag, isActive }: RenderItemParams<ListItem>) => {
+    const renderItem = (item: ListItem) => {
         if (item.type === 'header') {
             return (
-                <View style={styles.dayHeader}>
+                <View key={item.id} style={styles.dayHeader}>
                     <Text style={styles.dayHeaderText}>{item.dayName}</Text>
                     <Text style={styles.dayDateText}>{item.dateLabel}</Text>
                 </View>
             );
         }
 
-        // Workout Item
         return (
-            <View style={[styles.itemContainer, isActive && { opacity: 0.5 }]}>
+            <View key={item.id} style={styles.itemContainer}>
                 <DayCard
-                    day="" // Hidden in list view as header handles it
+                    day=""
                     date=""
                     title={item.workout.name}
-                    type={item.workout.category === 'löpning' ? (item.workout.subcategory as DayCardType || 'distans') : (item.workout.category === 'styrketräning' ? (item.workout.subcategory as DayCardType || 'styrka') : 'rest')}
+                    type={
+                        item.workout.category === 'löpning'
+                            ? (item.workout.subcategory as DayCardType || 'distans')
+                            : (item.workout.category === 'styrketräning'
+                                ? (item.workout.subcategory as DayCardType || 'styrka')
+                                : (item.workout.category === 'rörlighet' || item.workout.category === 'rehab'
+                                    ? 'rörlighet'
+                                    : 'rest'))
+                    }
                     // @ts-ignore
                     status={item.workout.status === 'Completed' ? 'completed' : 'pending'}
                     onPress={() => setSelectedWorkout(item.workout)}
-                    onLongPress={drag}
-                    showDragHandle={true}
+                    showDragHandle={false}
                 />
             </View>
         );
-    }, []);
+    };
 
     return (
         <View style={styles.container}>
@@ -270,22 +237,15 @@ export default function DesktopHome() {
                         })()}
                     </ScrollView>
 
-                    {/* Right Column: Weekly Schedule (Draggable List) */}
+                    {/* Right Column: Weekly Schedule */}
                     <View style={styles.rightColumn}>
                         <Text style={styles.sectionTitle}>Veckans Schema</Text>
-                        {/* DraggableFlatList needs bounded height */}
                         {loading ? (
                             <ActivityIndicator />
                         ) : (
-                            <DraggableFlatList
-                                data={listData}
-                                onDragEnd={handleDragEnd}
-                                keyExtractor={(item) => item.id}
-                                renderItem={renderItem}
-                                containerStyle={{ flex: 1 }}
-                                autoscrollThreshold={50}
-                                showsVerticalScrollIndicator={false}
-                            />
+                            <ScrollView showsVerticalScrollIndicator={false}>
+                                {listData.map(item => renderItem(item))}
+                            </ScrollView>
                         )}
                     </View>
                 </View>

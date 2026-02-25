@@ -4,9 +4,9 @@ import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
 import { Workout } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 // Basic Month Grid Implementation
@@ -18,9 +18,12 @@ export default function CalendarScreen() {
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        if (user) fetchWorkouts();
-    }, [user, currentDate]);
+    // Refresh on focus (catches new workouts added from program screen)
+    useFocusEffect(
+        useCallback(() => {
+            if (user) fetchWorkouts();
+        }, [user, currentDate])
+    );
 
     const fetchWorkouts = async () => {
         if (!user) return;
@@ -198,7 +201,15 @@ export default function CalendarScreen() {
                                     day=""
                                     date=""
                                     title={workout.name}
-                                    type={workout.category === 'löpning' ? (workout.subcategory as DayCardType || 'distans') : (workout.category === 'styrketräning' ? (workout.subcategory as DayCardType || 'styrka') : 'rest')}
+                                    type={
+                                        workout.category === 'löpning'
+                                            ? (workout.subcategory as DayCardType || 'distans')
+                                            : (workout.category === 'styrketräning'
+                                                ? (workout.subcategory as DayCardType || 'styrka')
+                                                : (workout.category === 'rörlighet' || workout.category === 'rehab'
+                                                    ? 'rörlighet'
+                                                    : 'rest'))
+                                    }
                                     // @ts-ignore
                                     status={workout.status === 'Completed' ? 'completed' : 'pending'}
                                     onPress={() => router.push({ pathname: '/workout/[id]', params: { id: workout.id!, title: workout.name, status: workout.status === 'Completed' ? 'completed' : 'planned' } })}

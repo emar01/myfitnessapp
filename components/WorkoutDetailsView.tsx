@@ -4,12 +4,12 @@ import { FontAwesome } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, ImageBackground, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, ImageBackground, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
 import { Workout, WorkoutTemplate } from '@/types';
-import { addDoc, collection, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 
 interface WorkoutDetailsViewProps {
     workoutId: string;
@@ -202,6 +202,21 @@ export default function WorkoutDetailsView({
 
         } catch (e: any) {
             console.error("Failed to schedule:", e);
+        } finally {
+            setScheduling(false);
+        }
+    };
+
+    const handleReschedule = async () => {
+        if (!user || !workoutId || typeof workoutId !== 'string') return;
+        setScheduling(true);
+        try {
+            const docRef = doc(db, 'users', user.uid, 'workouts', workoutId);
+            await updateDoc(docRef, { scheduledDate });
+            if (onClose) onClose();
+            else router.back();
+        } catch (e: any) {
+            console.error('Failed to reschedule:', e);
         } finally {
             setScheduling(false);
         }
@@ -400,47 +415,58 @@ export default function WorkoutDetailsView({
                         ) : (
                             !isCompleted && (
                                 <View style={{ marginTop: Spacing.xl }}>
-
-                                    {/* LOGGING INPUTS */}
-                                    <View style={{ marginBottom: Spacing.l }}>
-                                        <Text style={{ fontWeight: 'bold', marginBottom: Spacing.s, color: Palette.text.primary }}>Logga resultat (valfritt)</Text>
-                                        <View style={{ flexDirection: 'row', gap: Spacing.m }}>
-                                            <View style={{ flex: 1 }}>
-                                                <Text style={{ fontSize: Typography.size.xs, color: Palette.text.secondary, marginBottom: 4 }}>Sträcka (km)</Text>
-                                                <TextInput
-                                                    style={styles.input}
-                                                    placeholder="0.0"
-                                                    keyboardType="decimal-pad"
-                                                    value={completionDistance}
-                                                    onChangeText={(val) => setCompletionDistance(val.replace(',', '.'))}
-                                                />
-                                            </View>
-                                            <View style={{ flex: 1 }}>
-                                                <Text style={{ fontSize: Typography.size.xs, color: Palette.text.secondary, marginBottom: 4 }}>Tid (min)</Text>
-                                                <TextInput
-                                                    style={styles.input}
-                                                    placeholder="0"
-                                                    keyboardType="numeric"
-                                                    value={completionDuration}
-                                                    onChangeText={setCompletionDuration}
-                                                />
+                                    {/* DATE PICKER FOR RESCHEDULE */}
+                                    {Platform.OS === 'web' ? (
+                                        <View style={{ marginBottom: 16, alignItems: 'center' }}>
+                                            <Text style={{ color: Palette.text.secondary, marginBottom: 8 }}>Omplanera till datum:</Text>
+                                            <View style={[styles.datePickerButton, { padding: 0 }]}>
+                                                {React.createElement('input', {
+                                                    type: 'date',
+                                                    value: scheduledDate.toLocaleDateString('sv-SE'),
+                                                    onChange: (e: any) => {
+                                                        if (!e.target.value) return;
+                                                        const parts = e.target.value.split('-');
+                                                        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0);
+                                                        setScheduledDate(d);
+                                                    },
+                                                    style: { border: 'none', background: 'transparent', padding: 12, fontSize: 16, color: Palette.text.primary, fontFamily: 'inherit', outline: 'none' }
+                                                })}
                                             </View>
                                         </View>
-
-                                        {/* STRAVA BUTTON */}
-                                        <TouchableOpacity
-                                            style={[styles.actionButton, { marginTop: Spacing.m, backgroundColor: '#FC4C02', borderWidth: 0 }]}
-                                            onPress={handleFetchStrava}
-                                            disabled={isStravaLoading}
-                                        >
-                                            {isStravaLoading ? <ActivityIndicator color="#FFF" /> : (
-                                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-                                                    <FontAwesome name="cloud-download" size={16} color="#FFF" style={{ marginRight: 8 }} />
-                                                    <Text style={[styles.actionText, { color: '#FFF' }]}>Hämta från Strava</Text>
-                                                </View>
+                                    ) : (
+                                        <>
+                                            <View style={{ marginBottom: 16, alignItems: 'center' }}>
+                                                <Text style={{ color: Palette.text.secondary, marginBottom: 8 }}>Omplanera till datum:</Text>
+                                                <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.datePickerButton}>
+                                                    <FontAwesome name="calendar" size={16} color={Palette.primary.main} style={{ marginRight: 8 }} />
+                                                    <Text style={styles.datePickerText}>{scheduledDate.toLocaleDateString()}</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                            {showDatePicker && (
+                                                <DateTimePicker
+                                                    testID="rescheduleDatePicker"
+                                                    value={scheduledDate}
+                                                    mode="date"
+                                                    display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                                                    onChange={onChangeDate}
+                                                    style={{ width: '100%', marginBottom: 8 }}
+                                                />
                                             )}
-                                        </TouchableOpacity>
-                                    </View>
+                                        </>
+                                    )}
+
+                                    <TouchableOpacity
+                                        style={[styles.actionButton, styles.primaryAction, { marginBottom: Spacing.m }]}
+                                        onPress={handleReschedule}
+                                        disabled={scheduling}
+                                    >
+                                        {scheduling ? <ActivityIndicator color={Palette.text.primary} /> : (
+                                            <>
+                                                <FontAwesome name="calendar" size={16} color={Palette.text.primary} style={{ marginRight: 8 }} />
+                                                <Text style={[styles.actionText, { color: Palette.text.primary }]}>Spara nytt datum</Text>
+                                            </>
+                                        )}
+                                    </TouchableOpacity>
 
                                     <TouchableOpacity
                                         style={[styles.actionButton, styles.completeButton]}
@@ -529,73 +555,140 @@ export default function WorkoutDetailsView({
                         ) : (
                             !isCompleted && (
                                 <View style={styles.actionContainer}>
-                                    <TouchableOpacity style={styles.actionButton}>
-                                        <Text style={styles.actionText}>Skippa</Text>
-                                    </TouchableOpacity>
+                                    <View style={{ flex: 1 }}>
+                                        {/* DATE PICKER FOR RESCHEDULE */}
+                                        {Platform.OS === 'web' ? (
+                                            <View style={{ marginBottom: 16, alignItems: 'center' }}>
+                                                <Text style={{ color: Palette.text.secondary, marginBottom: 4 }}>Omplanera till datum:</Text>
+                                                <View style={[styles.datePickerButton, { padding: 0 }]}>
+                                                    {React.createElement('input', {
+                                                        type: 'date',
+                                                        value: scheduledDate.toISOString().split('T')[0],
+                                                        onChange: (e: any) => setScheduledDate(new Date(e.target.value)),
+                                                        style: { border: 'none', background: 'transparent', padding: 12, fontSize: 16, color: Palette.text.primary, fontFamily: 'inherit', outline: 'none', width: 'fit-content' }
+                                                    })}
+                                                </View>
+                                            </View>
+                                        ) : (
+                                            <>
+                                                <View style={{ marginBottom: Spacing.m, alignItems: 'center' }}>
+                                                    <Text style={{ color: Palette.text.secondary, marginBottom: 4 }}>Omplanera till datum:</Text>
+                                                    <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.datePickerButton}>
+                                                        <FontAwesome name="calendar" size={16} color={Palette.primary.main} style={{ marginRight: 8 }} />
+                                                        <Text style={styles.datePickerText}>{scheduledDate.toLocaleDateString()}</Text>
+                                                    </TouchableOpacity>
+                                                </View>
+                                                {showDatePicker && (
+                                                    <DateTimePicker
+                                                        testID="rescheduleDatePicker2"
+                                                        value={scheduledDate}
+                                                        mode="date"
+                                                        display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                                                        onChange={onChangeDate}
+                                                        style={{ width: '100%', marginBottom: 8 }}
+                                                    />
+                                                )}
+                                            </>
+                                        )}
 
-                                    <TouchableOpacity style={styles.actionButton}>
-                                        <Text style={styles.actionText}>Byt</Text>
-                                    </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={[styles.actionButton, styles.primaryAction, { marginBottom: Spacing.m }]}
+                                            onPress={handleReschedule}
+                                            disabled={scheduling}
+                                        >
+                                            {scheduling ? <ActivityIndicator color={Palette.text.primary} /> : (
+                                                <Text style={[styles.actionText, { color: Palette.text.primary }]}>Spara nytt datum</Text>
+                                            )}
+                                        </TouchableOpacity>
 
-                                    <TouchableOpacity
-                                        style={[styles.actionButton, styles.primaryAction]}
-                                        onPress={() => {
-                                            const initialExercises = (data as any)?.exercises ? JSON.stringify((data as any).exercises) : undefined;
-                                            // If modal, we might want to close modal?
-                                            if (onClose) onClose();
-                                            router.push({
-                                                pathname: '/workout/log',
-                                                params: {
-                                                    workoutName: displayTitle,
-                                                    initialExercises: initialExercises
-                                                }
-                                            });
-                                        }}
-                                    >
-                                        <Text style={[styles.actionText, { color: Palette.text.primary }]}>Logga pass</Text>
-                                    </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={[styles.actionButton, styles.completeButton]}
+                                            onPress={handleQuickComplete}
+                                            disabled={completing}
+                                        >
+                                            {completing ? <ActivityIndicator color="#FFF" /> : (
+                                                <>
+                                                    <FontAwesome name="check" size={24} color="#FFF" style={{ marginRight: 12 }} />
+                                                    <Text style={styles.completeButtonText}>Klarmarkera Pass</Text>
+                                                </>
+                                            )}
+                                        </TouchableOpacity>
+                                    </View>
                                 </View>
                             )
                         )}
 
-                        <View style={styles.detailsContainer}>
-                            <View style={styles.detailsHeader}>
-                                <Text style={styles.detailsTitle}>{displayTitle}</Text>
-                            </View>
-
-                            <View style={styles.detailSection}>
-                                {(data as any)?.exercises && (data as any).exercises.length > 0 ? (
-                                    (data as any).exercises.map((ex: any, idx: number) => (
-                                        <View key={idx} style={{ marginBottom: 12, borderBottomWidth: idx === (data as any).exercises.length - 1 ? 0 : 1, borderBottomColor: '#EEE', paddingBottom: 8 }}>
-                                            <Text style={[styles.detailLabel, { fontSize: 16 }]}>{ex.name}</Text>
-                                            <Text style={styles.detailValue}>{ex.sets?.length || 3} set</Text>
-                                        </View>
-                                    ))
-                                ) : (
-                                    <Text style={styles.detailValue}>Inga övningar specificerade.</Text>
-                                )}
-                            </View>
-
-                            {displayDesc && (
-                                <>
-                                    <View style={styles.divider} />
-                                    <View style={styles.detailSection}>
-                                        <Text style={styles.detailLabel}>Notering</Text>
-                                        <Text style={styles.descriptionText}>{displayDesc}</Text>
-                                    </View>
-                                </>
-                            )}
-                        </View>
+                        <TouchableOpacity
+                            style={[styles.actionButton, styles.primaryAction]}
+                            onPress={async () => {
+                                // Use workout's own exercises, OR fetch from template by name if empty
+                                let exercises = (data as any)?.exercises || [];
+                                if (exercises.length === 0 && data?.name) {
+                                    try {
+                                        const q = query(
+                                            collection(db, 'workout_templates'),
+                                            where('name', '==', data.name)
+                                        );
+                                        const snap = await getDocs(q);
+                                        if (!snap.empty) {
+                                            exercises = snap.docs[0].data()?.exercises || [];
+                                        }
+                                    } catch (e) {
+                                        console.warn('Could not fetch template exercises:', e);
+                                    }
+                                }
+                                const initialExercises = exercises.length > 0 ? JSON.stringify(exercises) : undefined;
+                                if (onClose) onClose();
+                                router.push({
+                                    pathname: '/workout/log',
+                                    params: {
+                                        workoutName: displayTitle,
+                                        category: data?.category,
+                                        initialExercises: initialExercises,
+                                        programId: (data as any)?.programId,
+                                        workoutTemplateId: (data as any)?.workoutTemplateId
+                                    }
+                                });
+                            }}
+                        >
+                            <Text style={[styles.actionText, { color: Palette.text.primary }]}>Logga pass</Text>
+                        </TouchableOpacity>
                     </View>
                 )}
 
-            </ScrollView >
+                <View style={styles.detailsContainer}>
+                    <View style={styles.detailsHeader}>
+                        <Text style={styles.detailsTitle}>{displayTitle}</Text>
+                    </View>
 
-            {/* STRAVA PICKER MODAL */}
+                    <View style={styles.detailSection}>
+                        {(data as any)?.exercises && (data as any).exercises.length > 0 ? (
+                            (data as any).exercises.map((ex: any, idx: number) => (
+                                <View key={idx} style={{ marginBottom: 12, borderBottomWidth: idx === (data as any).exercises.length - 1 ? 0 : 1, borderBottomColor: '#EEE', paddingBottom: 8 }}>
+                                    <Text style={[styles.detailLabel, { fontSize: 16 }]}>{ex.name}</Text>
+                                    <Text style={styles.detailValue}>{ex.sets?.length || 3} set</Text>
+                                </View>
+                            ))
+                        ) : (
+                            <Text style={styles.detailValue}>Inga övningar specificerade.</Text>
+                        )}
+                    </View>
+
+                    {displayDesc && (
+                        <>
+                            <View style={styles.divider} />
+                            <View style={styles.detailSection}>
+                                <Text style={styles.detailLabel}>Notering</Text>
+                                <Text style={styles.descriptionText}>{displayDesc}</Text>
+                            </View>
+                        </>
+                    )}
+                </View>
+            </ScrollView>
+
             <Modal visible={showStravaPicker} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowStravaPicker(false)}>
                 <View style={[styles.container, { backgroundColor: '#F5F5F7' }]}>
                     <View style={styles.header}>
-                        {/* Reusing some header styles or inline styles for simplicity */}
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing.m, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#EEE' }}>
                             <Text style={{ fontSize: Typography.size.l, fontWeight: 'bold' }}>Välj Strava-pass</Text>
                             <TouchableOpacity onPress={() => setShowStravaPicker(false)}>

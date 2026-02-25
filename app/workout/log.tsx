@@ -8,9 +8,9 @@ import { checkAndSavePrs, getUserPrs } from '@/services/prService';
 import { Exercise, PersonalRecord, Workout, WorkoutExercise } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { addDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { addDoc, collection, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 // Helper to format seconds to HH:MM:SS
 const formatTime = (seconds: number) => {
@@ -52,7 +52,9 @@ export default function WorkoutLoggerScreen() {
         date: new Date(),
         status: 'In Progress',
         exercises: params.initialExercises ? JSON.parse(params.initialExercises as string) : [],
-        category: (params.category as string) as any || 'styrketräning'
+        category: (params.category as string) as any || 'styrketräning',
+        programId: params.programId as string,
+        workoutTemplateId: params.workoutTemplateId as string
     });
 
     // Running Template State
@@ -228,6 +230,61 @@ export default function WorkoutLoggerScreen() {
             } else {
                 alert('Workout saved successfully!');
             }
+
+            // Sync Logic
+            if (workout.programId && workout.workoutTemplateId && workoutData.exercises.length > 0) {
+                const syncMsg = "Vill du uppdatera alla framtida pass av denna typ i programmet med de nya övningarna?";
+                let shouldSync = false;
+                if (Platform.OS === 'web') {
+                    shouldSync = window.confirm(syncMsg);
+                } else {
+                    // For mobile, Alert.alert is async-ish if we want it to block, but here we can just handle it.
+                    // However, we are about to router.back(). We should probably sync BEFORE router.back().
+                    await new Promise((resolve) => {
+                        Alert.alert(
+                            "Synkronisera program",
+                            syncMsg,
+                            [
+                                { text: "Nej", onPress: () => { shouldSync = false; resolve(null); }, style: "cancel" },
+                                { text: "Ja", onPress: () => { shouldSync = true; resolve(null); } }
+                            ]
+                        );
+                    });
+                }
+
+                if (shouldSync) {
+                    try {
+                        const futureWorkoutsRef = collection(db, `users/${user.uid}/workouts`);
+                        const q = query(
+                            futureWorkoutsRef,
+                            where('programId', '==', workout.programId),
+                            where('workoutTemplateId', '==', workout.workoutTemplateId),
+                            where('status', '==', 'Planned')
+                        );
+
+                        const snap = await getDocs(q);
+                        const now = new Date();
+                        const updatePromises = snap.docs
+                            .filter(doc => {
+                                const data = doc.data();
+                                const scheduledDate = data.scheduledDate?.toDate?.() || data.scheduledDate;
+                                return scheduledDate > now;
+                            })
+                            .map(d => updateDoc(d.ref, {
+                                exercises: workoutData.exercises,
+                                notes: workoutData.notes || ""
+                            }));
+
+                        if (updatePromises.length > 0) {
+                            await Promise.all(updatePromises);
+                            alert(`${updatePromises.length} framtida pass uppdaterades.`);
+                        }
+                    } catch (syncErr) {
+                        console.error("Sync failed:", syncErr);
+                    }
+                }
+            }
+
             router.back();
 
         } catch (e: any) {
