@@ -40,8 +40,12 @@ export default function DesktopHome() {
     const [isProfileMenuVisible, setProfileMenuVisible] = useState(false);
     const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
 
-    const handleDeleteActivity = async (workoutId: string) => {
-        const confirmed = window.confirm('Vill du ta bort denna genomförda aktivitet?');
+    const handleDeleteWorkout = async (workoutId: string, isCompleted: boolean = false) => {
+        const message = isCompleted
+            ? 'Vill du ta bort denna genomförda aktivitet?'
+            : 'Vill du ta bort detta planerade pass?';
+
+        const confirmed = window.confirm(message);
         if (!confirmed || !user?.uid) return;
         await workoutService.deleteWorkout(user.uid, workoutId);
         refresh(true);
@@ -88,6 +92,7 @@ export default function DesktopHome() {
                     // @ts-ignore
                     status={item.workout.status === 'Completed' ? 'completed' : 'pending'}
                     onPress={() => setSelectedWorkout(item.workout)}
+                    onDeletePress={() => handleDeleteWorkout(item.workout.id!, item.workout.status === 'Completed')}
                     showDragHandle={false}
                 />
             </View>
@@ -222,7 +227,7 @@ export default function DesktopHome() {
                                                         </View>
                                                     </TouchableOpacity>
                                                     <TouchableOpacity
-                                                        onPress={() => handleDeleteActivity(w.id!)}
+                                                        onPress={() => handleDeleteWorkout(w.id!, true)}
                                                         style={{ padding: 6 }}
                                                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                                     >

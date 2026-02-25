@@ -23,6 +23,7 @@ interface DayCardProps {
     showDragHandle?: boolean;
     isToday?: boolean;
     onMenuPress?: () => void;
+    onDeletePress?: () => void;
 }
 
 export default function DayCard({
@@ -35,6 +36,7 @@ export default function DayCard({
     onPress,
     onLongPress,
     onMenuPress,
+    onDeletePress,
     showDragHandle,
 }: DayCardProps) {
 
@@ -103,7 +105,7 @@ export default function DayCard({
                         </View>
                     </TouchableOpacity>
 
-                    {/* Right Action Area: Menu OR Drag Handle */}
+                    {/* Right Action Area: Menu OR Delete OR Drag Handle */}
                     {showDragHandle ? (
                         <TouchableOpacity
                             style={styles.actionButton}
@@ -114,15 +116,26 @@ export default function DayCard({
                             <Ionicons name="reorder-two-outline" size={24} color={Palette.text.disabled} />
                         </TouchableOpacity>
                     ) : (
-                        onMenuPress && (
-                            <TouchableOpacity
-                                style={styles.actionButton}
-                                onPress={onMenuPress}
-                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                            >
-                                <Ionicons name="ellipsis-vertical" size={20} color={Palette.text.secondary} />
-                            </TouchableOpacity>
-                        )
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            {onDeletePress && (
+                                <TouchableOpacity
+                                    style={styles.actionButton}
+                                    onPress={onDeletePress}
+                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                >
+                                    <Ionicons name="trash-outline" size={18} color={Palette.text.secondary} />
+                                </TouchableOpacity>
+                            )}
+                            {onMenuPress && (
+                                <TouchableOpacity
+                                    style={styles.actionButton}
+                                    onPress={onMenuPress}
+                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                >
+                                    <Ionicons name="ellipsis-vertical" size={20} color={Palette.text.secondary} />
+                                </TouchableOpacity>
+                            )}
+                        </View>
                     )}
                 </View>
             )}

@@ -102,10 +102,15 @@ export default function MobileHome() {
         );
     };
 
-    const handleDeleteActivity = (workoutId: string) => {
+    const handleDeleteWorkout = (workoutId: string, isCompleted: boolean = false) => {
+        const title = isCompleted ? 'Ta bort aktivitet' : 'Ta bort planerat pass';
+        const message = isCompleted
+            ? 'Vill du ta bort denna genomförda aktivitet?'
+            : 'Vill du ta bort detta planerade pass?';
+
         Alert.alert(
-            'Ta bort aktivitet',
-            'Vill du ta bort denna genomförda aktivitet?',
+            title,
+            message,
             [
                 { text: 'Avbryt', style: 'cancel' },
                 {
@@ -153,7 +158,7 @@ export default function MobileHome() {
                                 <TouchableOpacity
                                     style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
                                     onPress={() => router.push({ pathname: '/workout/[id]', params: { id: w.id! } })}
-                                    onLongPress={() => handleDeleteActivity(w.id!)}
+                                    onLongPress={() => handleDeleteWorkout(w.id!, true)}
                                     delayLongPress={500}
                                 >
                                     <View style={styles.recentActivityIcon}>
@@ -170,7 +175,7 @@ export default function MobileHome() {
                                     </View>
                                 </TouchableOpacity>
                                 <Pressable
-                                    onPress={() => handleDeleteActivity(w.id!)}
+                                    onPress={() => handleDeleteWorkout(w.id!, true)}
                                     style={{ padding: 8 }}
                                     hitSlop={12}
                                 >
@@ -279,6 +284,7 @@ export default function MobileHome() {
                     // @ts-ignore
                     status={item.workout.status === 'Completed' ? 'completed' : 'pending'}
                     onPress={() => router.push({ pathname: '/workout/[id]', params: { id: item.workout.id!, title: item.workout.name, status: item.workout.status === 'Completed' ? 'completed' : 'planned' } })}
+                    onDeletePress={() => handleDeleteWorkout(item.workout.id!, item.workout.status === 'Completed')}
                     showDragHandle={false}
                 />
             </View>
