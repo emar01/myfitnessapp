@@ -30,6 +30,7 @@ export default function LibraryScreen() {
     const [workouts, setWorkouts] = useState<WorkoutTemplate[]>([]);
     const [programs, setPrograms] = useState<Program[]>([]);
     const [exercises, setExercises] = useState<Exercise[]>([]);
+    const [activePrograms, setActivePrograms] = useState<Set<string>>(new Set()); // Track active programs by ID
 
     // View State
     const [activeTab, setActiveTab] = useState<'workouts' | 'programs' | 'exercises'>('workouts');
@@ -93,6 +94,14 @@ export default function LibraryScreen() {
             const eList = await fetchDual('exercises') as Exercise[];
             eList.sort((a, b) => a.name.localeCompare(b.name));
             setExercises(eList);
+
+            if (user?.uid) {
+                const activeProgsRef = collection(db, 'users', user.uid, 'active_programs');
+                const activeProgsSnap = await getDocs(activeProgsRef);
+                const aSet = new Set<string>();
+                activeProgsSnap.docs.forEach(d => aSet.add(d.id));
+                setActivePrograms(aSet);
+            }
 
         } catch (e) {
             console.error('Failed to fetch library data', e);
@@ -309,6 +318,8 @@ export default function LibraryScreen() {
 
     const renderProgramItem = ({ item }: { item: Program }) => {
         const owned = isOwner(item);
+        const isFollowed = item.id ? activePrograms.has(item.id) : false;
+
         return (
             <TouchableOpacity
                 style={styles.itemCard}
@@ -316,7 +327,15 @@ export default function LibraryScreen() {
             >
                 <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <Text style={styles.itemTitle}>{item.title}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Text style={styles.itemTitle}>{item.title}</Text>
+                            {isFollowed && (
+                                <View style={styles.followedBadge}>
+                                    <Ionicons name="star" size={12} color="#FFF" />
+                                    <Text style={styles.followedBadgeText}>Följer</Text>
+                                </View>
+                            )}
+                        </View>
                         {renderPrivateBadge(item.isPublic)}
                     </View>
                     <Text style={styles.itemSubtitle}>{item.duration || 'N/A'} • {item.category || 'Generellt'}</Text>
@@ -611,5 +630,20 @@ const styles = StyleSheet.create({
         borderBottomWidth: 0,
         justifyContent: 'center',
         marginTop: Spacing.s
+    },
+    followedBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: Palette.primary.main,
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 8,
+        gap: 4,
+    },
+    followedBadgeText: {
+        fontSize: 10,
+        color: '#FFF',
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
     }
 });

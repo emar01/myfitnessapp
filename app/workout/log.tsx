@@ -20,6 +20,22 @@ const formatTime = (seconds: number) => {
     return `${h > 0 ? h + ':' : ''}${m < 10 && h > 0 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
 };
 
+// Helper to remove undefined properties recursively
+const cleanUndefined = (obj: any): any => {
+    if (Array.isArray(obj)) {
+        return obj.map(cleanUndefined);
+    } else if (obj !== null && typeof obj === 'object' && !(obj instanceof Date)) {
+        const cleaned: any = {};
+        for (const key in obj) {
+            if (obj[key] !== undefined) {
+                cleaned[key] = cleanUndefined(obj[key]);
+            }
+        }
+        return cleaned;
+    }
+    return obj;
+};
+
 export default function WorkoutLoggerScreen() {
     const { user } = useSession();
     const router = useRouter();
@@ -157,16 +173,18 @@ export default function WorkoutLoggerScreen() {
                 }]
             };
 
-            const workoutData = {
+            const workoutData = cleanUndefined({
                 ...workout,
                 status: 'Completed',
                 date: new Date(),
                 scheduledDate: new Date(),
                 userId: user.uid,
+                duration: duration, // Add duration at root in seconds
+                distance: distance, // Add distance at root in km
                 exercises: [runningExercise],
                 category: 'löpning',
                 subcategory: runSubFilter || 'distans' // Use default if lost, but ideally from template
-            } as any;
+            });
 
             const workoutsRef = collection(db, `users/${user.uid}/workouts`);
             await addDoc(workoutsRef, workoutData);
@@ -190,14 +208,15 @@ export default function WorkoutLoggerScreen() {
 
         setIsLoading(true);
         try {
-            const workoutData = {
+            const workoutData = cleanUndefined({
                 ...workout,
                 status: 'Completed',
                 date: new Date(),
                 scheduledDate: new Date(),
                 userId: user.uid,
+                duration: secondsElapsed, // Add duration at root in seconds
                 exercises: workout.exercises.filter(ex => ex.sets.length > 0)
-            };
+            });
 
             const workoutsRef = collection(db, `users/${user.uid}/workouts`);
             const docRef = await addDoc(workoutsRef, workoutData);

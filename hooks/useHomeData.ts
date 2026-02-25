@@ -31,10 +31,49 @@ export type ListItem =
     | { type: 'header'; id: string; dayName: string; dateLabel: string; dateObj: Date }
     | { type: 'workout'; id: string; workout: Workout; };
 
+// Helper to estimate duration from workout name or subcategory for planned workouts
+const estimateDurationMinutes = (workout: Workout): number => {
+    if (workout.duration) {
+        return Math.round(workout.duration / 60);
+    }
+
+    // Try to parse from name
+    if (workout.name) {
+        const name = workout.name.toLowerCase();
+
+        // e.g. "3h", "4h"
+        const hourMatch = name.match(/(\d+)\s*h/);
+        if (hourMatch) return parseInt(hourMatch[1], 10) * 60;
+
+        // e.g. "60 min", "45min"
+        const minMatch = name.match(/(\d+)\s*min/);
+        if (minMatch) return parseInt(minMatch[1], 10);
+
+        // e.g. "75-90", "40-50", "120-130"
+        const rangeMatch = name.match(/(\d+)\s*-\s*(\d+)/);
+        if (rangeMatch) return (parseInt(rangeMatch[1], 10) + parseInt(rangeMatch[2], 10)) / 2;
+    }
+
+    // Fallbacks
+    if (workout.subcategory === 'långpass') return 90;
+    if (workout.subcategory === 'distans') return 50;
+    if (workout.subcategory === 'intervall' || workout.subcategory === 'fartpass') return 60;
+    if (workout.category === 'styrketräning') return 45;
+
+    return 45; // Default for anything else
+};
+
 export function useHomeData(user: any) {
     const [dailyProgram, setDailyProgram] = useState<Program | null>(null);
     const [workouts, setWorkouts] = useState<Workout[]>([]);
+    const [activePrograms, setActivePrograms] = useState<any[]>([]); // New state for followed programs
     const [listData, setListData] = useState<ListItem[]>([]);
+    const [weeklyStats, setWeeklyStats] = useState({
+        totalWorkouts: 0,
+        completedWorkouts: 0,
+        totalDurationMinutes: 0,
+        completedDurationMinutes: 0
+    });
     const [loading, setLoading] = useState(true);
     const [currentDate, setCurrentDate] = useState(new Date());
     const currentDateRef = useRef(currentDate);
@@ -60,10 +99,16 @@ export function useHomeData(user: any) {
                 setDailyProgram({ id: dailySnap.docs[0].id, ...dailySnap.docs[0].data() } as Program);
             }
 
-            // 2. Fetch User's Workouts
+            // 2. Fetch User's Workouts & Active Programs
             if (user) {
                 const fetchedWorkouts = await workoutService.getUserWorkouts(user.uid);
                 setWorkouts(fetchedWorkouts);
+
+                // Fetch Active Programs
+                const activeProgsRef = collection(db, 'users', user.uid, 'active_programs');
+                const activeProgsSnap = await getDocs(activeProgsRef);
+                const aProgs = activeProgsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                setActivePrograms(aProgs);
 
                 // 3. Construct List Data immediately
                 constructListData(fetchedWorkouts, currentDateRef.current);
@@ -82,6 +127,11 @@ export function useHomeData(user: any) {
     const constructListData = (currentWorkouts: Workout[], dateContext: Date) => {
         const dates = getWeekDates(dateContext);
         const newList: ListItem[] = [];
+
+        let tWorkouts = 0;
+        let cWorkouts = 0;
+        let tDuration = 0;
+        let cDuration = 0;
 
         dates.forEach(date => {
             // Create Header
@@ -111,10 +161,28 @@ export function useHomeData(user: any) {
 
             daysWorkouts.forEach(w => {
                 newList.push({ type: 'workout', id: w.id!, workout: w });
+                tWorkouts++;
+
+                // Duration is expected to be stored in seconds for completed workouts, 
+                // but planned workouts might lack it.
+                let wDurMin = estimateDurationMinutes(w);
+
+                tDuration += wDurMin;
+
+                if (w.status === 'Completed') {
+                    cWorkouts++;
+                    cDuration += wDurMin;
+                }
             });
         });
 
         setListData(newList);
+        setWeeklyStats({
+            totalWorkouts: tWorkouts,
+            completedWorkouts: cWorkouts,
+            totalDurationMinutes: tDuration,
+            completedDurationMinutes: cDuration
+        });
     };
 
     // Re-construct list if Date changes (without re-fetching from DB)
@@ -136,8 +204,10 @@ export function useHomeData(user: any) {
         dailyProgram,
         workouts,
         listData,
+        weeklyStats,
         loading,
         currentDate,
+        activePrograms, // Expose to screens
         changeWeek,
         refresh,
         setListData // Exposed for drag-and-drop optim updates

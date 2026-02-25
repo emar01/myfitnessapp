@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-native-draggable-flatlist';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -24,8 +24,10 @@ export default function MobileHome() {
     const {
         dailyProgram,
         listData,
+        weeklyStats,
         loading,
         currentDate,
+        activePrograms,
         changeWeek,
         setListData, // We need this to update local state optimistically
         refresh
@@ -50,29 +52,7 @@ export default function MobileHome() {
         router.push('/settings/profile');
     };
 
-    const renderDailyCard = () => {
-        // Only show daily card on "Today's" week? Or always?
-        // Let's hide it if looking at past/future to save space, or keep it. Keeping for now.
-        if (!dailyProgram) return null;
-        return (
-            <View style={{ paddingHorizontal: Spacing.m, paddingTop: Spacing.m }}>
-                <TouchableOpacity
-                    style={styles.dailyCard}
-                    onPress={() => router.push({ pathname: '/program/[id]', params: { id: dailyProgram.id! } })}
-                >
-                    <View style={styles.dailyContent}>
-                        <Text style={styles.dailyLabel}>DAGENS PASS</Text>
-                        <Text style={styles.dailyTitle}>{dailyProgram.title}</Text>
-                        <Text style={styles.dailySubtitle}>{dailyProgram.duration || 'N/A'} • {dailyProgram.category || 'General'}</Text>
-                    </View>
-                    <View style={styles.dailyIcon}>
-                        <Ionicons name="flame" size={32} color="#FFF" />
-                    </View>
-                </TouchableOpacity>
-                <Text style={styles.sectionTitle}>Mitt Schema</Text>
-            </View>
-        );
-    };
+
 
     const renderStartWorkoutButton = () => (
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -85,6 +65,64 @@ export default function MobileHome() {
             </TouchableOpacity>
         </View>
     );
+
+    const renderActivePrograms = () => {
+        if (!activePrograms || activePrograms.length === 0) return null;
+
+        return (
+            <View style={{ marginBottom: Spacing.m }}>
+                <Text style={[styles.sectionTitle, { paddingHorizontal: Spacing.m, marginTop: 0 }]}>Mina Aktiva Program</Text>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ paddingHorizontal: Spacing.m, gap: Spacing.s }}
+                >
+                    {activePrograms.map((prog) => (
+                        <TouchableOpacity
+                            key={prog.id}
+                            style={styles.activeProgramCard}
+                            onPress={() => router.push({ pathname: '/program/[id]', params: { id: prog.programId } })}
+                        >
+                            <View style={styles.activeProgramIcon}>
+                                <Ionicons name="fitness-outline" size={24} color={Palette.primary.main} />
+                            </View>
+                            <View style={{ flex: 1, marginLeft: 12 }}>
+                                <Text style={styles.activeProgramTitle} numberOfLines={1}>{prog.title}</Text>
+                                <Text style={styles.activeProgramSubtitle}>
+                                    Startat: {prog.startedAt ? new Date(prog.startedAt.seconds * 1000).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' }) : 'Okänt'}
+                                </Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={16} color={Palette.text.disabled} />
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            </View>
+        );
+    };
+
+    const renderWeeklyStats = () => {
+        if (!weeklyStats) return null;
+
+        return (
+            <View style={{ marginBottom: Spacing.m }}>
+                <Text style={[styles.sectionTitle, { paddingHorizontal: Spacing.m, marginTop: 0 }]}>Min progress</Text>
+                <View style={styles.statsRow}>
+                    <View style={styles.statCard}>
+                        <Text style={styles.statValue}>
+                            {weeklyStats.completedWorkouts} / {weeklyStats.totalWorkouts}
+                        </Text>
+                        <Text style={styles.statLabel}>Pass i veckan</Text>
+                    </View>
+                    <View style={styles.statCard}>
+                        <Text style={styles.statValue}>
+                            {Math.round((weeklyStats.completedDurationMinutes || 0) / 60)}h / {Math.round((weeklyStats.totalDurationMinutes || 0) / 60)}h
+                        </Text>
+                        <Text style={styles.statLabel}>Träningstid</Text>
+                    </View>
+                </View>
+            </View>
+        );
+    };
 
     const renderHeader = () => {
         // Calculate week range string
@@ -99,6 +137,9 @@ export default function MobileHome() {
             <View>
                 {/* Remove Daily Card for now based on design request focus */}
                 {/* {renderDailyCard()} */}
+
+                {renderActivePrograms()}
+                {renderWeeklyStats()}
 
                 {/* Custom Header Layout matching image */}
                 <View style={styles.weekControlHeader}>
@@ -394,4 +435,63 @@ const styles = StyleSheet.create({
         fontSize: Typography.size.s,
         fontWeight: 'bold',
     },
+    activeProgramCard: {
+        backgroundColor: '#FFF',
+        borderRadius: BorderRadius.m,
+        padding: Spacing.m,
+        flexDirection: 'row',
+        alignItems: 'center',
+        width: 250,
+        ...Shadows.small,
+        borderWidth: 1,
+        borderColor: Palette.border.default,
+    },
+    activeProgramIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: Palette.background.default,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    activeProgramTitle: {
+        fontSize: Typography.size.m,
+        fontWeight: 'bold',
+        color: Palette.text.primary,
+        marginBottom: 2,
+    },
+    activeProgramSubtitle: {
+        fontSize: Typography.size.xs,
+        color: Palette.text.secondary,
+    },
+    statsRow: {
+        flexDirection: 'row',
+        paddingHorizontal: Spacing.m,
+        gap: Spacing.m,
+        marginBottom: Spacing.m,
+    },
+    statCard: {
+        flex: 1,
+        backgroundColor: '#FFF',
+        borderRadius: BorderRadius.m,
+        padding: Spacing.m,
+        alignItems: 'flex-start',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: Palette.border.default,
+        ...Shadows.small,
+    },
+    statValue: {
+        fontSize: 24,
+        fontWeight: '800',
+        color: Palette.primary.main,
+        marginBottom: 4
+    },
+    statLabel: {
+        fontSize: 10,
+        color: Palette.text.secondary,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        fontWeight: '600'
+    }
 });

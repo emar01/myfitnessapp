@@ -2,7 +2,7 @@ import DayCard, { DayCardType } from '@/components/DayCard';
 import ProfileMenuModal from '@/components/ProfileMenuModal';
 import StravaSyncModal from '@/components/StravaSyncModal';
 import WorkoutDetailsView from '@/components/WorkoutDetailsView';
-import { BorderRadius, Palette, Shadows, Spacing } from '@/constants/DesignSystem';
+import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
 import { ListItem, useHomeData } from '@/hooks/useHomeData';
 import { workoutService } from '@/services/workoutService';
@@ -22,8 +22,10 @@ export default function DesktopHome() {
     const {
         dailyProgram,
         listData,
+        weeklyStats,
         loading,
         currentDate,
+        activePrograms,
         changeWeek,
         setListData,
         refresh
@@ -152,25 +154,53 @@ export default function DesktopHome() {
                 <View style={styles.gridContainer}>
                     {/* Left Column: Daily & Stats (Scrollable if needed, or fixed) */}
                     <ScrollView style={styles.leftColumn} contentContainerStyle={{ gap: Spacing.l }}>
-                        {dailyProgram && (
-                            <TouchableOpacity style={styles.dailyCard} onPress={() => router.push({ pathname: '/program/[id]', params: { id: dailyProgram.id! } })}>
-                                <View>
-                                    <Text style={styles.cardLabel}>DAGENS PASS</Text>
-                                    <Text style={styles.cardTitle}>{dailyProgram.title}</Text>
-                                    <Text style={styles.cardSubtitle}>{dailyProgram.duration} • {dailyProgram.category}</Text>
-                                </View>
-                                <Ionicons name="flame" size={48} color="#FFF" />
-                            </TouchableOpacity>
+
+                        {/* Active Programs Section */}
+                        {activePrograms && activePrograms.length > 0 && (
+                            <View>
+                                <Text style={styles.sectionTitle}>Mina Aktiva Program</Text>
+                                <ScrollView
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                    contentContainerStyle={{ gap: Spacing.m }}
+                                >
+                                    {activePrograms.map((prog) => (
+                                        <TouchableOpacity
+                                            key={prog.id}
+                                            style={styles.activeProgramCard}
+                                            onPress={() => router.push({ pathname: '/program/[id]', params: { id: prog.programId } })}
+                                        >
+                                            <View style={styles.activeProgramIcon}>
+                                                <Ionicons name="fitness-outline" size={24} color={Palette.primary.main} />
+                                            </View>
+                                            <View style={{ flex: 1, marginLeft: 12 }}>
+                                                <Text style={styles.activeProgramTitle} numberOfLines={1}>{prog.title}</Text>
+                                                <Text style={styles.activeProgramSubtitle}>
+                                                    Startat: {prog.startedAt ? new Date(prog.startedAt.seconds * 1000).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' }) : 'Okänt'}
+                                                </Text>
+                                            </View>
+                                            <Ionicons name="chevron-forward" size={16} color={Palette.text.disabled} />
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                            </View>
                         )}
 
-                        <View style={styles.statsRow}>
-                            <View style={styles.statCard}>
-                                <Text style={styles.statValue}>3</Text>
-                                <Text style={styles.statLabel}>Pass i veckan</Text>
-                            </View>
-                            <View style={styles.statCard}>
-                                <Text style={styles.statValue}>12h</Text>
-                                <Text style={styles.statLabel}>Träningstid</Text>
+                        <View>
+                            <Text style={styles.sectionTitle}>Min progress</Text>
+                            <View style={styles.statsRow}>
+                                <View style={styles.statCard}>
+                                    <Text style={styles.statValue}>
+                                        {weeklyStats?.completedWorkouts || 0} / {weeklyStats?.totalWorkouts || 0}
+                                    </Text>
+                                    <Text style={styles.statLabel}>Pass i veckan</Text>
+                                </View>
+                                <View style={styles.statCard}>
+                                    <Text style={styles.statValue}>
+                                        {Math.round((weeklyStats?.completedDurationMinutes || 0) / 60)}h / {Math.round((weeklyStats?.totalDurationMinutes || 0) / 60)}h
+                                    </Text>
+                                    <Text style={styles.statLabel}>Träningstid</Text>
+                                </View>
                             </View>
                         </View>
                     </ScrollView>
@@ -403,4 +433,33 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
         ...Shadows.large,
     },
+    activeProgramCard: {
+        backgroundColor: '#FFF',
+        borderRadius: BorderRadius.m,
+        padding: Spacing.m,
+        flexDirection: 'row',
+        alignItems: 'center',
+        width: 280,
+        ...Shadows.small,
+        borderWidth: 1,
+        borderColor: Palette.border.default,
+    },
+    activeProgramIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: Palette.background.default,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    activeProgramTitle: {
+        fontSize: Typography.size.m,
+        fontWeight: 'bold',
+        color: Palette.text.primary,
+        marginBottom: 2,
+    },
+    activeProgramSubtitle: {
+        fontSize: Typography.size.xs,
+        color: Palette.text.secondary,
+    }
 });
