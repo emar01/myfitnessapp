@@ -1,13 +1,15 @@
 import { BorderRadius, Layout, Palette, Spacing, Typography } from '@/constants/DesignSystem';
-import { RUNNING_SUBCATEGORIES, WORKOUT_CATEGORIES } from '@/constants/WorkoutTypes'; // Import constants
-import { useSession } from '@/context/ctx'; // Import Session
+import { RUNNING_SUBCATEGORIES, WORKOUT_CATEGORIES } from '@/constants/WorkoutTypes';
+import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
-import { Exercise, Program, WorkoutTemplate } from '@/types';
+import { workoutService } from '@/services/workoutService';
+import { Exercise, Program, Workout, WorkoutTemplate } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import React, { useCallback, useState } from 'react';
 import {
+    Alert,
     FlatList,
     Linking,
     Modal,
@@ -30,10 +32,11 @@ export default function LibraryScreen() {
     const [workouts, setWorkouts] = useState<WorkoutTemplate[]>([]);
     const [programs, setPrograms] = useState<Program[]>([]);
     const [exercises, setExercises] = useState<Exercise[]>([]);
-    const [activePrograms, setActivePrograms] = useState<Set<string>>(new Set()); // Track active programs by ID
+    const [completedActivities, setCompletedActivities] = useState<Workout[]>([]);
+    const [activePrograms, setActivePrograms] = useState<Set<string>>(new Set());
 
     // View State
-    const [activeTab, setActiveTab] = useState<'workouts' | 'programs' | 'exercises'>('workouts');
+    const [activeTab, setActiveTab] = useState<'workouts' | 'programs' | 'exercises' | 'aktiviteter'>('workouts');
     const [activeFilter, setActiveFilter] = useState<string | null>(null);
     const [subFilter, setSubFilter] = useState<string | null>(null);
 
@@ -101,6 +104,24 @@ export default function LibraryScreen() {
                 const aSet = new Set<string>();
                 activeProgsSnap.docs.forEach(d => aSet.add(d.id));
                 setActivePrograms(aSet);
+
+                // Fetch completed workouts — same method as home screen (ensures consistent field mapping)
+                const allWorkouts = await workoutService.getUserWorkouts(user.uid);
+                const completed = allWorkouts
+                    .filter((w: any) => w.status === 'Completed')
+                    .sort((a: any, b: any) => {
+                        const getMs = (d: any) => {
+                            if (!d) return 0;
+                            if (d instanceof Date) return d.getTime();
+                            if (d.toDate) return d.toDate().getTime();
+                            if (d.toMillis) return d.toMillis();
+                            if (d.seconds) return d.seconds * 1000;
+                            return 0;
+                        };
+                        return getMs(b.date) - getMs(a.date);
+                    });
+                setCompletedActivities(completed);
+
             }
 
         } catch (e) {
@@ -185,6 +206,12 @@ export default function LibraryScreen() {
                     onPress={() => setActiveTab('exercises')}
                 >
                     <Text style={[styles.tabText, activeTab === 'exercises' && styles.tabTextActive]}>Övningar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.tab, activeTab === 'aktiviteter' && styles.tabActive]}
+                    onPress={() => setActiveTab('aktiviteter')}
+                >
+                    <Text style={[styles.tabText, activeTab === 'aktiviteter' && styles.tabTextActive]}>Aktiviteter</Text>
                 </TouchableOpacity>
             </View>
 
@@ -390,15 +417,93 @@ export default function LibraryScreen() {
         );
     };
 
+    const handleDeleteActivity = (workoutId: string) => {
+        Alert.alert(
+            'Ta bort aktivitet',
+            'Vill du ta bort denna genomförda aktivitet?',
+            [
+                { text: 'Avbryt', style: 'cancel' },
+                {
+                    text: 'Ta bort', style: 'destructive',
+                    onPress: async () => {
+                        if (!user?.uid) return;
+                        await workoutService.deleteWorkout(user.uid, workoutId);
+                        // Remove from local state immediately
+                        setCompletedActivities(prev => prev.filter(a => a.id !== workoutId));
+                    }
+                }
+            ]
+        );
+    };
+
+    const renderActivityItem = ({ item }: { item: Workout }) => {
+        const w = item as any;
+        const isRunning = w.category === 'löpning';
+        const iconName = isRunning ? 'footsteps-outline' : 'barbell-outline';
+
+        // Safe date parsing — handles Date objects, Firestore Timestamps (.toDate, .toMillis, .seconds)
+        let dateObj: Date | null = null;
+        const raw = w.date || w.scheduledDate;
+        if (raw instanceof Date) {
+            dateObj = raw;
+        } else if (raw?.toDate) {
+            dateObj = raw.toDate();
+        } else if (raw?.toMillis) {
+            dateObj = new Date(raw.toMillis());
+        } else if (raw?.seconds) {
+            dateObj = new Date(raw.seconds * 1000);
+        }
+        const dateStr = dateObj
+            ? dateObj.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: 'numeric' })
+            : '';
+
+        // Safe duration — stored in seconds, convert to min; guard against NaN/undefined
+        const durationSec = typeof w.duration === 'number' ? w.duration : null;
+        const distance = typeof w.distance === 'number' ? w.distance : null;
+        let statText = '';
+        if (isRunning && distance != null) {
+            statText = `${distance} km`;
+        } else if (durationSec != null && durationSec > 0) {
+            statText = `${Math.round(durationSec / 60)} min`;
+        }
+
+        // Name fallback — different fields used depending on how workout was created
+        const displayName = w.name || w.title || w.workoutTitle || w.workoutName || 'Träningspass';
+
+        return (
+            <TouchableOpacity
+                style={styles.itemCard}
+                onPress={() => router.push({ pathname: '/workout/[id]', params: { id: item.id! } })}
+            >
+                <View style={[styles.activityIcon, { backgroundColor: isRunning ? '#E8F5E9' : '#EDE7F6' }]}>
+                    <Ionicons name={iconName as any} size={20} color={isRunning ? '#2E7D32' : '#512DA8'} />
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={styles.itemTitle} numberOfLines={1}>{displayName}</Text>
+                    <Text style={styles.itemSubtitle}>
+                        {dateStr}{statText ? ` • ${statText}` : ''}
+                    </Text>
+                </View>
+                <TouchableOpacity onPress={() => handleDeleteActivity(item.id!)} hitSlop={10}>
+                    <Ionicons name="trash-outline" size={20} color={Palette.text.disabled} />
+                </TouchableOpacity>
+            </TouchableOpacity>
+        );
+    };
+
+
     const getListData = () => {
         if (activeTab === 'workouts') return filteredWorkouts;
         if (activeTab === 'exercises') return filteredExercises;
+        if (activeTab === 'aktiviteter') return completedActivities;
         return programs;
     };
+
 
     const renderItem = ({ item }: { item: any }) => {
         if (activeTab === 'workouts') return renderWorkoutItem({ item });
         if (activeTab === 'exercises') return renderExerciseItem({ item });
+        if (activeTab === 'aktiviteter') return renderActivityItem({ item });
         return renderProgramItem({ item });
     }
 
@@ -408,6 +513,7 @@ export default function LibraryScreen() {
             return `Inga träningspass hittades.\n(Debug: Fetched ${workouts.length}, Filter: ${activeFilter}, Cats: ${categories})`;
         }
         if (activeTab === 'exercises') return 'Inga övningar hittades.';
+        if (activeTab === 'aktiviteter') return 'Inga genomförda aktiviteter hittades.';
         return 'Inga program hittades.';
     }
 
@@ -645,5 +751,12 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontWeight: 'bold',
         textTransform: 'uppercase',
+    },
+    activityIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
     }
 });

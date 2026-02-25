@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-native-draggable-flatlist';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -28,6 +28,7 @@ export default function MobileHome() {
         loading,
         currentDate,
         activePrograms,
+        workouts,
         changeWeek,
         setListData, // We need this to update local state optimistically
         refresh
@@ -100,6 +101,86 @@ export default function MobileHome() {
         );
     };
 
+    const handleDeleteActivity = (workoutId: string) => {
+        Alert.alert(
+            'Ta bort aktivitet',
+            'Vill du ta bort denna genomförda aktivitet?',
+            [
+                { text: 'Avbryt', style: 'cancel' },
+                {
+                    text: 'Ta bort', style: 'destructive',
+                    onPress: async () => {
+                        if (!user?.uid) return;
+                        await workoutService.deleteWorkout(user.uid, workoutId);
+                        refresh(true);
+                    }
+                }
+            ]
+        );
+    };
+
+    const renderRecentActivities = () => {
+        // Filter and sort completed workouts
+        const recentWorkouts = workouts
+            .filter((w: any) => w.status === 'Completed')
+            .sort((a: any, b: any) => {
+                const dateA = a.date instanceof Date ? a.date.getTime() : (a.date as any).toMillis();
+                const dateB = b.date instanceof Date ? b.date.getTime() : (b.date as any).toMillis();
+                return dateB - dateA;
+            })
+            .slice(0, 5);
+
+        if (recentWorkouts.length === 0) return null;
+
+        return (
+            <View style={{ marginBottom: Spacing.m }}>
+                <Text style={[styles.sectionTitle, { paddingHorizontal: Spacing.m, marginTop: 0 }]}>Senaste Aktiviteter</Text>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ paddingHorizontal: Spacing.m, gap: Spacing.s }}
+                >
+                    {recentWorkouts.map((w: any) => {
+                        const isRunning = w.category === 'löpning';
+                        const iconName = isRunning ? 'footsteps-outline' : 'barbell-outline';
+                        const statText = isRunning && w.distance
+                            ? `${w.distance} km`
+                            : w.duration ? `${Math.round(w.duration / 60)} min` : '';
+
+                        return (
+                            <View key={w.id} style={styles.recentActivityCard}>
+                                <TouchableOpacity
+                                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+                                    onPress={() => router.push({ pathname: '/workout/[id]', params: { id: w.id! } })}
+                                >
+                                    <View style={styles.recentActivityIcon}>
+                                        <Ionicons name={iconName as any} size={20} color={Palette.text.secondary} />
+                                    </View>
+                                    <View style={{ flex: 1, marginLeft: 8 }}>
+                                        <Text style={styles.recentActivityTitle} numberOfLines={1}>{w.name}</Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <Text style={styles.recentActivitySubtitle}>
+                                                {w.date ? new Date(w.date instanceof Date ? w.date : (w.date as any).toMillis()).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' }) : ''}
+                                            </Text>
+                                            {statText ? <Text style={styles.recentActivityStat}>{statText}</Text> : null}
+                                        </View>
+                                    </View>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={() => handleDeleteActivity(w.id!)}
+                                    style={{ padding: 6 }}
+                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                >
+                                    <Ionicons name="trash-outline" size={16} color={Palette.text.disabled} />
+                                </TouchableOpacity>
+                            </View>
+                        );
+                    })}
+                </ScrollView>
+            </View>
+        );
+    };
+
     const renderWeeklyStats = () => {
         if (!weeklyStats) return null;
 
@@ -124,6 +205,8 @@ export default function MobileHome() {
         );
     };
 
+
+
     const renderHeader = () => {
         // Calculate week range string
         const start = listData.find(i => i.type === 'header')?.dateObj || currentDate;
@@ -140,6 +223,7 @@ export default function MobileHome() {
 
                 {renderActivePrograms()}
                 {renderWeeklyStats()}
+                {renderRecentActivities()}
 
                 {/* Custom Header Layout matching image */}
                 <View style={styles.weekControlHeader}>
@@ -435,13 +519,50 @@ const styles = StyleSheet.create({
         fontSize: Typography.size.s,
         fontWeight: 'bold',
     },
+
+    // --- Recent Activities Styles ---
+    recentActivityCard: {
+        width: 180, // Slightly smaller for better fit on small mobile screens
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFF',
+        padding: Spacing.s, // Smaller padding
+        borderRadius: BorderRadius.m,
+        borderWidth: 1,
+        borderColor: Palette.border.default,
+        ...Shadows.small,
+    },
+    recentActivityIcon: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: Palette.background.default,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    recentActivityTitle: {
+        fontSize: Typography.size.m,
+        fontWeight: '600',
+        color: Palette.text.primary,
+        marginBottom: 2,
+    },
+    recentActivitySubtitle: {
+        fontSize: Typography.size.xs,
+        color: Palette.text.secondary,
+    },
+    recentActivityStat: {
+        fontSize: Typography.size.xs,
+        fontWeight: '500',
+        color: Palette.primary.main,
+    },
+
     activeProgramCard: {
         backgroundColor: '#FFF',
         borderRadius: BorderRadius.m,
-        padding: Spacing.m,
+        padding: Spacing.s, // Consistent with Activities
         flexDirection: 'row',
         alignItems: 'center',
-        width: 250,
+        width: 200, // Reduced from 250
         ...Shadows.small,
         borderWidth: 1,
         borderColor: Palette.border.default,

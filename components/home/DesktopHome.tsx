@@ -26,6 +26,7 @@ export default function DesktopHome() {
         loading,
         currentDate,
         activePrograms,
+        workouts,
         changeWeek,
         setListData,
         refresh
@@ -40,6 +41,14 @@ export default function DesktopHome() {
     const [isStravaModalVisible, setStravaModalVisible] = useState(false);
     const [isProfileMenuVisible, setProfileMenuVisible] = useState(false);
     const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
+
+    const handleDeleteActivity = async (workoutId: string) => {
+        const confirmed = window.confirm('Vill du ta bort denna genomförda aktivitet?');
+        if (!confirmed || !user?.uid) return;
+        await workoutService.deleteWorkout(user.uid, workoutId);
+        refresh(true);
+    };
+
 
     const handleSignOut = () => {
         setProfileMenuVisible(false);
@@ -159,11 +168,7 @@ export default function DesktopHome() {
                         {activePrograms && activePrograms.length > 0 && (
                             <View>
                                 <Text style={styles.sectionTitle}>Mina Aktiva Program</Text>
-                                <ScrollView
-                                    horizontal
-                                    showsHorizontalScrollIndicator={false}
-                                    contentContainerStyle={{ gap: Spacing.m }}
-                                >
+                                <View style={{ gap: Spacing.s }}>
                                     {activePrograms.map((prog) => (
                                         <TouchableOpacity
                                             key={prog.id}
@@ -182,7 +187,7 @@ export default function DesktopHome() {
                                             <Ionicons name="chevron-forward" size={16} color={Palette.text.disabled} />
                                         </TouchableOpacity>
                                     ))}
-                                </ScrollView>
+                                </View>
                             </View>
                         )}
 
@@ -203,6 +208,66 @@ export default function DesktopHome() {
                                 </View>
                             </View>
                         </View>
+
+                        {(() => {
+                            const recentWorkouts = workouts
+                                .filter((w: any) => w.status === 'Completed')
+                                .sort((a: any, b: any) => {
+                                    const dateA = a.date instanceof Date ? a.date.getTime() : (a.date as any).toMillis();
+                                    const dateB = b.date instanceof Date ? b.date.getTime() : (b.date as any).toMillis();
+                                    return dateB - dateA;
+                                })
+                                .slice(0, 5);
+
+                            if (recentWorkouts.length === 0) return null;
+
+                            return (
+                                <View>
+                                    <Text style={styles.sectionTitle}>Senaste Aktiviteter</Text>
+                                    <View style={{ gap: Spacing.s }}>
+                                        {recentWorkouts.map((w) => {
+                                            const isRunning = w.category === 'löpning';
+                                            const iconName = isRunning ? 'footsteps-outline' : 'barbell-outline';
+                                            const statText = isRunning && w.distance
+                                                ? `${w.distance} km`
+                                                : w.duration ? `${Math.round(w.duration / 60)} min` : '';
+
+                                            return (
+                                                <View
+                                                    key={w.id}
+                                                    style={styles.recentActivityCard}
+                                                >
+                                                    <TouchableOpacity
+                                                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+                                                        onPress={() => router.push({ pathname: '/workout/[id]', params: { id: w.id! } })}
+                                                    >
+                                                        <View style={styles.recentActivityIcon}>
+                                                            <Ionicons name={iconName as any} size={20} color={Palette.text.secondary} />
+                                                        </View>
+                                                        <View style={{ flex: 1, marginLeft: 10 }}>
+                                                            <Text style={styles.recentActivityTitle} numberOfLines={1}>{w.name}</Text>
+                                                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                                <Text style={styles.recentActivitySubtitle}>
+                                                                    {w.date ? new Date(w.date instanceof Date ? w.date : (w.date as any).toMillis()).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' }) : ''}
+                                                                </Text>
+                                                                {statText ? <Text style={styles.recentActivityStat}>{statText}</Text> : null}
+                                                            </View>
+                                                        </View>
+                                                    </TouchableOpacity>
+                                                    <TouchableOpacity
+                                                        onPress={() => handleDeleteActivity(w.id!)}
+                                                        style={{ padding: 6 }}
+                                                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                                    >
+                                                        <Ionicons name="trash-outline" size={16} color={Palette.text.disabled} />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            );
+                                        })}
+                                    </View>
+                                </View>
+                            );
+                        })()}
                     </ScrollView>
 
                     {/* Right Column: Weekly Schedule (Draggable List) */}
@@ -351,7 +416,7 @@ const styles = StyleSheet.create({
         padding: Spacing.l,
     },
     leftColumn: {
-        flex: 2,
+        flex: 3,
     },
     rightColumn: {
         flex: 3,
@@ -433,13 +498,48 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
         ...Shadows.large,
     },
+
+    // --- Recent Activities Styles ---
+    recentActivityCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFF',
+        padding: Spacing.m,
+        borderRadius: BorderRadius.m,
+        borderWidth: 1,
+        borderColor: Palette.border.default,
+        ...Shadows.small,
+    },
+    recentActivityIcon: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: Palette.background.default,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    recentActivityTitle: {
+        fontSize: Typography.size.m,
+        fontWeight: '600',
+        color: Palette.text.primary,
+        marginBottom: 2,
+    },
+    recentActivitySubtitle: {
+        fontSize: Typography.size.s,
+        color: Palette.text.secondary,
+    },
+    recentActivityStat: {
+        fontSize: Typography.size.s,
+        fontWeight: '500',
+        color: Palette.primary.main,
+    },
+
     activeProgramCard: {
         backgroundColor: '#FFF',
         borderRadius: BorderRadius.m,
         padding: Spacing.m,
         flexDirection: 'row',
         alignItems: 'center',
-        width: 280,
         ...Shadows.small,
         borderWidth: 1,
         borderColor: Palette.border.default,

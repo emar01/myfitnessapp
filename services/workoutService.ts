@@ -1,6 +1,6 @@
 import { db } from '@/lib/firebaseConfig';
 import { Workout } from '@/types';
-import { addDoc, collection, doc, getDocs, query, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDocs, query, updateDoc } from 'firebase/firestore';
 
 export const workoutService = {
     /**
@@ -43,6 +43,19 @@ export const workoutService = {
             return docRef.id;
         } catch (error) {
             console.error("Error saving workout:", error);
+            throw error;
+        }
+    },
+
+    /**
+     * Delete a workout by ID.
+     */
+    deleteWorkout: async (userId: string, workoutId: string): Promise<void> => {
+        try {
+            const ref = doc(db, 'users', userId, 'workouts', workoutId);
+            await deleteDoc(ref);
+        } catch (error) {
+            console.error("Error deleting workout:", error);
             throw error;
         }
     }
