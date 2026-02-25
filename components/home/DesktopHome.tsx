@@ -9,7 +9,7 @@ import { workoutService } from '@/services/workoutService';
 import { Workout } from '@/types';
 import { getScaleWeekNumber } from '@/utils/dateUtils';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
@@ -25,8 +25,15 @@ export default function DesktopHome() {
         loading,
         currentDate,
         changeWeek,
-        setListData
+        setListData,
+        refresh
     } = useHomeData(user);
+
+    useFocusEffect(
+        useCallback(() => {
+            refresh(true); // Silent refresh
+        }, [refresh])
+    );
 
     const [isStravaModalVisible, setStravaModalVisible] = useState(false);
     const [isProfileMenuVisible, setProfileMenuVisible] = useState(false);
@@ -208,7 +215,10 @@ export default function DesktopHome() {
                 visible={!!selectedWorkout}
                 animationType="fade"
                 transparent={true}
-                onRequestClose={() => setSelectedWorkout(null)}
+                onRequestClose={() => {
+                    setSelectedWorkout(null);
+                    refresh(true); // Silent refresh
+                }}
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
@@ -216,7 +226,10 @@ export default function DesktopHome() {
                             <WorkoutDetailsView
                                 workoutId={selectedWorkout.id!}
                                 initialData={selectedWorkout}
-                                onClose={() => setSelectedWorkout(null)}
+                                onClose={() => {
+                                    setSelectedWorkout(null);
+                                    refresh(true); // Silent refresh
+                                }}
                                 isModal={true}
                             />
                         )}

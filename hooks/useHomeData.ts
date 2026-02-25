@@ -2,7 +2,7 @@ import { db } from '@/lib/firebaseConfig';
 import { workoutService } from '@/services/workoutService';
 import { Program, Workout } from '@/types';
 import { collection, getDocs, limit, query, where } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 // Helper to get week dates based on a reference date
 export const getWeekDates = (referenceDate: Date = new Date()) => {
@@ -37,10 +37,11 @@ export function useHomeData(user: any) {
     const [listData, setListData] = useState<ListItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentDate, setCurrentDate] = useState(new Date());
+    const currentDateRef = useRef(currentDate);
 
-    const refresh = () => {
-        if (user) fetchData();
-    };
+    useEffect(() => {
+        currentDateRef.current = currentDate;
+    }, [currentDate]);
 
     const changeWeek = (direction: 'next' | 'prev') => {
         const newDate = new Date(currentDate);
@@ -48,8 +49,8 @@ export function useHomeData(user: any) {
         setCurrentDate(newDate);
     };
 
-    const fetchData = async () => {
-        setLoading(true);
+    const fetchData = useCallback(async (silent = false) => {
+        if (!silent) setLoading(true);
         try {
             // 1. Fetch Daily Program
             // Note: ideally this should also be in a programService
@@ -65,14 +66,18 @@ export function useHomeData(user: any) {
                 setWorkouts(fetchedWorkouts);
 
                 // 3. Construct List Data immediately
-                constructListData(fetchedWorkouts, currentDate);
+                constructListData(fetchedWorkouts, currentDateRef.current);
             }
         } catch (e) {
             console.error('Failed to fetch data', e);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
-    };
+    }, [user]);
+
+    const refresh = useCallback((silent = false) => {
+        if (user) fetchData(silent);
+    }, [user, fetchData]);
 
     const constructListData = (currentWorkouts: Workout[], dateContext: Date) => {
         const dates = getWeekDates(dateContext);

@@ -74,7 +74,7 @@ export default function StravaSyncModal({ visible, onClose, userId }: StravaSync
                 const stravaActs = await getStravaActivities(userId);
                 setActivities(stravaActs);
             } catch (err) {
-                console.log("Error fetching Strava activities, may need re-auth", err);
+                // console.error("Error fetching Strava activities, may need re-auth", err);
                 // If 401, we might set isAuthenticated(false)
             }
 

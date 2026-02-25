@@ -26,7 +26,7 @@ export const saveStravaCredentials = async (userId: string, tokenData: any) => {
             athlete: tokenData.athlete,
             updated_at: new Date()
         }, { merge: true });
-        console.log('Strava credentials saved.');
+        // console.log('Strava credentials saved.');
     } catch (e) {
         console.error('Failed to save Strava credentials', e);
         throw e;
@@ -46,7 +46,7 @@ export const getValidStravaToken = async (userId: string): Promise<string> => {
 
     // Refresh if expired or about to expire (within 5 mins)
     if (data.expires_at && data.expires_at < now + 300) {
-        console.log("Strava token expired, refreshing...");
+        // console.log("Strava token expired, refreshing...");
         return await refreshStravaToken(userId, data.refresh_token);
     }
 

@@ -67,7 +67,7 @@ export default function WorkoutDetailsView({
                 alert("Inga aktiviteter hittades på Strava.");
             }
         } catch (e: any) {
-            console.log("Fetch failed", e);
+            // console.error("Fetch failed", e);
             if (e.message.includes("No Strava connection")) {
                 Alert.alert("Koppla Strava", "Du måste koppla ditt Strava-konto under Profil för att hämta pass.");
             } else {
@@ -410,9 +410,9 @@ export default function WorkoutDetailsView({
                                                 <TextInput
                                                     style={styles.input}
                                                     placeholder="0.0"
-                                                    keyboardType="numeric"
+                                                    keyboardType="decimal-pad"
                                                     value={completionDistance}
-                                                    onChangeText={setCompletionDistance}
+                                                    onChangeText={(val) => setCompletionDistance(val.replace(',', '.'))}
                                                 />
                                             </View>
                                             <View style={{ flex: 1 }}>

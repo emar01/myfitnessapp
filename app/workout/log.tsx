@@ -161,6 +161,7 @@ export default function WorkoutLoggerScreen() {
                 ...workout,
                 status: 'Completed',
                 date: new Date(),
+                scheduledDate: new Date(),
                 userId: user.uid,
                 exercises: [runningExercise],
                 category: 'löpning',
@@ -193,6 +194,7 @@ export default function WorkoutLoggerScreen() {
                 ...workout,
                 status: 'Completed',
                 date: new Date(),
+                scheduledDate: new Date(),
                 userId: user.uid,
                 exercises: workout.exercises.filter(ex => ex.sets.length > 0)
             };

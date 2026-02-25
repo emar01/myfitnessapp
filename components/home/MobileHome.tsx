@@ -12,7 +12,7 @@ import { ListItem, useHomeData } from '@/hooks/useHomeData';
 import { workoutService } from '@/services/workoutService'; // Import Service
 import { getScaleWeekNumber } from '@/utils/dateUtils';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 
 // ... (keep helper imports if any were missed, but I think I got them)
 
@@ -27,8 +27,15 @@ export default function MobileHome() {
         loading,
         currentDate,
         changeWeek,
-        setListData // We need this to update local state optimistically
+        setListData, // We need this to update local state optimistically
+        refresh
     } = useHomeData(user);
+
+    useFocusEffect(
+        useCallback(() => {
+            refresh(true); // Silent refresh
+        }, [refresh])
+    );
 
     const [isProfileMenuVisible, setProfileMenuVisible] = useState(false);
     const [isStravaModalVisible, setStravaModalVisible] = useState(false);
@@ -175,7 +182,6 @@ export default function MobileHome() {
                         workoutDate.getDate() === currentHeaderDate.getDate();
 
                     if (!isSameDay) {
-                        console.log(`Moving ${item.workout.name} to ${currentHeaderDate.toDateString()}`);
                         // Update Local Object Ref (for consistency until refresh)
                         item.workout.scheduledDate = currentHeaderDate;
                         // API Call

@@ -115,7 +115,7 @@ export default function ProgramDetailsScreen() {
                     let templateNote = '';
 
                     // DEBUG: Log processing
-                    // console.log(`Processing item: ${item.workoutTitle}, TemplateID: ${item.workoutTemplateId}`);
+
 
                     if (item.workoutTemplateId) {
                         try {
@@ -291,9 +291,7 @@ export default function ProgramDetailsScreen() {
     if (!program) return null;
 
     const renderSchedule = () => {
-        console.log('Rendering Schedule. Count:', program.schedule?.length);
         if (program.schedule) {
-            program.schedule.forEach((s, i) => console.log(`Item ${i}: dayOffset=${s.dayOffset}, title=${s.workoutTitle}`));
         }
 
         if (!program.schedule || program.schedule.length === 0) {
