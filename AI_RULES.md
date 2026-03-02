@@ -11,3 +11,6 @@ Dessa principer gäller för all AI-assisterad utveckling i det här projektet o
    - Stöd för skärmläsare (ex. `accessibilityLabel`, `accessibilityRole` i React Native).
    - Tillräckligt stora klickytor (minst 44x44 dp) för touch.
    - Logisk tabb-navigering för desktopanvändare.
+
+3. **Anpassade Meddelanderutor (Custom Modals/Alerts)**
+   Använd alltid projektets egna, anpassade komponenter för meddelanderutor och dialoger (exempelvis `ConfirmationModal` som används på startsidan) istället för systemets inbyggda standarddialoger (som `Alert.alert` i React Native eller `window.confirm` på webben). Detta för att säkerställa en konsekvent design och användarupplevelse över hela applikationen oavsett plattform.
