@@ -1,3 +1,4 @@
+import ConfirmationModal from '@/components/ConfirmationModal';
 import DayCard, { DayCardType } from '@/components/DayCard';
 import ProfileMenuModal from '@/components/ProfileMenuModal';
 import StravaSyncModal from '@/components/StravaSyncModal';
@@ -39,15 +40,20 @@ export default function DesktopHome() {
     const [isStravaModalVisible, setStravaModalVisible] = useState(false);
     const [isProfileMenuVisible, setProfileMenuVisible] = useState(false);
     const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
+    const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+    const [workoutToDelete, setWorkoutToDelete] = useState<{ id: string, isCompleted: boolean } | null>(null);
 
-    const handleDeleteWorkout = async (workoutId: string, isCompleted: boolean = false) => {
-        const message = isCompleted
-            ? 'Vill du ta bort denna genomförda aktivitet?'
-            : 'Vill du ta bort detta planerade pass?';
+    const handleDeleteWorkout = (workoutId: string, isCompleted: boolean = false) => {
+        setWorkoutToDelete({ id: workoutId, isCompleted });
+        setDeleteModalVisible(true);
+    };
 
-        const confirmed = window.confirm(message);
-        if (!confirmed || !user?.uid) return;
-        await workoutService.deleteWorkout(user.uid, workoutId);
+    const confirmDeleteWorkout = async () => {
+        if (!workoutToDelete || !user?.uid) return;
+
+        await workoutService.deleteWorkout(user.uid, workoutToDelete.id);
+        setDeleteModalVisible(false);
+        setWorkoutToDelete(null);
         refresh(true);
     };
 
@@ -268,6 +274,19 @@ export default function DesktopHome() {
                 onProfile={handleProfileNavigation}
                 onLogout={handleSignOut}
                 userEmail={user?.email}
+            />
+
+            <ConfirmationModal
+                visible={deleteModalVisible}
+                title={workoutToDelete?.isCompleted ? "Ta bort aktivitet" : "Ta bort planerat pass"}
+                message={workoutToDelete?.isCompleted
+                    ? "Vill du ta bort denna genomförda aktivitet?"
+                    : "Vill du ta bort detta planerade pass?"}
+                onConfirm={confirmDeleteWorkout}
+                onCancel={() => {
+                    setDeleteModalVisible(false);
+                    setWorkoutToDelete(null);
+                }}
             />
 
             {/* Workout Detail Modal */}

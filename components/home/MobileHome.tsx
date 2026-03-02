@@ -1,9 +1,10 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 // NOTE: DraggableFlatList kept imported to avoid breaking other potential uses, but no longer used in schedule list
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import ConfirmationModal from '@/components/ConfirmationModal';
 import DayCard, { DayCardType } from '@/components/DayCard';
 import ProfileMenuModal from '@/components/ProfileMenuModal';
 import StravaSyncModal from '@/components/StravaSyncModal';
@@ -43,6 +44,8 @@ export default function MobileHome() {
 
     const [isProfileMenuVisible, setProfileMenuVisible] = useState(false);
     const [isStravaModalVisible, setStravaModalVisible] = useState(false);
+    const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+    const [workoutToDelete, setWorkoutToDelete] = useState<{ id: string, isCompleted: boolean } | null>(null);
 
     const handleSignOut = () => {
         setProfileMenuVisible(false);
@@ -103,26 +106,17 @@ export default function MobileHome() {
     };
 
     const handleDeleteWorkout = (workoutId: string, isCompleted: boolean = false) => {
-        const title = isCompleted ? 'Ta bort aktivitet' : 'Ta bort planerat pass';
-        const message = isCompleted
-            ? 'Vill du ta bort denna genomförda aktivitet?'
-            : 'Vill du ta bort detta planerade pass?';
+        setWorkoutToDelete({ id: workoutId, isCompleted });
+        setDeleteModalVisible(true);
+    };
 
-        Alert.alert(
-            title,
-            message,
-            [
-                { text: 'Avbryt', style: 'cancel' },
-                {
-                    text: 'Ta bort', style: 'destructive',
-                    onPress: async () => {
-                        if (!user?.uid) return;
-                        await workoutService.deleteWorkout(user.uid, workoutId);
-                        refresh(true);
-                    }
-                }
-            ]
-        );
+    const confirmDeleteWorkout = async () => {
+        if (!workoutToDelete || !user?.uid) return;
+
+        await workoutService.deleteWorkout(user.uid, workoutToDelete.id);
+        setDeleteModalVisible(false);
+        setWorkoutToDelete(null);
+        refresh(true);
     };
 
     const renderRecentActivities = () => {
@@ -334,6 +328,18 @@ export default function MobileHome() {
                 onProfile={handleProfileNavigation}
                 onLogout={handleSignOut}
                 userEmail={user?.email}
+            />
+            <ConfirmationModal
+                visible={deleteModalVisible}
+                title={workoutToDelete?.isCompleted ? "Ta bort aktivitet" : "Ta bort planerat pass"}
+                message={workoutToDelete?.isCompleted
+                    ? "Vill du ta bort denna genomförda aktivitet?"
+                    : "Vill du ta bort detta planerade pass?"}
+                onConfirm={confirmDeleteWorkout}
+                onCancel={() => {
+                    setDeleteModalVisible(false);
+                    setWorkoutToDelete(null);
+                }}
             />
         </View>
     );
