@@ -304,7 +304,35 @@ export default function WorkoutLoggerScreen() {
         }
     };
 
+    const [showTemplates, setShowTemplates] = useState(false);
+
     const renderRunningSelection = () => {
+        if (!showTemplates) {
+            return (
+                <View style={{ flex: 1, padding: Spacing.xl, justifyContent: 'center', alignItems: 'center' }}>
+                    <Text style={{ fontSize: Typography.size.xl, fontWeight: 'bold', marginBottom: Spacing.xxl, color: Palette.text.primary, textAlign: 'center' }}>
+                        Hur vill du registrera din löpning?
+                    </Text>
+
+                    <TouchableOpacity
+                        style={[styles.largeButton, { width: '100%', marginBottom: Spacing.l, minHeight: 80 }]}
+                        onPress={() => setWorkout(prev => ({ ...prev, name: 'Fritt pass', category: 'löpning', subcategory: 'distans' }))}
+                    >
+                        <Ionicons name="stopwatch-outline" size={32} color={Palette.primary.main} />
+                        <Text style={[styles.largeButtonText, { fontSize: Typography.size.l }]}>Fritt pass (ange egna data)</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.largeButton, { width: '100%', minHeight: 80 }]}
+                        onPress={() => setShowTemplates(true)}
+                    >
+                        <Ionicons name="list-outline" size={32} color={Palette.accent.main} />
+                        <Text style={[styles.largeButtonText, { fontSize: Typography.size.l }]}>Välj från mall</Text>
+                    </TouchableOpacity>
+                </View>
+            );
+        }
+
         let filtered = runningTemplates;
         if (runSubFilter) {
             filtered = filtered.filter(t => t.subcategory === runSubFilter);
@@ -312,9 +340,14 @@ export default function WorkoutLoggerScreen() {
 
         return (
             <View style={{ flex: 1, padding: Spacing.m }}>
-                <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: Spacing.m, color: Palette.text.primary }}>
-                    Välj löppass
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.m }}>
+                    <TouchableOpacity onPress={() => setShowTemplates(false)} style={{ marginRight: Spacing.s }}>
+                        <Ionicons name="arrow-back" size={24} color={Palette.text.primary} />
+                    </TouchableOpacity>
+                    <Text style={{ fontSize: 18, fontWeight: 'bold', color: Palette.text.primary }}>
+                        Välj löppass
+                    </Text>
+                </View>
 
                 {/* Filters */}
                 <View style={{ flexDirection: 'row', marginBottom: Spacing.m }}>
@@ -365,14 +398,6 @@ export default function WorkoutLoggerScreen() {
                         ListEmptyComponent={<Text style={{ textAlign: 'center', color: Palette.text.secondary, marginTop: 20 }}>Inga mallar hittades. Skapa i biblioteket.</Text>}
                     />
                 )}
-
-                <TouchableOpacity
-                    style={[styles.largeButton, { marginTop: Spacing.m }]}
-                    onPress={() => setWorkout(prev => ({ ...prev, name: 'Fritt pass', category: 'löpning', subcategory: 'distans' }))}
-                >
-                    <Ionicons name="play-outline" size={20} color={Palette.primary.main} />
-                    <Text style={styles.largeButtonText}>Starta fritt pass (utan mall)</Text>
-                </TouchableOpacity>
             </View>
         )
     };

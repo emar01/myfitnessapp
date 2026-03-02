@@ -1,0 +1,148 @@
+import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
+import { Ionicons } from '@expo/vector-icons';
+import React from 'react';
+import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+interface WorkoutTypeSelectorProps {
+    visible: boolean;
+    onClose: () => void;
+    onSelectType: (type: 'styrketräning' | 'löpning') => void;
+}
+
+export default function WorkoutTypeSelector({ visible, onClose, onSelectType }: WorkoutTypeSelectorProps) {
+    return (
+        <Modal
+            visible={visible}
+            animationType="fade"
+            transparent={true}
+            onRequestClose={onClose}
+        >
+            <View style={styles.overlay}>
+                {/* Backdrop touch to close */}
+                <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
+
+                <View style={styles.modalContent}>
+                    <View style={styles.header}>
+                        <Text style={styles.title}>Starta Pass</Text>
+                        <TouchableOpacity onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel="Stäng">
+                            <Ionicons name="close" size={24} color={Palette.text.secondary} />
+                        </TouchableOpacity>
+                    </View>
+
+                    <Text style={styles.subtitle}>Vad vill du träna idag?</Text>
+
+                    <View style={styles.optionsContainer}>
+                        <TouchableOpacity
+                            style={styles.optionCard}
+                            onPress={() => onSelectType('styrketräning')}
+                            accessibilityRole="button"
+                        >
+                            <View style={[styles.iconContainer, { backgroundColor: Palette.primary.main + '20' }]}>
+                                <Ionicons name="barbell" size={32} color={Palette.primary.main} />
+                            </View>
+                            <View style={styles.optionTextContainer}>
+                                <Text style={styles.optionTitle}>Styrketräning</Text>
+                                <Text style={styles.optionDescription}>Gym, kroppsvikt eller fria vikter</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={Palette.text.disabled} />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.optionCard}
+                            onPress={() => onSelectType('löpning')}
+                            accessibilityRole="button"
+                        >
+                            <View style={[styles.iconContainer, { backgroundColor: Palette.accent.main + '20' }]}>
+                                <Ionicons name="footsteps" size={32} color={Palette.accent.main} />
+                            </View>
+                            <View style={styles.optionTextContainer}>
+                                <Text style={styles.optionTitle}>Löpning</Text>
+                                <Text style={styles.optionDescription}>Konditionspass ute eller på rullband</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={Palette.text.disabled} />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </View>
+        </Modal>
+    );
+}
+
+const styles = StyleSheet.create({
+    overlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end', // Slide up from bottom on mobile
+    },
+    backdrop: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+    },
+    modalContent: {
+        backgroundColor: Palette.background.paper,
+        borderTopLeftRadius: BorderRadius.xl,
+        borderTopRightRadius: BorderRadius.xl,
+        padding: Spacing.xl,
+        paddingBottom: Spacing.xxl, // Extra padding for safe area
+        width: '100%',
+        maxWidth: 600,
+        alignSelf: 'center', // Center on desktop
+        ...Shadows.large,
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: Spacing.m,
+    },
+    title: {
+        fontSize: Typography.size.xl,
+        fontWeight: 'bold',
+        color: Palette.text.primary,
+    },
+    closeButton: {
+        padding: Spacing.xs,
+    },
+    subtitle: {
+        fontSize: Typography.size.m,
+        color: Palette.text.secondary,
+        marginBottom: Spacing.xl,
+    },
+    optionsContainer: {
+        gap: Spacing.m,
+    },
+    optionCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: Spacing.l,
+        backgroundColor: Palette.background.default,
+        borderRadius: BorderRadius.l,
+        borderWidth: 1,
+        borderColor: Palette.border.default,
+        minHeight: 80, // Accessibility target
+    },
+    iconContainer: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: Spacing.m,
+    },
+    optionTextContainer: {
+        flex: 1,
+    },
+    optionTitle: {
+        fontSize: Typography.size.l,
+        fontWeight: 'bold',
+        color: Palette.text.primary,
+        marginBottom: 4,
+    },
+    optionDescription: {
+        fontSize: Typography.size.s,
+        color: Palette.text.secondary,
+    },
+});

@@ -41,6 +41,7 @@ export default function TabLayout() {
               tabBarStyle: { display: 'none' }, // Always hide bottom tabs on desktop
             }}>
             <Tabs.Screen name="index" options={{ href: null }} />
+            <Tabs.Screen name="stats" options={{ href: null }} />
             <Tabs.Screen name="library" options={{ href: null }} />
             <Tabs.Screen name="settings" options={{ href: null }} />
             <Tabs.Screen name="calendar" options={{ href: null }} />
@@ -80,6 +81,13 @@ export default function TabLayout() {
         options={{
           title: 'Bibliotek',
           tabBarIcon: ({ color }) => <FontAwesome name="book" size={24} color={color} style={{ marginBottom: -3 }} />,
+        }}
+      />
+      <Tabs.Screen
+        name="stats"
+        options={{
+          title: 'Statistik',
+          tabBarIcon: ({ color }) => <FontAwesome name="line-chart" size={22} color={color} style={{ marginBottom: -3 }} />,
         }}
       />
       <Tabs.Screen

@@ -3,6 +3,7 @@ import DayCard, { DayCardType } from '@/components/DayCard';
 import ProfileMenuModal from '@/components/ProfileMenuModal';
 import StravaSyncModal from '@/components/StravaSyncModal';
 import WorkoutDetailsView from '@/components/WorkoutDetailsView';
+import WorkoutTypeSelector from '@/components/WorkoutTypeSelector';
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
 import { ListItem, useHomeData } from '@/hooks/useHomeData';
@@ -40,6 +41,7 @@ export default function DesktopHome() {
     const [isStravaModalVisible, setStravaModalVisible] = useState(false);
     const [isProfileMenuVisible, setProfileMenuVisible] = useState(false);
     const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
+    const [isWorkoutTypeModalVisible, setWorkoutTypeModalVisible] = useState(false);
     const [deleteModalVisible, setDeleteModalVisible] = useState(false);
     const [workoutToDelete, setWorkoutToDelete] = useState<{ id: string, isCompleted: boolean } | null>(null);
 
@@ -140,7 +142,7 @@ export default function DesktopHome() {
 
 
 
-                        <TouchableOpacity style={styles.startWorkoutButton} onPress={() => router.push({ pathname: '/workout/log', params: { workoutName: 'New Workout' } })}>
+                        <TouchableOpacity style={styles.startWorkoutButton} onPress={() => setWorkoutTypeModalVisible(true)}>
                             <Ionicons name="add" size={20} color="#FFF" />
                             <Text style={styles.startWorkoutText}>Starta pass</Text>
                         </TouchableOpacity>
@@ -320,6 +322,18 @@ export default function DesktopHome() {
                 onCancel={() => {
                     setDeleteModalVisible(false);
                     setWorkoutToDelete(null);
+                }}
+            />
+
+            <WorkoutTypeSelector
+                visible={isWorkoutTypeModalVisible}
+                onClose={() => setWorkoutTypeModalVisible(false)}
+                onSelectType={(type) => {
+                    setWorkoutTypeModalVisible(false);
+                    router.push({
+                        pathname: '/workout/log',
+                        params: { workoutName: 'New Workout', category: type }
+                    });
                 }}
             />
 

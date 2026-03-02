@@ -8,6 +8,7 @@ import ConfirmationModal from '@/components/ConfirmationModal';
 import DayCard, { DayCardType } from '@/components/DayCard';
 import ProfileMenuModal from '@/components/ProfileMenuModal';
 import StravaSyncModal from '@/components/StravaSyncModal';
+import WorkoutTypeSelector from '@/components/WorkoutTypeSelector';
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
 import { ListItem, useHomeData } from '@/hooks/useHomeData';
@@ -44,6 +45,7 @@ export default function MobileHome() {
 
     const [isProfileMenuVisible, setProfileMenuVisible] = useState(false);
     const [isStravaModalVisible, setStravaModalVisible] = useState(false);
+    const [isWorkoutTypeModalVisible, setWorkoutTypeModalVisible] = useState(false);
     const [deleteModalVisible, setDeleteModalVisible] = useState(false);
     const [workoutToDelete, setWorkoutToDelete] = useState<{ id: string, isCompleted: boolean } | null>(null);
 
@@ -62,7 +64,7 @@ export default function MobileHome() {
     const renderStartWorkoutButton = () => (
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <TouchableOpacity
-                onPress={() => router.push({ pathname: '/workout/log', params: { workoutName: 'New Workout' } })}
+                onPress={() => setWorkoutTypeModalVisible(true)}
                 style={{ flexDirection: 'row', alignItems: 'center' }}
             >
                 <Ionicons name="add" size={20} color={Palette.text.secondary} />
@@ -368,6 +370,17 @@ export default function MobileHome() {
                 onCancel={() => {
                     setDeleteModalVisible(false);
                     setWorkoutToDelete(null);
+                }}
+            />
+            <WorkoutTypeSelector
+                visible={isWorkoutTypeModalVisible}
+                onClose={() => setWorkoutTypeModalVisible(false)}
+                onSelectType={(type) => {
+                    setWorkoutTypeModalVisible(false);
+                    router.push({
+                        pathname: '/workout/log',
+                        params: { workoutName: 'New Workout', category: type }
+                    });
                 }}
             />
         </View>
