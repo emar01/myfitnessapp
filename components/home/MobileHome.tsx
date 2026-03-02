@@ -105,6 +105,18 @@ export default function MobileHome() {
         );
     };
 
+    const handleToggleComplete = async (workoutId: string, currentStatus: string) => {
+        if (!user?.uid) return;
+        const newStatus = currentStatus === 'Completed' ? 'Planned' : 'Completed';
+        const updatePayload: any = {
+            status: newStatus,
+            completedAt: newStatus === 'Completed' ? new Date() : null,
+            date: newStatus === 'Completed' ? new Date() : new Date(), // Keep date updated for sorting
+        };
+        await workoutService.updateWorkout(user.uid, workoutId, updatePayload);
+        refresh(true);
+    };
+
     const handleDeleteWorkout = (workoutId: string, isCompleted: boolean = false) => {
         setWorkoutToDelete({ id: workoutId, isCompleted });
         setDeleteModalVisible(true);
@@ -124,9 +136,12 @@ export default function MobileHome() {
         const recentWorkouts = workouts
             .filter((w: any) => w.status === 'Completed')
             .sort((a: any, b: any) => {
-                const dateA = a.date instanceof Date ? a.date.getTime() : (a.date as any).toMillis();
-                const dateB = b.date instanceof Date ? b.date.getTime() : (b.date as any).toMillis();
-                return dateB - dateA;
+                const getSortDate = (w: any) => {
+                    const d = w.completedAt || w.date;
+                    if (!d) return 0;
+                    return d instanceof Date ? d.getTime() : (d as any).toMillis();
+                };
+                return getSortDate(b) - getSortDate(a);
             })
             .slice(0, 5);
 
@@ -159,10 +174,23 @@ export default function MobileHome() {
                                         <Ionicons name={iconName as any} size={20} color={Palette.text.secondary} />
                                     </View>
                                     <View style={{ flex: 1, marginLeft: 8 }}>
-                                        <Text style={styles.recentActivityTitle} numberOfLines={1}>{w.name}</Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                            <Text style={styles.recentActivityTitle} numberOfLines={1}>{w.name}</Text>
+                                            <TouchableOpacity
+                                                onPress={() => handleToggleComplete(w.id!, w.status)}
+                                                style={{ marginLeft: 6 }}
+                                            >
+                                                <Ionicons name="checkmark-circle" size={18} color={Palette.primary.main} />
+                                            </TouchableOpacity>
+                                        </View>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                                             <Text style={styles.recentActivitySubtitle}>
-                                                {w.date ? new Date(w.date instanceof Date ? w.date : (w.date as any).toMillis()).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' }) : ''}
+                                                {(() => {
+                                                    const d = w.completedAt || w.date;
+                                                    if (!d) return '';
+                                                    const dateObj = d instanceof Date ? d : (d as any).toMillis();
+                                                    return new Date(dateObj).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' });
+                                                })()}
                                             </Text>
                                             {statText ? <Text style={styles.recentActivityStat}>{statText}</Text> : null}
                                         </View>
@@ -170,10 +198,10 @@ export default function MobileHome() {
                                 </TouchableOpacity>
                                 <Pressable
                                     onPress={() => handleDeleteWorkout(w.id!, true)}
-                                    style={{ padding: 8 }}
-                                    hitSlop={12}
+                                    style={{ padding: 10, position: 'absolute', right: 0, top: 0 }}
+                                    hitSlop={15}
                                 >
-                                    <Ionicons name="trash-outline" size={16} color={Palette.text.disabled} />
+                                    <Ionicons name="trash-outline" size={20} color={Palette.text.disabled} />
                                 </Pressable>
                             </View>
                         );
@@ -279,6 +307,7 @@ export default function MobileHome() {
                     status={item.workout.status === 'Completed' ? 'completed' : 'pending'}
                     onPress={() => router.push({ pathname: '/workout/[id]', params: { id: item.workout.id!, title: item.workout.name, status: item.workout.status === 'Completed' ? 'completed' : 'planned' } })}
                     onDeletePress={() => handleDeleteWorkout(item.workout.id!, item.workout.status === 'Completed')}
+                    onToggleComplete={() => handleToggleComplete(item.workout.id!, item.workout.status)}
                     showDragHandle={false}
                 />
             </View>

@@ -58,5 +58,18 @@ export const workoutService = {
             console.error("Error deleting workout:", error);
             throw error;
         }
+    },
+
+    /**
+     * Update a workout with a custom payload.
+     */
+    updateWorkout: async (userId: string, workoutId: string, payload: Partial<Workout>): Promise<void> => {
+        try {
+            const ref = doc(db, 'users', userId, 'workouts', workoutId);
+            await updateDoc(ref, payload as any);
+        } catch (error) {
+            console.error("Error updating workout:", error);
+            throw error;
+        }
     }
 };

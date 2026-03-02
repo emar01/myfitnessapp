@@ -1,8 +1,8 @@
 import { BorderRadius, Palette, Spacing, Typography } from '@/constants/DesignSystem';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { TouchableOpacity } from 'react-native-gesture-handler'; // Ensure this matches platform
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+// Removed react-native-gesture-handler TouchableOpacity for better web/desktop compatibility
 
 export type DayCardType =
     | 'distans' | 'långpass' | 'intervall'
@@ -24,6 +24,7 @@ interface DayCardProps {
     isToday?: boolean;
     onMenuPress?: () => void;
     onDeletePress?: () => void;
+    onToggleComplete?: () => void;
 }
 
 export default function DayCard({
@@ -37,6 +38,7 @@ export default function DayCard({
     onLongPress,
     onMenuPress,
     onDeletePress,
+    onToggleComplete,
     showDragHandle,
 }: DayCardProps) {
 
@@ -74,32 +76,38 @@ export default function DayCard({
                     styles.cardContainer,
                     status === 'completed' && styles.completedBorder,
                 ]}>
-                    <View style={[styles.accentStrip, { backgroundColor: accentColor }]} />
-
                     <TouchableOpacity
-                        style={styles.contentContainer}
+                        style={styles.mainActionArea}
                         onPress={onPress}
                         onLongPress={onLongPress}
                         activeOpacity={0.7}
                     >
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <View style={{ flex: 1 }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                    <Text style={styles.title} numberOfLines={1}>{title}</Text>
-                                    {status === 'completed' && (
-                                        <Ionicons
-                                            name="checkmark-circle"
-                                            size={20}
-                                            color={Palette.primary.main}
-                                            style={{ marginLeft: 6 }}
-                                        />
-                                    )}
-                                </View>
-                                {!!subtitle && <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>}
-                                <View style={styles.chipContainer}>
-                                    <Text style={[styles.caption, { color: accentColor }]}>
-                                        {String(type).charAt(0).toUpperCase() + String(type).slice(1)}
-                                    </Text>
+                        <View style={[styles.accentStrip, { backgroundColor: accentColor }]} />
+                        <View style={styles.contentContainer}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <View style={{ flex: 1 }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <Text style={styles.title} numberOfLines={1}>{title}</Text>
+                                        {status === 'completed' && (
+                                            <TouchableOpacity
+                                                onPress={onToggleComplete}
+                                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                            >
+                                                <Ionicons
+                                                    name="checkmark-circle"
+                                                    size={22}
+                                                    color={Palette.primary.main}
+                                                    style={{ marginLeft: 6 }}
+                                                />
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+                                    {!!subtitle && <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>}
+                                    <View style={styles.chipContainer}>
+                                        <Text style={[styles.caption, { color: accentColor }]}>
+                                            {String(type).charAt(0).toUpperCase() + String(type).slice(1)}
+                                        </Text>
+                                    </View>
                                 </View>
                             </View>
                         </View>
@@ -123,7 +131,7 @@ export default function DayCard({
                                     onPress={onDeletePress}
                                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                                 >
-                                    <Ionicons name="trash-outline" size={18} color={Palette.text.secondary} />
+                                    <Ionicons name="trash-outline" size={22} color={Palette.text.secondary} />
                                 </TouchableOpacity>
                             )}
                             {onMenuPress && (
@@ -165,6 +173,11 @@ const styles = StyleSheet.create({
         height: '100%',
     },
     // Content Area
+    mainActionArea: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'stretch',
+    },
     contentContainer: {
         flex: 1, // Takes all available space
         paddingVertical: Spacing.m, // More airy padding

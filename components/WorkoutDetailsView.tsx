@@ -153,7 +153,8 @@ export default function WorkoutDetailsView({
 
             const updatePayload: any = {
                 status: 'Completed',
-                completedAt: new Date()
+                completedAt: new Date(),
+                date: new Date() // Update date to now so it appears in "Recent Activities" properly
             };
 
             // If running, add logging data

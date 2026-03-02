@@ -57,6 +57,18 @@ export default function DesktopHome() {
         refresh(true);
     };
 
+    const handleToggleComplete = async (workoutId: string, currentStatus: string) => {
+        if (!user?.uid) return;
+        const newStatus = currentStatus === 'Completed' ? 'Planned' : 'Completed';
+        const updatePayload: any = {
+            status: newStatus,
+            completedAt: newStatus === 'Completed' ? new Date() : null,
+            date: newStatus === 'Completed' ? new Date() : new Date(), // Keep date updated for sorting
+        };
+        await workoutService.updateWorkout(user.uid, workoutId, updatePayload);
+        refresh(true);
+    };
+
 
     const handleSignOut = () => {
         setProfileMenuVisible(false);
@@ -99,6 +111,7 @@ export default function DesktopHome() {
                     status={item.workout.status === 'Completed' ? 'completed' : 'pending'}
                     onPress={() => setSelectedWorkout(item.workout)}
                     onDeletePress={() => handleDeleteWorkout(item.workout.id!, item.workout.status === 'Completed')}
+                    onToggleComplete={() => handleToggleComplete(item.workout.id!, item.workout.status)}
                     showDragHandle={false}
                 />
             </View>
@@ -191,9 +204,12 @@ export default function DesktopHome() {
                             const recentWorkouts = workouts
                                 .filter((w: any) => w.status === 'Completed')
                                 .sort((a: any, b: any) => {
-                                    const dateA = a.date instanceof Date ? a.date.getTime() : (a.date as any).toMillis();
-                                    const dateB = b.date instanceof Date ? b.date.getTime() : (b.date as any).toMillis();
-                                    return dateB - dateA;
+                                    const getSortDate = (w: any) => {
+                                        const d = w.completedAt || w.date;
+                                        if (!d) return 0;
+                                        return d instanceof Date ? d.getTime() : (d as any).toMillis();
+                                    };
+                                    return getSortDate(b) - getSortDate(a);
                                 })
                                 .slice(0, 5);
 
@@ -223,10 +239,23 @@ export default function DesktopHome() {
                                                             <Ionicons name={iconName as any} size={20} color={Palette.text.secondary} />
                                                         </View>
                                                         <View style={{ flex: 1, marginLeft: 10 }}>
-                                                            <Text style={styles.recentActivityTitle} numberOfLines={1}>{w.name}</Text>
+                                                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                                <Text style={styles.recentActivityTitle} numberOfLines={1}>{w.name}</Text>
+                                                                <TouchableOpacity
+                                                                    onPress={() => handleToggleComplete(w.id!, w.status)}
+                                                                    style={{ marginLeft: 6 }}
+                                                                >
+                                                                    <Ionicons name="checkmark-circle" size={18} color={Palette.primary.main} />
+                                                                </TouchableOpacity>
+                                                            </View>
                                                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                                                                 <Text style={styles.recentActivitySubtitle}>
-                                                                    {w.date ? new Date(w.date instanceof Date ? w.date : (w.date as any).toMillis()).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' }) : ''}
+                                                                    {(() => {
+                                                                        const d = w.completedAt || w.date;
+                                                                        if (!d) return '';
+                                                                        const dateObj = d instanceof Date ? d : (d as any).toMillis ? (d as any).toMillis() : d;
+                                                                        return new Date(dateObj).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' });
+                                                                    })()}
                                                                 </Text>
                                                                 {statText ? <Text style={styles.recentActivityStat}>{statText}</Text> : null}
                                                             </View>
@@ -234,10 +263,10 @@ export default function DesktopHome() {
                                                     </TouchableOpacity>
                                                     <TouchableOpacity
                                                         onPress={() => handleDeleteWorkout(w.id!, true)}
-                                                        style={{ padding: 6 }}
-                                                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                                        style={{ padding: 10, position: 'absolute', right: 4, top: 4 }}
+                                                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                                                     >
-                                                        <Ionicons name="trash-outline" size={16} color={Palette.text.disabled} />
+                                                        <Ionicons name="trash-outline" size={20} color={Palette.text.disabled} />
                                                     </TouchableOpacity>
                                                 </View>
                                             );
@@ -248,8 +277,8 @@ export default function DesktopHome() {
                         })()}
                     </ScrollView>
 
-                    {/* Right Column: Weekly Schedule */}
-                    <View style={styles.rightColumn}>
+                    {/* Middle Column: Weekly Schedule */}
+                    <View style={styles.middleColumn}>
                         <Text style={styles.sectionTitle}>Veckans Schema</Text>
                         {loading ? (
                             <ActivityIndicator />
@@ -258,6 +287,11 @@ export default function DesktopHome() {
                                 {listData.map(item => renderItem(item))}
                             </ScrollView>
                         )}
+                    </View>
+
+                    {/* Right Column: Empty for now */}
+                    <View style={styles.rightColumn}>
+                        {/* Placeholder for future content */}
                     </View>
                 </View>
             </View>
@@ -330,6 +364,7 @@ const styles = StyleSheet.create({
 
     mainContent: {
         flex: 1,
+        backgroundColor: '#F5F7FA',
     },
     header: {
         height: 80,
@@ -340,6 +375,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: Spacing.l,
+        width: '100%',
     },
     headerTitle: {
         fontSize: 24,
@@ -398,16 +434,21 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: Spacing.l,
         padding: Spacing.l,
+        width: '100%',
     },
     leftColumn: {
-        flex: 3,
+        flex: 1,
     },
-    rightColumn: {
-        flex: 3,
+    middleColumn: {
+        flex: 1,
         backgroundColor: '#FFF',
         borderRadius: BorderRadius.l,
         padding: Spacing.l,
         ...Shadows.small,
+    },
+    rightColumn: {
+        flex: 1,
+        // Empty panel for future use
     },
     dailyCard: {
         backgroundColor: Palette.primary.main,
