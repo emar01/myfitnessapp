@@ -1,5 +1,6 @@
 import { BorderRadius, Layout, Palette, Spacing, Typography } from '@/constants/DesignSystem';
 import { RUNNING_SUBCATEGORIES, WORKOUT_CATEGORIES } from '@/constants/WorkoutTypes';
+import { useAlert } from '@/context/AlertContext';
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
 import { workoutService } from '@/services/workoutService';
@@ -9,7 +10,6 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import React, { useCallback, useState } from 'react';
 import {
-    Alert,
     FlatList,
     Linking,
     Modal,
@@ -25,6 +25,7 @@ import {
 export default function LibraryScreen() {
     const router = useRouter();
     const { user } = useSession(); // Get User
+    const { showConfirm } = useAlert();
     const [isLoading, setIsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
@@ -417,23 +418,18 @@ export default function LibraryScreen() {
         );
     };
 
-    const handleDeleteActivity = (workoutId: string) => {
-        Alert.alert(
+    const handleDeleteActivity = async (workoutId: string) => {
+        const confirmed = await showConfirm(
             'Ta bort aktivitet',
             'Vill du ta bort denna genomförda aktivitet?',
-            [
-                { text: 'Avbryt', style: 'cancel' },
-                {
-                    text: 'Ta bort', style: 'destructive',
-                    onPress: async () => {
-                        if (!user?.uid) return;
-                        await workoutService.deleteWorkout(user.uid, workoutId);
-                        // Remove from local state immediately
-                        setCompletedActivities(prev => prev.filter(a => a.id !== workoutId));
-                    }
-                }
-            ]
+            { confirmText: 'Ta bort', cancelText: 'Avbryt', isDestructive: true }
         );
+        if (confirmed) {
+            if (!user?.uid) return;
+            await workoutService.deleteWorkout(user.uid, workoutId);
+            // Remove from local state immediately
+            setCompletedActivities(prev => prev.filter(a => a.id !== workoutId));
+        }
     };
 
     const renderActivityItem = ({ item }: { item: Workout }) => {

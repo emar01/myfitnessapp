@@ -49,15 +49,18 @@ import { SessionProvider, useSession } from '@/context/ctx';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { AlertProvider } from '@/context/AlertContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 function RootLayoutNav() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <SessionProvider>
-          <ProtectedLayout />
-        </SessionProvider>
+        <AlertProvider>
+          <SessionProvider>
+            <ProtectedLayout />
+          </SessionProvider>
+        </AlertProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

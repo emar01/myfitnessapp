@@ -6,13 +6,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import ExerciseCard from '@/components/ExerciseCard';
 import { Shadows } from '@/constants/DesignSystem';
 import { RUNNING_SUBCATEGORIES, WORKOUT_CATEGORIES } from '@/constants/WorkoutTypes'; // Import constants
+import { useAlert } from '@/context/AlertContext';
 import { Exercise, WorkoutExercise } from '@/types';
-import { FlatList, Modal } from 'react-native';
 
 // Removed local SUBCATEGORIES and CATEGORIES arrays
 
@@ -20,6 +20,7 @@ export default function EditTemplateScreen() {
     const router = useRouter();
     const { user } = useSession(); // 2. Get User
     const { id } = useLocalSearchParams();
+    const { showAlert: globalShowAlert, showConfirm } = useAlert();
 
     const [template, setTemplate] = useState<WorkoutTemplate | null>(null);
     const [loading, setLoading] = useState(true);
@@ -50,13 +51,9 @@ export default function EditTemplateScreen() {
         fetchTemplate();
     }, [id]);
 
-    const showAlert = (title: string, message: string, onOk?: () => void) => {
-        if (Platform.OS === 'web') {
-            window.alert(`${title}: ${message}`);
-            if (onOk) onOk();
-        } else {
-            Alert.alert(title, message, onOk ? [{ text: "OK", onPress: onOk }] : undefined);
-        }
+    const showAlert = async (title: string, message: string, onOk?: () => void) => {
+        await globalShowAlert(title, message);
+        if (onOk) onOk();
     };
 
     const fetchExercises = async () => {
@@ -203,23 +200,13 @@ export default function EditTemplateScreen() {
     };
 
     const handleDelete = async () => {
-        if (Platform.OS === 'web') {
-            if (window.confirm("Är du säker på att du vill ta bort denna mall? Detta går inte att ångra.")) {
-                await performDelete();
-            }
-        } else {
-            Alert.alert(
-                "Ta bort mall",
-                "Är du säker på att du vill ta bort denna mall? Detta går inte att ångra.",
-                [
-                    { text: "Avbryt", style: "cancel" },
-                    {
-                        text: "Ta bort",
-                        style: "destructive",
-                        onPress: performDelete
-                    }
-                ]
-            );
+        const confirmed = await showConfirm(
+            "Ta bort mall",
+            "Är du säker på att du vill ta bort denna mall? Detta går inte att ångra.",
+            { confirmText: "Ta bort", cancelText: "Avbryt", isDestructive: true }
+        );
+        if (confirmed) {
+            await performDelete();
         }
     };
 
@@ -231,7 +218,7 @@ export default function EditTemplateScreen() {
             router.back();
         } catch (e) {
             console.error(e);
-            Alert.alert("Fel", "Kunde inte ta bort mallen.");
+            globalShowAlert("Fel", "Kunde inte ta bort mallen.");
             setDeleting(false);
         }
     };

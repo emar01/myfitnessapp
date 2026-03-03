@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 // NOTE: DraggableFlatList kept imported to avoid breaking other potential uses, but no longer used in schedule list
 
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -169,8 +169,6 @@ export default function MobileHome() {
                                 <TouchableOpacity
                                     style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
                                     onPress={() => router.push({ pathname: '/workout/[id]', params: { id: w.id! } })}
-                                    onLongPress={() => handleDeleteWorkout(w.id!, true)}
-                                    delayLongPress={500}
                                 >
                                     <View style={styles.recentActivityIcon}>
                                         <Ionicons name={iconName as any} size={20} color={Palette.text.secondary} />
@@ -198,13 +196,6 @@ export default function MobileHome() {
                                         </View>
                                     </View>
                                 </TouchableOpacity>
-                                <Pressable
-                                    onPress={() => handleDeleteWorkout(w.id!, true)}
-                                    style={{ padding: 10, position: 'absolute', right: 0, top: 0 }}
-                                    hitSlop={15}
-                                >
-                                    <Ionicons name="trash-outline" size={20} color={Palette.text.disabled} />
-                                </Pressable>
                             </View>
                         );
                     })}

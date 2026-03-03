@@ -4,8 +4,9 @@ import { FontAwesome } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, ImageBackground, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, ImageBackground, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+import { useAlert } from '@/context/AlertContext';
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
 import { Workout, WorkoutTemplate } from '@/types';
@@ -30,6 +31,7 @@ export default function WorkoutDetailsView({
 }: WorkoutDetailsViewProps) {
     const router = useRouter();
     const { user } = useSession(); // Get user for auth and paths
+    const { showAlert } = useAlert();
 
     // If initialData is provided, use it
     const [data, setData] = useState<Workout | WorkoutTemplate | null>(initialData || null);
@@ -64,14 +66,14 @@ export default function WorkoutDetailsView({
                 setStravaActivities(activities);
                 setShowStravaPicker(true);
             } else {
-                alert("Inga aktiviteter hittades på Strava.");
+                showAlert("Strava", "Inga aktiviteter hittades på Strava.");
             }
         } catch (e: any) {
             // console.error("Fetch failed", e);
             if (e.message.includes("No Strava connection")) {
-                Alert.alert("Koppla Strava", "Du måste koppla ditt Strava-konto under Profil för att hämta pass.");
+                showAlert("Koppla Strava", "Du måste koppla ditt Strava-konto under Profil för att hämta pass.");
             } else {
-                Alert.alert("Fel", "Kunde inte hämta aktiviteter.");
+                showAlert("Fel", "Kunde inte hämta aktiviteter.");
             }
         } finally {
             setIsStravaLoading(false);

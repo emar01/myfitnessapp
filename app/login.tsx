@@ -1,14 +1,16 @@
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
+import { useAlert } from '@/context/AlertContext';
 import { auth } from '@/lib/firebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Platform, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Platform, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function LoginScreen() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
+    const { showAlert } = useAlert();
 
     const handleGoogleLogin = async () => {
         if (Platform.OS === 'web') {
@@ -20,13 +22,13 @@ export default function LoginScreen() {
             } catch (error: any) {
                 console.error("Google Web Login Error:", error);
                 if (error.code === 'auth/popup-closed-by-user') return;
-                Alert.alert('Inloggning misslyckades', error.message);
+                showAlert('Inloggning misslyckades', error.message);
             } finally {
                 setLoading(false);
             }
         } else {
             // Validation check for real Google Auth
-            Alert.alert('Google Login', 'Google Sign-In kräver konfiguration i Firebase Console. I dev-läge, använd "Dev Login" om du inte har nycklar.');
+            showAlert('Google Login', 'Google Sign-In kräver konfiguration i Firebase Console. I dev-läge, använd "Dev Login" om du inte har nycklar.');
         }
     };
 
@@ -43,24 +45,24 @@ export default function LoginScreen() {
             if (loginError.code === 'auth/invalid-credential' || loginError.code === 'auth/user-not-found' || loginError.code === 'auth/invalid-email') {
                 try {
                     await createUserWithEmailAndPassword(auth, DEV_EMAIL, DEV_PASS);
-                    Alert.alert('Konto Skapat', 'Dev-konto skapat och inloggad!');
+                    showAlert('Konto Skapat', 'Dev-konto skapat och inloggad!');
                     router.replace('/(tabs)');
                 } catch (createError: any) {
                     console.error("Dev Creation Error:", createError);
                     if (createError.code === 'auth/operation-not-allowed') {
-                        Alert.alert(
+                        showAlert(
                             'Kräver Inställning',
                             'Email/Lösenord är INTE aktiverat i ditt Firebase-projekt.\n\nGå till Firebase Console -> Authentication -> Sign-in method och aktivera "Email/Password".'
                         );
                     } else if (createError.code === 'auth/email-already-in-use') {
                         // Should satisfy the login first, but weird race condition or password changed?
-                        Alert.alert('Fel', 'Kontot finns redan men lösenordet stämmer inte?');
+                        showAlert('Fel', 'Kontot finns redan men lösenordet stämmer inte?');
                     } else {
-                        Alert.alert('Kunde inte skapa konto', createError.message);
+                        showAlert('Kunde inte skapa konto', createError.message);
                     }
                 }
             } else {
-                Alert.alert('Login Error', loginError.message);
+                showAlert('Login Error', loginError.message);
             }
         } finally {
             setLoading(false);
@@ -70,7 +72,7 @@ export default function LoginScreen() {
     // Hidden trigger info
     const handleLongPressSecret = async () => {
         if (__DEV__) {
-            Alert.alert('Dev Info', 'Dev läge är aktivt.');
+            showAlert('Dev Info', 'Dev läge är aktivt.');
         }
     };
 

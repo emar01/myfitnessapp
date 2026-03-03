@@ -263,13 +263,6 @@ export default function DesktopHome() {
                                                             </View>
                                                         </View>
                                                     </TouchableOpacity>
-                                                    <TouchableOpacity
-                                                        onPress={() => handleDeleteWorkout(w.id!, true)}
-                                                        style={{ padding: 10, position: 'absolute', right: 4, top: 4 }}
-                                                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                                                    >
-                                                        <Ionicons name="trash-outline" size={20} color={Palette.text.disabled} />
-                                                    </TouchableOpacity>
                                                 </View>
                                             );
                                         })}

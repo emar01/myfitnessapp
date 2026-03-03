@@ -7,8 +7,9 @@ import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { collection, deleteDoc, doc, getDoc, onSnapshot, orderBy, query, updateDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Platform, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
+import { useAlert } from '@/context/AlertContext';
 import { exchangeToken, getStravaAuthRequestConfig, saveStravaCredentials } from '@/services/stravaService';
 import { useAuthRequest } from 'expo-auth-session';
 
@@ -17,6 +18,7 @@ interface Memory { id: string; content: string; }
 export default function ProfileScreen() {
     const router = useRouter();
     const { user } = useSession();
+    const { showAlert, showConfirm } = useAlert();
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [memories, setMemories] = useState<Memory[]>([]);
     const [isUpdating, setIsUpdating] = useState(false);
@@ -42,10 +44,10 @@ export default function ProfileScreen() {
             const tokenData = await exchangeToken(code);
             await saveStravaCredentials(user.uid, tokenData);
             setStravaConnected(true);
-            Alert.alert("Strava Ansluten", "Ditt Strava-konto är nu kopplat.");
+            showAlert("Strava Ansluten", "Ditt Strava-konto är nu kopplat.");
         } catch (e) {
             console.error(e);
-            Alert.alert("Fel", "Kunde inte koppla Strava.");
+            showAlert("Fel", "Kunde inte koppla Strava.");
         } finally {
             setIsUpdating(false);
         }

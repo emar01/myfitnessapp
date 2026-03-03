@@ -1,5 +1,6 @@
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
 import { PROGRAM_DURATIONS, PROGRAM_TYPES, WORKOUT_CATEGORIES } from '@/constants/WorkoutTypes'; // Import constants
+import { useAlert } from '@/context/AlertContext';
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
 import { Program, WorkoutTemplate } from '@/types';
@@ -9,7 +10,6 @@ import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, updateDoc } from '
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     FlatList,
     KeyboardAvoidingView,
     Modal,
@@ -27,6 +27,7 @@ export default function ProgramEditorScreen() {
     const router = useRouter();
     const { id } = useLocalSearchParams(); // If id exists, we edit.
     const { user } = useSession();
+    const { showAlert, showConfirm } = useAlert();
 
     const [isLoading, setIsLoading] = useState(false);
     const [deleting, setDeleting] = useState(false);
@@ -68,12 +69,12 @@ export default function ProgramEditorScreen() {
                 setFormDescription(data.description || '');
                 setFormWorkoutIds(data.workoutIds || []);
             } else {
-                Alert.alert('Error', 'Program not found');
+                showAlert('Error', 'Program not found');
                 router.back();
             }
         } catch (e) {
             console.error(e);
-            Alert.alert('Error', 'Failed to load program');
+            showAlert('Error', 'Failed to load program');
         } finally {
             setInitialLoading(false);
         }
@@ -88,7 +89,7 @@ export default function ProgramEditorScreen() {
             list.sort((a, b) => a.name.localeCompare(b.name));
             setAllTemplates(list);
         } catch (e) {
-            Alert.alert('Error', 'Failed to load templates');
+            showAlert('Error', 'Failed to load templates');
         } finally {
             setLoadingTemplates(false);
         }
@@ -96,11 +97,11 @@ export default function ProgramEditorScreen() {
 
     const handleSave = async () => {
         if (!formTitle || !formDuration) {
-            Alert.alert('Validation', 'Title and Duration are required.');
+            showAlert('Validation', 'Title and Duration are required.');
             return;
         }
         if (!user) {
-            Alert.alert("Fel", "Du måste vara inloggad för att spara program.");
+            showAlert("Fel", "Du måste vara inloggad för att spara program.");
             return;
         }
 
@@ -132,30 +133,20 @@ export default function ProgramEditorScreen() {
             router.back();
         } catch (e: any) {
             console.error(e);
-            Alert.alert('Error', e.message);
+            showAlert('Error', e.message);
         } finally {
             setIsLoading(false);
         }
     };
 
     const handleDelete = async () => {
-        if (Platform.OS === 'web') {
-            if (window.confirm("Är du säker på att du vill ta bort detta program? Detta går inte att ångra.")) {
-                await performDelete();
-            }
-        } else {
-            Alert.alert(
-                "Ta bort program",
-                "Är du säker på att du vill ta bort detta program? Detta går inte att ångra.",
-                [
-                    { text: "Avbryt", style: "cancel" },
-                    {
-                        text: "Ta bort",
-                        style: "destructive",
-                        onPress: performDelete
-                    }
-                ]
-            );
+        const confirmed = await showConfirm(
+            "Ta bort program",
+            "Är du säker på att du vill ta bort detta program? Detta går inte att ångra.",
+            { confirmText: "Ta bort", cancelText: "Avbryt", isDestructive: true }
+        );
+        if (confirmed) {
+            await performDelete();
         }
     };
 
@@ -167,7 +158,7 @@ export default function ProgramEditorScreen() {
             router.back();
         } catch (e) {
             console.error(e);
-            Alert.alert("Fel", "Kunde inte ta bort programmet.");
+            showAlert("Fel", "Kunde inte ta bort programmet.");
             setDeleting(false);
         }
     };

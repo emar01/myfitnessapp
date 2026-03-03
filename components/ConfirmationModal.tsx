@@ -12,6 +12,7 @@ interface ConfirmationModalProps {
     confirmText?: string;
     cancelText?: string;
     isDestructive?: boolean;
+    singleButton?: boolean;
 }
 
 export default function ConfirmationModal({
@@ -23,6 +24,7 @@ export default function ConfirmationModal({
     confirmText = 'Ta bort',
     cancelText = 'Avbryt',
     isDestructive = true,
+    singleButton = false,
 }: ConfirmationModalProps) {
     return (
         <Modal
@@ -49,15 +51,21 @@ export default function ConfirmationModal({
                             <Text style={styles.messageText}>{message}</Text>
 
                             <View style={styles.buttonRow}>
-                                <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
-                                    <Text style={styles.cancelText}>{cancelText}</Text>
-                                </TouchableOpacity>
+                                {!singleButton && (
+                                    <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
+                                        <Text style={styles.cancelText}>{cancelText}</Text>
+                                    </TouchableOpacity>
+                                )}
 
                                 <TouchableOpacity
-                                    style={[styles.confirmButton, isDestructive && styles.destructiveButton]}
+                                    style={[
+                                        styles.confirmButton,
+                                        isDestructive && !singleButton && styles.destructiveButton,
+                                        singleButton && styles.singleConfirmButton,
+                                    ]}
                                     onPress={onConfirm}
                                 >
-                                    <Text style={styles.confirmText}>{confirmText}</Text>
+                                    <Text style={[styles.confirmText, singleButton && styles.singleConfirmText]}>{confirmText}</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -139,9 +147,15 @@ const styles = StyleSheet.create({
     destructiveButton: {
         backgroundColor: Palette.status.error,
     },
+    singleConfirmButton: {
+        backgroundColor: Palette.primary.main,
+    },
     confirmText: {
         color: '#FFF',
         fontWeight: 'bold',
         fontSize: Typography.size.s,
+    },
+    singleConfirmText: {
+        color: '#FFF',
     },
 });

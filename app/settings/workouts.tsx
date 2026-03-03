@@ -1,4 +1,5 @@
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
+import { useAlert } from '@/context/AlertContext';
 import { db } from '@/lib/firebaseConfig';
 import { Exercise, RunningSubcategory, StrengthSubcategory, WorkoutCategory, WorkoutExercise, WorkoutTemplate } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,7 +8,6 @@ import { addDoc, collection, doc, getDocs, updateDoc } from 'firebase/firestore'
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     FlatList,
     KeyboardAvoidingView,
     Modal,
@@ -23,6 +23,7 @@ import {
 
 export default function AdminWorkoutsScreen() {
     const router = useRouter();
+    const { showAlert, showConfirm } = useAlert();
     const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -52,7 +53,7 @@ export default function AdminWorkoutsScreen() {
             setTemplates(list);
         } catch (e) {
             console.error(e);
-            Alert.alert('Error', 'Failed to fetch templates');
+            showAlert('Error', 'Failed to fetch templates');
         } finally {
             setIsLoading(false);
         }
@@ -67,7 +68,7 @@ export default function AdminWorkoutsScreen() {
             list.sort((a, b) => a.name.localeCompare(b.name));
             setAllExercises(list);
         } catch (e) {
-            Alert.alert('Error', 'Failed to load exercises');
+            showAlert('Error', 'Failed to load exercises');
         } finally {
             setLoadingExercises(false);
         }
@@ -93,7 +94,7 @@ export default function AdminWorkoutsScreen() {
 
     const handleSave = async () => {
         if (!formName) {
-            Alert.alert('Validation', 'Template Name is required.');
+            showAlert('Validation', 'Template Name is required.');
             return;
         }
 
@@ -116,7 +117,7 @@ export default function AdminWorkoutsScreen() {
             setModalVisible(false);
             fetchTemplates();
         } catch (e: any) {
-            Alert.alert('Error', e.message);
+            showAlert('Error', e.message);
         } finally {
             setIsLoading(false);
         }

@@ -1,4 +1,5 @@
 import { BorderRadius, Palette, Spacing, Typography } from '@/constants/DesignSystem';
+import { useAlert } from '@/context/AlertContext';
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
 import { Exercise } from '@/types';
@@ -8,7 +9,6 @@ import { addDoc, collection, deleteDoc, doc, getDoc, updateDoc } from 'firebase/
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     KeyboardAvoidingView,
     Platform,
     SafeAreaView,
@@ -25,6 +25,7 @@ export default function ExerciseEditorScreen() {
     const router = useRouter();
     const { id } = useLocalSearchParams();
     const { user } = useSession();
+    const { showAlert, showConfirm } = useAlert();
 
     const [isLoading, setIsLoading] = useState(false);
     const [deleting, setDeleting] = useState(false);
@@ -59,12 +60,12 @@ export default function ExerciseEditorScreen() {
                 setFormIsBodyweight(data.isBodyweight);
                 setFormVideoLink(data.videoLink || '');
             } else {
-                Alert.alert('Error', 'Exercise not found');
+                showAlert('Error', 'Exercise not found');
                 router.back();
             }
         } catch (e) {
             console.error(e);
-            Alert.alert('Error', 'Failed to load exercise');
+            showAlert('Error', 'Failed to load exercise');
         } finally {
             setInitialLoading(false);
         }
@@ -72,7 +73,7 @@ export default function ExerciseEditorScreen() {
 
     const handleSave = async () => {
         if (!formName || !formMuscle) {
-            Alert.alert('Validation', 'Name and Muscle Group are required.');
+            showAlert('Validation', 'Name and Muscle Group are required.');
             return;
         }
         if (!user) return;
@@ -101,7 +102,7 @@ export default function ExerciseEditorScreen() {
             router.back();
         } catch (e: any) {
             console.error(e);
-            Alert.alert('Error', e.message);
+            showAlert('Error', e.message);
         } finally {
             setIsLoading(false);
         }
@@ -109,23 +110,13 @@ export default function ExerciseEditorScreen() {
 
 
     const handleDelete = async () => {
-        if (Platform.OS === 'web') {
-            if (window.confirm("Är du säker på att du vill ta bort denna övning? Detta går inte att ångra.")) {
-                await performDelete();
-            }
-        } else {
-            Alert.alert(
-                "Ta bort övning",
-                "Är du säker på att du vill ta bort denna övning? Detta går inte att ångra.",
-                [
-                    { text: "Avbryt", style: "cancel" },
-                    {
-                        text: "Ta bort",
-                        style: "destructive",
-                        onPress: performDelete
-                    }
-                ]
-            );
+        const confirmed = await showConfirm(
+            "Ta bort övning",
+            "Är du säker på att du vill ta bort denna övning? Detta går inte att ångra.",
+            { confirmText: "Ta bort", cancelText: "Avbryt", isDestructive: true }
+        );
+        if (confirmed) {
+            await performDelete();
         }
     };
 
@@ -137,7 +128,7 @@ export default function ExerciseEditorScreen() {
             router.back();
         } catch (e) {
             console.error(e);
-            Alert.alert("Fel", "Kunde inte ta bort övningen.");
+            showAlert("Fel", "Kunde inte ta bort övningen.");
             setDeleting(false);
         }
     };

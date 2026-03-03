@@ -2,6 +2,7 @@ import ExerciseCard from '@/components/ExerciseCard';
 import RunningSession from '@/components/RunningSession';
 import VideoPlayer from '@/components/VideoPlayer';
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
+import { useAlert } from '@/context/AlertContext';
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
 import { checkAndSavePrs, getUserPrs } from '@/services/prService';
@@ -10,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { addDoc, collection, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 // Helper to format seconds to HH:MM:SS
 const formatTime = (seconds: number) => {
@@ -40,6 +41,7 @@ export default function WorkoutLoggerScreen() {
     const { user } = useSession();
     const router = useRouter();
     const params = useLocalSearchParams();
+    const { showAlert, showConfirm } = useAlert();
 
     const [workoutMode, setWorkoutMode] = useState<'strength' | 'running'>(
         (params.category as string) === 'löpning' ? 'running' : 'strength'
@@ -127,7 +129,7 @@ export default function WorkoutLoggerScreen() {
             setAvailableExercises(exercisesList);
         } catch (e: any) {
             console.error("Error fetching exercises: ", e);
-            alert(`Error loading exercises: ${e.message || JSON.stringify(e)}`);
+            showAlert('Fel', `Error loading exercises: ${e.message || JSON.stringify(e)}`);
         } finally {
             setIsLoading(false);
         }
@@ -191,12 +193,12 @@ export default function WorkoutLoggerScreen() {
             const workoutsRef = collection(db, `users/${user.uid}/workouts`);
             await addDoc(workoutsRef, workoutData);
 
-            alert(`Löpning sparad!\nDistans: ${distance} km\nTid: ${formatTime(duration)}`);
+            await showAlert('Sparat', `Löpning sparad!\nDistans: ${distance} km\nTid: ${formatTime(duration)}`);
             router.back();
 
         } catch (e: any) {
             console.error("Error saving run: ", e);
-            alert(`Failed to save run: ${e.message}`);
+            showAlert('Fel', `Failed to save run: ${e.message}`);
         } finally {
             setIsLoading(false);
         }
@@ -204,7 +206,7 @@ export default function WorkoutLoggerScreen() {
 
     const finishWorkout = async () => {
         if (!user) {
-            alert('You must be logged in to save a workout.');
+            showAlert('Logga in', 'You must be logged in to save a workout.');
             return;
         }
 
@@ -226,31 +228,19 @@ export default function WorkoutLoggerScreen() {
             const newPrs = await checkAndSavePrs(user.uid, workoutData.exercises, existingPrs, docRef.id);
 
             if (newPrs.length > 0) {
-                alert(`Workout saved! 🎉 NEW RECORDS: \n${newPrs.join('\n')}`);
+                await showAlert('Sparat', `Workout saved! 🎉 NEW RECORDS: \n${newPrs.join('\n')}`);
             } else {
-                alert('Workout saved successfully!');
+                await showAlert('Sparat', 'Workout saved successfully!');
             }
 
             // Sync Logic
             if (workout.programId && workout.workoutTemplateId && workoutData.exercises.length > 0) {
                 const syncMsg = "Vill du uppdatera alla framtida pass av denna typ i programmet med de nya övningarna?";
-                let shouldSync = false;
-                if (Platform.OS === 'web') {
-                    shouldSync = window.confirm(syncMsg);
-                } else {
-                    // For mobile, Alert.alert is async-ish if we want it to block, but here we can just handle it.
-                    // However, we are about to router.back(). We should probably sync BEFORE router.back().
-                    await new Promise((resolve) => {
-                        Alert.alert(
-                            "Synkronisera program",
-                            syncMsg,
-                            [
-                                { text: "Nej", onPress: () => { shouldSync = false; resolve(null); }, style: "cancel" },
-                                { text: "Ja", onPress: () => { shouldSync = true; resolve(null); } }
-                            ]
-                        );
-                    });
-                }
+                const shouldSync = await showConfirm(
+                    "Synkronisera program",
+                    syncMsg,
+                    { confirmText: "Ja", cancelText: "Nej", isDestructive: false }
+                );
 
                 if (shouldSync) {
                     try {
@@ -277,7 +267,7 @@ export default function WorkoutLoggerScreen() {
 
                         if (updatePromises.length > 0) {
                             await Promise.all(updatePromises);
-                            alert(`${updatePromises.length} framtida pass uppdaterades.`);
+                            showAlert('Synkroniserat', `${updatePromises.length} framtida pass uppdaterades.`);
                         }
                     } catch (syncErr) {
                         console.error("Sync failed:", syncErr);
@@ -289,7 +279,7 @@ export default function WorkoutLoggerScreen() {
 
         } catch (e: any) {
             console.error("Error saving workout: ", e);
-            alert(`Failed to save workout: ${e.message || JSON.stringify(e)}`);
+            showAlert('Fel', `Failed to save workout: ${e.message || JSON.stringify(e)}`);
         } finally {
             setIsLoading(false);
         }
@@ -300,7 +290,7 @@ export default function WorkoutLoggerScreen() {
             setCurrentVideoUrl(url);
             setVideoModalVisible(true);
         } else {
-            alert('No video available for this exercise.');
+            showAlert('Ingen video', 'No video available for this exercise.');
         }
     };
 

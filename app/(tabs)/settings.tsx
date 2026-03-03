@@ -1,14 +1,16 @@
 import { Palette, Spacing, Typography } from '@/constants/DesignSystem';
+import { useAlert } from '@/context/AlertContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Alert, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { useSession } from '@/context/ctx';
 
 export default function SettingsScreen() {
     const router = useRouter();
     const { signOut } = useSession();
+    const { showConfirm } = useAlert();
 
     const sections = [
         {
@@ -29,16 +31,16 @@ export default function SettingsScreen() {
         }
     ];
 
-    const handlePress = (item: any) => {
+    const handlePress = async (item: any) => {
         if (item.route === 'logout') {
-            Alert.alert(
+            const confirmed = await showConfirm(
                 'Logga ut',
                 'Är du säker på att du vill logga ut?',
-                [
-                    { text: 'Avbryt', style: 'cancel' },
-                    { text: 'Logga ut', style: 'destructive', onPress: () => signOut() }
-                ]
+                { confirmText: 'Logga ut', cancelText: 'Avbryt', isDestructive: true }
             );
+            if (confirmed) {
+                signOut();
+            }
         } else {
             router.push(item.route);
         }

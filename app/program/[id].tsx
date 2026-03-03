@@ -1,4 +1,5 @@
 import { BorderRadius, Layout, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
+import { useAlert } from '@/context/AlertContext';
 import { useSession } from '@/context/ctx';
 import { auth, db } from '@/lib/firebaseConfig';
 import { Program, WorkoutTemplate } from '@/types';
@@ -6,12 +7,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { collection, doc, getDoc, getDocs, query, where, writeBatch } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ProgramDetailsScreen() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
     const { user } = useSession();
+    const { showAlert, showConfirm } = useAlert();
     const [program, setProgram] = useState<Program | null>(null);
     const [loading, setLoading] = useState(true);
     const [joining, setJoining] = useState(false);
@@ -67,7 +69,7 @@ export default function ProgramDetailsScreen() {
                     setWorkoutIdTemplates(templates);
                 }
             } else {
-                Alert.alert('Fel', 'Programmet hittades inte.');
+                showAlert('Fel', 'Programmet hittades inte.');
                 router.back();
             }
         } catch (e) {
@@ -81,16 +83,12 @@ export default function ProgramDetailsScreen() {
         // Robust user check
         const currentUser = user || auth.currentUser;
         if (!currentUser) {
-            Alert.alert('Logga in', 'Du måste vara inloggad för att starta ett program.');
+            showAlert('Logga in', 'Du måste vara inloggad för att starta ett program.');
             return;
         }
 
         if (!program || ((!program.schedule || program.schedule.length === 0) && workoutIdTemplates.length === 0)) {
-            if (Platform.OS === 'web') {
-                window.alert('Tomt Program: Detta program saknar träningspass.');
-            } else {
-                Alert.alert('Tomt Program', 'Detta program saknar träningspass.');
-            }
+            showAlert('Tomt Program', 'Detta program saknar träningspass.');
             return;
         }
 
@@ -244,11 +242,7 @@ export default function ProgramDetailsScreen() {
 
                 setIsFollowing(true);
                 const msg = `${workoutsToCreate.length} pass lades till i din kalender.`;
-                if (Platform.OS === 'web') {
-                    window.alert('Program startat! ' + msg);
-                } else {
-                    Alert.alert('Program Startat', msg);
-                }
+                showAlert('Program Startat', msg);
 
             } catch (e: any) {
                 console.error('Error following program:', e);
@@ -257,30 +251,20 @@ export default function ProgramDetailsScreen() {
                 if (e.code === 'permission-denied') errorMsg = 'Åtkomst nekad (Rättigheter).';
                 if (e.code === 'unavailable') errorMsg = 'Nätverksfel. Kontrollera din anslutning.';
 
-                if (Platform.OS === 'web') {
-                    window.alert(`Fel vid start av program: ${errorMsg}`);
-                } else {
-                    Alert.alert('Fel', errorMsg);
-                }
+                showAlert('Fel', errorMsg);
             } finally {
                 setJoining(false);
             }
         };
 
         if (isFollowing) {
-            if (Platform.OS === 'web') {
-                if (window.confirm('Starta om program? Detta tar bort kommande planerade pass och lägger till dem på nytt. Historik sparas.')) {
-                    startProgram();
-                }
-            } else {
-                Alert.alert(
-                    'Starta om program?',
-                    'Du följer redan detta program. Vill du starta om det? Historik sparas.',
-                    [
-                        { text: 'Avbryt', style: 'cancel' },
-                        { text: 'Starta om', style: 'destructive', onPress: startProgram }
-                    ]
-                );
+            const confirmed = await showConfirm(
+                'Starta om program?',
+                'Du följer redan detta program. Vill du starta om det? Detta tar bort kommande planerade pass och lägger till dem på nytt. Historik sparas.',
+                { confirmText: 'Starta om', cancelText: 'Avbryt', isDestructive: true }
+            );
+            if (confirmed) {
+                startProgram();
             }
         } else {
             startProgram();
@@ -312,40 +296,22 @@ export default function ProgramDetailsScreen() {
                 await batch.commit();
 
                 setIsFollowing(false);
-                if (Platform.OS === 'web') {
-                    alert('Program Avslutat. Du följer inte längre detta program.');
-                } else {
-                    Alert.alert('Program Avslutat', 'Du följer inte längre detta program.');
-                }
+                showAlert('Program Avslutat', 'Du följer inte längre detta program.');
             } catch (e) {
                 console.error("Error unfollowing:", e);
-                if (Platform.OS === 'web') {
-                    alert('Något gick fel. Kunde inte avsluta programmet.');
-                } else {
-                    Alert.alert('Fel', 'Kunde inte avsluta programmet.');
-                }
+                showAlert('Fel', 'Kunde inte avsluta programmet.');
             } finally {
                 setJoining(false);
             }
         };
 
-        if (Platform.OS === 'web') {
-            if (window.confirm("Är du säker på att du vill sluta följa detta program? Alla dina framtida planerade pass för detta program kommer att tas bort.")) {
-                performUnfollow();
-            }
-        } else {
-            Alert.alert(
-                'Avsluta Program',
-                'Är du säker på att du vill sluta följa detta program? Alla dina framtida planerade pass för detta program kommer att tas bort.',
-                [
-                    { text: 'Avbryt', style: 'cancel' },
-                    {
-                        text: 'Avsluta',
-                        style: 'destructive',
-                        onPress: performUnfollow
-                    }
-                ]
-            );
+        const confirmed = await showConfirm(
+            'Avsluta Program',
+            'Är du säker på att du vill sluta följa detta program? Alla dina framtida planerade pass för detta program kommer att tas bort.',
+            { confirmText: 'Avsluta', cancelText: 'Avbryt', isDestructive: true }
+        );
+        if (confirmed) {
+            performUnfollow();
         }
     };
 
