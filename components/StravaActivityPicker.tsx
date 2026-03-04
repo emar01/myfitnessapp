@@ -29,15 +29,15 @@ export default function StravaActivityPicker({ visible, onClose, onSelect }: Str
         setLoading(true);
         try {
             const data = await getStravaActivities(user.uid, 1, 30);
-            setActivities(data);
+            setActivities(data || []);
         } catch (e: any) {
             console.error("Failed to fetch Strava activities:", e);
             if (e.message.includes("No Strava connection")) {
-                showAlert("Koppla Strava", "Du måste koppla ditt Strava-konto under Profil för att hämta pass.");
+                await showAlert("Koppla Strava", "Du måste koppla ditt Strava-konto under Profil för att hämta pass.");
+                onClose();
             } else {
-                showAlert("Fel", "Kunde inte hämta aktiviteter från Strava.");
+                await showAlert("Fel", "Kunde inte hämta aktiviteter från Strava.");
             }
-            onClose();
         } finally {
             setLoading(false);
         }

@@ -288,7 +288,9 @@ export default function CalendarScreen() {
                     } else if (type === 'custom') {
                         router.push('/workout/create-custom');
                     } else if (type === 'strava') {
-                        setShowStravaPicker(true);
+                        // Small delay to ensure the previous modal handles its closing animation
+                        // before the next one starts, especially useful on iOS and some Web environments.
+                        setTimeout(() => setShowStravaPicker(true), 150);
                     } else {
                         router.push({
                             pathname: '/workout/log',
