@@ -1,14 +1,16 @@
 import DayCard, { DayCardType } from '@/components/DayCard';
+import StravaActivityPicker from '@/components/StravaActivityPicker';
 import WorkoutTypeSelector from '@/components/WorkoutTypeSelector';
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
+import { StravaActivity } from '@/services/stravaService';
 import { Workout } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { addDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import React, { useCallback, useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 // Basic Month Grid Implementation
 export default function CalendarScreen() {
@@ -19,6 +21,8 @@ export default function CalendarScreen() {
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [loading, setLoading] = useState(true);
     const [isWorkoutTypeModalVisible, setWorkoutTypeModalVisible] = useState(false);
+    const [showStravaPicker, setShowStravaPicker] = useState(false);
+    const [isSavingStrava, setIsSavingStrava] = useState(false);
 
     // Refresh on focus (catches new workouts added from program screen)
     useFocusEffect(
@@ -51,6 +55,39 @@ export default function CalendarScreen() {
             console.error(e);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleStravaSelect = async (activity: StravaActivity) => {
+        if (!user) return;
+        setShowStravaPicker(false);
+        setIsSavingStrava(true);
+
+        try {
+            const km = (activity.distance / 1000).toFixed(2);
+            const min = Math.round(activity.moving_time / 60);
+
+            const workoutData: Partial<Workout> = {
+                userId: user.uid,
+                name: activity.name,
+                date: new Date(),
+                scheduledDate: new Date(activity.start_date),
+                completedAt: new Date(activity.start_date),
+                status: 'Completed',
+                category: 'löpning',
+                subcategory: 'distans',
+                distance: parseFloat(km),
+                duration: min * 60,
+                stravaActivityId: activity.id.toString(),
+                exercises: []
+            };
+
+            await addDoc(collection(db, 'users', user.uid, 'workouts'), workoutData);
+            fetchWorkouts(); // Refresh the list
+        } catch (e) {
+            console.error("Failed to save Strava workout from calendar:", e);
+        } finally {
+            setIsSavingStrava(false);
         }
     };
 
@@ -250,6 +287,8 @@ export default function CalendarScreen() {
                         router.push('/workout/select');
                     } else if (type === 'custom') {
                         router.push('/workout/create-custom');
+                    } else if (type === 'strava') {
+                        setShowStravaPicker(true);
                     } else {
                         router.push({
                             pathname: '/workout/log',
@@ -258,6 +297,19 @@ export default function CalendarScreen() {
                     }
                 }}
             />
+
+            <StravaActivityPicker
+                visible={showStravaPicker}
+                onClose={() => setShowStravaPicker(false)}
+                onSelect={handleStravaSelect}
+            />
+
+            {isSavingStrava && (
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.7)', justifyContent: 'center', alignItems: 'center' }]}>
+                    <ActivityIndicator size="large" color={Palette.primary.main} />
+                    <Text style={{ marginTop: 10, fontWeight: 'bold' }}>Sparar pass...</Text>
+                </View>
+            )}
         </SafeAreaView>
     );
 }

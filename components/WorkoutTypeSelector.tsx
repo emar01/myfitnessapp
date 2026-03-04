@@ -6,7 +6,7 @@ import { Modal, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } 
 interface WorkoutTypeSelectorProps {
     visible: boolean;
     onClose: () => void;
-    onSelectType: (type: 'styrketräning' | 'löpning' | 'template' | 'custom') => void;
+    onSelectType: (type: 'styrketräning' | 'löpning' | 'template' | 'custom' | 'strava') => void;
 }
 
 export default function WorkoutTypeSelector({ visible, onClose, onSelectType }: WorkoutTypeSelectorProps) {
@@ -76,6 +76,21 @@ export default function WorkoutTypeSelector({ visible, onClose, onSelectType }: 
                             <View style={styles.optionTextContainer}>
                                 <Text style={styles.optionTitle}>Välj från bibliotek</Text>
                                 <Text style={styles.optionDescription}>Använd en sparad mall</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={Palette.text.disabled} />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.optionCard}
+                            onPress={() => onSelectType('strava')}
+                            accessibilityRole="button"
+                        >
+                            <View style={[styles.iconContainer, { backgroundColor: '#FC4C0220' }]}>
+                                <Ionicons name="flash" size={32} color="#FC4C02" />
+                            </View>
+                            <View style={styles.optionTextContainer}>
+                                <Text style={styles.optionTitle}>Hämta från Strava</Text>
+                                <Text style={styles.optionDescription}>Logga ett pass du redan kört</Text>
                             </View>
                             <Ionicons name="chevron-forward" size={20} color={Palette.text.disabled} />
                         </TouchableOpacity>

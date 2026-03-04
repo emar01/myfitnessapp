@@ -1,10 +1,11 @@
+import StravaActivityPicker from '@/components/StravaActivityPicker';
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
-import { getStravaActivities, StravaActivity } from '@/services/stravaService';
+import { StravaActivity } from '@/services/stravaService';
 import { FontAwesome } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, ImageBackground, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ImageBackground, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { useAlert } from '@/context/AlertContext';
 import { useSession } from '@/context/ctx';
@@ -50,38 +51,12 @@ export default function WorkoutDetailsView({
 
     // Strava Picker
     const [showStravaPicker, setShowStravaPicker] = useState(false);
-    const [stravaActivities, setStravaActivities] = useState<StravaActivity[]>([]);
-
-    // Strava Auth
 
 
 
-
-    const fetchStravaActivitiesForPicker = async () => {
-        if (!user) return;
-        setIsStravaLoading(true);
-        try {
-            const activities = await getStravaActivities(user.uid, 1, 30); // Get latest 30, pass userId
-            if (activities && activities.length > 0) {
-                setStravaActivities(activities);
-                setShowStravaPicker(true);
-            } else {
-                showAlert("Strava", "Inga aktiviteter hittades på Strava.");
-            }
-        } catch (e: any) {
-            // console.error("Fetch failed", e);
-            if (e.message.includes("No Strava connection")) {
-                showAlert("Koppla Strava", "Du måste koppla ditt Strava-konto under Profil för att hämta pass.");
-            } else {
-                showAlert("Fel", "Kunde inte hämta aktiviteter.");
-            }
-        } finally {
-            setIsStravaLoading(false);
-        }
-    };
 
     const handleFetchStrava = () => {
-        fetchStravaActivitiesForPicker();
+        setShowStravaPicker(true);
     };
 
     const selectStravaActivity = async (act: StravaActivity) => {
@@ -614,36 +589,11 @@ export default function WorkoutDetailsView({
 
             </ScrollView>
 
-            <Modal visible={showStravaPicker} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowStravaPicker(false)}>
-                <View style={[styles.container, { backgroundColor: '#F5F5F7' }]}>
-                    <View style={styles.header}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing.m, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#EEE' }}>
-                            <Text style={{ fontSize: Typography.size.l, fontWeight: 'bold' }}>Välj Strava-pass</Text>
-                            <TouchableOpacity onPress={() => setShowStravaPicker(false)}>
-                                <FontAwesome name="close" size={24} color={Palette.text.primary} />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-
-                    <FlatList
-                        data={stravaActivities}
-                        keyExtractor={item => item.id.toString()}
-                        contentContainerStyle={{ padding: Spacing.m }}
-                        renderItem={({ item }) => (
-                            <TouchableOpacity
-                                style={{ backgroundColor: '#FFF', padding: Spacing.m, marginBottom: Spacing.s, borderRadius: BorderRadius.m, ...Shadows.small }}
-                                onPress={() => selectStravaActivity(item)}
-                            >
-                                <Text style={{ fontWeight: 'bold', fontSize: Typography.size.m, marginBottom: 4 }}>{item.name}</Text>
-                                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                                    <Text style={{ color: Palette.text.secondary }}>{(item.distance / 1000).toFixed(2)} km • {Math.floor(item.moving_time / 60)} min</Text>
-                                    <Text style={{ color: Palette.text.disabled, fontSize: 12 }}>{new Date(item.start_date).toLocaleDateString()}</Text>
-                                </View>
-                            </TouchableOpacity>
-                        )}
-                    />
-                </View>
-            </Modal>
+            <StravaActivityPicker
+                visible={showStravaPicker}
+                onClose={() => setShowStravaPicker(false)}
+                onSelect={selectStravaActivity}
+            />
         </View >
     );
 }
