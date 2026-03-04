@@ -1,4 +1,5 @@
 import DayCard, { DayCardType } from '@/components/DayCard';
+import WorkoutTypeSelector from '@/components/WorkoutTypeSelector';
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
@@ -17,6 +18,7 @@ export default function CalendarScreen() {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [loading, setLoading] = useState(true);
+    const [isWorkoutTypeModalVisible, setWorkoutTypeModalVisible] = useState(false);
 
     // Refresh on focus (catches new workouts added from program screen)
     useFocusEffect(
@@ -189,9 +191,15 @@ export default function CalendarScreen() {
 
                 {/* Agenda */}
                 <View style={styles.agendaContainer}>
-                    <Text style={styles.subTitle}>
-                        {selectedDate.toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' })}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.m }}>
+                        <Text style={styles.subTitle}>
+                            {selectedDate.toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' })}
+                        </Text>
+                        <TouchableOpacity style={styles.addWorkoutBtn} onPress={() => setWorkoutTypeModalVisible(true)}>
+                            <Ionicons name="add" size={16} color="#FFF" />
+                            <Text style={styles.addWorkoutBtnText}>Planera pass</Text>
+                        </TouchableOpacity>
+                    </View>
 
                     {selectedWorkouts.length > 0 ? (
                         <View style={{ gap: Spacing.s }}>
@@ -222,7 +230,7 @@ export default function CalendarScreen() {
                             <Text style={styles.emptyStateText}>Inga pass planerade</Text>
                             <TouchableOpacity
                                 style={styles.addBtn}
-                                onPress={() => router.push({ pathname: '/workout/log', params: { workoutName: 'New Workout' } })}
+                                onPress={() => setWorkoutTypeModalVisible(true)}
                             >
                                 <Ionicons name="add" size={16} color={Palette.primary.main} />
                                 <Text style={styles.addBtnText}>Lägg till pass</Text>
@@ -232,6 +240,24 @@ export default function CalendarScreen() {
                 </View>
 
             </ScrollView>
+
+            <WorkoutTypeSelector
+                visible={isWorkoutTypeModalVisible}
+                onClose={() => setWorkoutTypeModalVisible(false)}
+                onSelectType={(type) => {
+                    setWorkoutTypeModalVisible(false);
+                    if (type === 'template') {
+                        router.push('/workout/select');
+                    } else if (type === 'custom') {
+                        router.push('/workout/create-custom');
+                    } else {
+                        router.push({
+                            pathname: '/workout/log',
+                            params: { workoutName: 'New Workout', category: type, date: selectedDate.toISOString() }
+                        });
+                    }
+                }}
+            />
         </SafeAreaView>
     );
 }
@@ -338,8 +364,24 @@ const styles = StyleSheet.create({
         fontSize: Typography.size.m,
         fontWeight: 'bold',
         color: Palette.text.primary,
-        marginBottom: Spacing.m,
         textTransform: 'capitalize'
+    },
+    addIconBtn: {
+        padding: 4,
+    },
+    addWorkoutBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: Palette.primary.main,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 20,
+    },
+    addWorkoutBtnText: {
+        color: '#FFF',
+        fontWeight: 'bold',
+        fontSize: 12,
+        marginLeft: 4,
     },
     emptyState: {
         alignItems: 'center',

@@ -2,11 +2,12 @@ import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
 import { Workout } from '@/types';
-import { Ionicons } from '@expo/vector-icons';
+import { FontAwesome, Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { addDoc, collection } from 'firebase/firestore';
 import React, { useState } from 'react';
-import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function CreateCustomWorkoutScreen() {
     const router = useRouter();
@@ -16,6 +17,8 @@ export default function CreateCustomWorkoutScreen() {
     const [description, setDescription] = useState('');
     const [distance, setDistance] = useState('');
     const [duration, setDuration] = useState('');
+    const [scheduledDate, setScheduledDate] = useState(new Date());
+    const [showDatePicker, setShowDatePicker] = useState(false);
     const [saving, setSaving] = useState(false);
 
     const handleSave = async (status: 'Planned' | 'Completed') => {
@@ -31,24 +34,18 @@ export default function CreateCustomWorkoutScreen() {
                 userId: user.uid,
                 name: title,
                 notes: description,
-                category: 'löpning', // Defaulting to running as per request context
+                category: 'löpning',
                 subcategory: 'distans',
                 status: status,
                 date: new Date(),
-                scheduledDate: new Date(),
-                // If providing distance/time upfront for a PLANNED workout, we might store them in 'notes' or specific fields if extending schema. 
-                // The user schema has 'distance' and 'duration' validation on completion usually. 
-                // But we can save them as "target" or just save them as actuals if status is Completed.
-                // For 'Planned', we might just put them in notes or custom fields. 
-                // Let's put them in the root if the schema supports it (we added it earlier).
+                scheduledDate: status === 'Completed' ? new Date() : scheduledDate,
                 distance: distance ? parseFloat(distance.replace(',', '.')) : undefined,
-                duration: duration ? parseInt(duration, 10) * 60 : undefined, // minutes -> seconds
-                exercises: [] // No specific exercises logic for simple custom run yet
+                duration: duration ? parseInt(duration, 10) * 60 : undefined,
+                exercises: []
             };
 
             await addDoc(collection(db, 'users', user.uid, 'workouts'), workoutData);
 
-            // alert('Pass sparat!');
             router.dismissAll();
             router.push('/(tabs)');
         } catch (e) {
@@ -56,6 +53,20 @@ export default function CreateCustomWorkoutScreen() {
             alert('Kunde inte spara passet.');
         } finally {
             setSaving(false);
+        }
+    };
+
+    const formatDateStr = (d: Date) => {
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    const onChangeDate = (event: any, selectedDate?: Date) => {
+        const currentDate = selectedDate || scheduledDate;
+        if (Platform.OS !== 'ios') {
+            setShowDatePicker(false);
+        }
+        if (event.type === 'set' || Platform.OS === 'ios') {
+            setScheduledDate(currentDate);
         }
     };
 
@@ -112,6 +123,42 @@ export default function CreateCustomWorkoutScreen() {
                             onChangeText={setDuration}
                         />
                     </View>
+                </View>
+
+                <View style={styles.formGroup}>
+                    <Text style={styles.label}>Planerat datum</Text>
+                    {Platform.OS === 'web' ? (
+                        <View style={[styles.input, { padding: 0 }]}>
+                            {React.createElement('input', {
+                                type: 'date',
+                                value: formatDateStr(scheduledDate),
+                                onChange: (e: any) => {
+                                    if (!e.target.value) return;
+                                    const parts = e.target.value.split('-');
+                                    const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0);
+                                    setScheduledDate(d);
+                                },
+                                style: { border: 'none', background: 'transparent', padding: Spacing.m, fontSize: Typography.size.m, color: Palette.text.primary, fontFamily: 'inherit', outline: 'none', width: '100%' }
+                            })}
+                        </View>
+                    ) : (
+                        <>
+                            <TouchableOpacity onPress={() => setShowDatePicker(true)} style={[styles.input, { flexDirection: 'row', alignItems: 'center' }]}>
+                                <FontAwesome name="calendar" size={16} color={Palette.primary.main} style={{ marginRight: 8 }} />
+                                <Text style={{ fontSize: Typography.size.m, color: Palette.text.primary }}>{scheduledDate.toLocaleDateString()}</Text>
+                            </TouchableOpacity>
+                            {showDatePicker && (
+                                <DateTimePicker
+                                    testID="dateTimePicker"
+                                    value={scheduledDate}
+                                    mode="date"
+                                    display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                                    onChange={onChangeDate}
+                                    style={{ width: '100%', marginTop: 8 }}
+                                />
+                            )}
+                        </>
+                    )}
                 </View>
 
                 <View style={{ marginTop: Spacing.xl }}>

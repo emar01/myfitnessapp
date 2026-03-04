@@ -2,14 +2,18 @@ import { MarkdownDisplay } from '@/components/MarkdownDisplay';
 import { BorderRadius, Palette, Spacing, Typography } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
-import { generateAtlasResponse } from '@/services/aiService';
+import { generateAtlasResponse, parseWorkoutImage } from '@/services/aiService';
 import { UserProfile } from '@/types';
 import { buildAiContext } from '@/utils/aiContext';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
-import { addDoc, collection, doc, increment, limit, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
+import * as FileSystem from 'expo-file-system';
+import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
+import { addDoc, collection, doc, getDocs, increment, limit, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     FlatList,
     KeyboardAvoidingView,
     Platform,
@@ -37,9 +41,11 @@ const QUICK_ACTIONS = [
 
 export default function CoachScreen() {
     const { user } = useSession();
+    const router = useRouter();
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputText, setInputText] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [isParsingImage, setIsParsingImage] = useState(false);
     const [context, setContext] = useState<string | null>(null);
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const flatListRef = useRef<FlatList>(null);
@@ -171,7 +177,7 @@ export default function CoachScreen() {
                 createdAt: serverTimestamp()
             });
 
-            // 5. Update Cost
+            // 6. Update Cost
             const cost = calculateCost(text, aiText);
             const userRef = doc(db, 'users', user.uid);
             await updateDoc(userRef, {
@@ -182,6 +188,72 @@ export default function CoachScreen() {
             console.error("Chat Error", e);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handlePickImage = async () => {
+        if (!user) return;
+
+        // CHECK IF AI IS ENABLED
+        if (profile?.aiEnabled === false) {
+            Alert.alert("Spärrad", "Atlas är avstängd i din profil.");
+            return;
+        }
+
+        try {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert("Behörighet saknas", "Appen behöver åtkomst till dina bilder för att ladda upp träningspass.");
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: false, // Let user send full picture for best OCR
+                quality: 0.8,
+            });
+
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                await processWorkoutImage(result.assets[0].uri);
+            }
+        } catch (error) {
+            console.error("Image pick error:", error);
+            Alert.alert("Fel", "Kunde inte öppna bildväljaren.");
+        }
+    };
+
+    const processWorkoutImage = async (imageUri: string) => {
+        setIsParsingImage(true);
+        try {
+            // Read image as base64
+            const base64Image = await FileSystem.readAsStringAsync(imageUri, { encoding: 'base64' });
+
+            // Fetch available exercises to match against
+            const exercisesSnapshot = await getDocs(collection(db, 'exercises'));
+            const availableExercises = exercisesSnapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
+
+            const parsedData = await parseWorkoutImage(base64Image, availableExercises);
+
+            setIsParsingImage(false);
+
+            if (parsedData && parsedData.exercises) {
+                // Navigate to log view with pre-filled exercises
+                router.push({
+                    pathname: '/workout/log',
+                    params: {
+                        workoutName: parsedData.workoutName || 'Bild-genererat pass',
+                        category: 'styrketräning',
+                        initialExercises: JSON.stringify(parsedData.exercises)
+                    }
+                });
+            } else {
+                Alert.alert("Kunde inte tolka bilden", "Atlas hade svårt att se vad som stod på bilden. Prova en tydligare bild.");
+            }
+
+        } catch (error) {
+            console.error(error);
+            setIsParsingImage(false);
+            Alert.alert("Fel", "Ett fel uppstod vid tolkning av bilden.");
         }
     };
 
@@ -257,7 +329,20 @@ export default function CoachScreen() {
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
             >
+                {isParsingImage && (
+                    <View style={styles.parsingOverlay}>
+                        <ActivityIndicator size="small" color={Palette.primary.main} />
+                        <Text style={styles.parsingText}>Atlas tolkar passet...</Text>
+                    </View>
+                )}
                 <View style={styles.inputContainer}>
+                    <TouchableOpacity
+                        style={styles.attachButton}
+                        onPress={handlePickImage}
+                        disabled={isLoading || isParsingImage}
+                    >
+                        <Ionicons name="camera" size={24} color={Palette.text.secondary} />
+                    </TouchableOpacity>
                     <TextInput
                         style={styles.input}
                         placeholder="Fråga Atlas..."
@@ -383,6 +468,10 @@ const styles = StyleSheet.create({
         borderTopColor: Palette.border.default,
         alignItems: 'center',
     },
+    attachButton: {
+        padding: Spacing.s,
+        marginRight: Spacing.xs,
+    },
     input: {
         flex: 1,
         backgroundColor: Palette.background.default,
@@ -401,6 +490,21 @@ const styles = StyleSheet.create({
     sendButtonDisabled: {
         backgroundColor: Palette.text.disabled,
     },
+    parsingOverlay: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: Spacing.s,
+        backgroundColor: '#F0F9FF',
+        borderTopWidth: 1,
+        borderTopColor: Palette.border.default,
+    },
+    parsingText: {
+        marginLeft: Spacing.s,
+        color: Palette.primary.main,
+        fontSize: Typography.size.s,
+        fontWeight: 'bold',
+    }
 });
 
 const markdownStyles = StyleSheet.create({

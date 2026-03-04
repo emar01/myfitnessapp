@@ -1,15 +1,18 @@
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 
 interface WorkoutTypeSelectorProps {
     visible: boolean;
     onClose: () => void;
-    onSelectType: (type: 'styrketräning' | 'löpning') => void;
+    onSelectType: (type: 'styrketräning' | 'löpning' | 'template' | 'custom') => void;
 }
 
 export default function WorkoutTypeSelector({ visible, onClose, onSelectType }: WorkoutTypeSelectorProps) {
+    const { width } = useWindowDimensions();
+    const isDesktop = width >= 768; // Web Desktop breakpoint
+
     return (
         <Modal
             visible={visible}
@@ -17,11 +20,11 @@ export default function WorkoutTypeSelector({ visible, onClose, onSelectType }: 
             transparent={true}
             onRequestClose={onClose}
         >
-            <View style={styles.overlay}>
+            <View style={[styles.overlay, isDesktop && { justifyContent: 'center' }]}>
                 {/* Backdrop touch to close */}
                 <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
 
-                <View style={styles.modalContent}>
+                <View style={[styles.modalContent, isDesktop && styles.modalContentDesktop]}>
                     <View style={styles.header}>
                         <Text style={styles.title}>Starta Pass</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel="Stäng">
@@ -61,6 +64,36 @@ export default function WorkoutTypeSelector({ visible, onClose, onSelectType }: 
                             </View>
                             <Ionicons name="chevron-forward" size={20} color={Palette.text.disabled} />
                         </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.optionCard}
+                            onPress={() => onSelectType('template')}
+                            accessibilityRole="button"
+                        >
+                            <View style={[styles.iconContainer, { backgroundColor: '#FF980020' }]}>
+                                <Ionicons name="library" size={32} color="#FF9800" />
+                            </View>
+                            <View style={styles.optionTextContainer}>
+                                <Text style={styles.optionTitle}>Välj från bibliotek</Text>
+                                <Text style={styles.optionDescription}>Använd en sparad mall</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={Palette.text.disabled} />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.optionCard}
+                            onPress={() => onSelectType('custom')}
+                            accessibilityRole="button"
+                        >
+                            <View style={[styles.iconContainer, { backgroundColor: '#4CAF5020' }]}>
+                                <Ionicons name="create" size={32} color="#4CAF50" />
+                            </View>
+                            <View style={styles.optionTextContainer}>
+                                <Text style={styles.optionTitle}>Skapa eget pass</Text>
+                                <Text style={styles.optionDescription}>Planera ett helt nytt pass</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={Palette.text.disabled} />
+                        </TouchableOpacity>
                     </View>
                 </View>
             </View>
@@ -91,6 +124,10 @@ const styles = StyleSheet.create({
         maxWidth: 600,
         alignSelf: 'center', // Center on desktop
         ...Shadows.large,
+    },
+    modalContentDesktop: {
+        borderRadius: BorderRadius.xl, // full border radius on desktop
+        paddingBottom: Spacing.xl, // no extra padding for safe area needed
     },
     header: {
         flexDirection: 'row',

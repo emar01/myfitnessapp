@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 // NOTE: DraggableFlatList kept imported to avoid breaking other potential uses, but no longer used in schedule list
 
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -316,7 +316,10 @@ export default function MobileHome() {
             <SafeAreaView style={styles.safeArea}>
                 {/* Main App Header */}
                 <View style={styles.mainHeader}>
-                    <Text style={styles.mainHeaderTitle}>MyFitness</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Image source={require('@/assets/images/icon.png')} style={{ width: 32, height: 32, borderRadius: 8, marginRight: Spacing.s }} />
+                        <Text style={styles.mainHeaderTitle}>MyFitness</Text>
+                    </View>
                     <TouchableOpacity
                         onPress={() => setProfileMenuVisible(true)}
                         style={styles.mainHeaderProfile}
@@ -368,10 +371,16 @@ export default function MobileHome() {
                 onClose={() => setWorkoutTypeModalVisible(false)}
                 onSelectType={(type) => {
                     setWorkoutTypeModalVisible(false);
-                    router.push({
-                        pathname: '/workout/log',
-                        params: { workoutName: 'New Workout', category: type }
-                    });
+                    if (type === 'template') {
+                        router.push('/workout/select');
+                    } else if (type === 'custom') {
+                        router.push('/workout/create-custom');
+                    } else {
+                        router.push({
+                            pathname: '/workout/log',
+                            params: { workoutName: 'New Workout', category: type }
+                        });
+                    }
                 }}
             />
         </View>

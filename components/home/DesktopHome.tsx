@@ -13,7 +13,7 @@ import { getScaleWeekNumber } from '@/utils/dateUtils';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function DesktopHome() {
     const router = useRouter();
@@ -128,7 +128,10 @@ export default function DesktopHome() {
             <View style={styles.mainContent}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Välkommen tillbaka!</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Image source={require('@/assets/images/icon.png')} style={{ width: 40, height: 40, borderRadius: 10, marginRight: Spacing.m }} />
+                        <Text style={styles.headerTitle}>Välkommen tillbaka!</Text>
+                    </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <View style={styles.weekControl}>
                             <TouchableOpacity onPress={() => changeWeek('prev')} style={styles.arrowBtn}>
@@ -323,10 +326,16 @@ export default function DesktopHome() {
                 onClose={() => setWorkoutTypeModalVisible(false)}
                 onSelectType={(type) => {
                     setWorkoutTypeModalVisible(false);
-                    router.push({
-                        pathname: '/workout/log',
-                        params: { workoutName: 'New Workout', category: type }
-                    });
+                    if (type === 'template') {
+                        router.push('/workout/select');
+                    } else if (type === 'custom') {
+                        router.push('/workout/create-custom');
+                    } else {
+                        router.push({
+                            pathname: '/workout/log',
+                            params: { workoutName: 'New Workout', category: type }
+                        });
+                    }
                 }}
             />
 

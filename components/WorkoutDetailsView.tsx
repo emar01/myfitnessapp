@@ -92,14 +92,17 @@ export default function WorkoutDetailsView({
         setShowStravaPicker(false);
     };
 
+    const formatDateStr = (d: Date) => {
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
     const onChangeDate = (event: any, selectedDate?: Date) => {
         const currentDate = selectedDate || scheduledDate;
-        setShowDatePicker(Platform.OS === 'ios'); // Keep open on iOS if desired, or close. Typically close on Android.
+        if (Platform.OS !== 'ios') {
+            setShowDatePicker(false);
+        }
         if (event.type === 'set' || Platform.OS === 'ios') {
             setScheduledDate(currentDate);
-        }
-        if (Platform.OS === 'android') {
-            setShowDatePicker(false);
         }
     };
 
@@ -356,11 +359,10 @@ export default function WorkoutDetailsView({
                                         <View style={[styles.datePickerButton, { padding: 0 }]}>
                                             {React.createElement('input', {
                                                 type: 'date',
-                                                value: scheduledDate.toLocaleDateString('sv-SE'), // Use local YYYY-MM-DD
+                                                value: formatDateStr(scheduledDate),
                                                 onChange: (e: any) => {
                                                     if (!e.target.value) return;
                                                     const parts = e.target.value.split('-');
-                                                    // Create local date at noon to avoid DST/midnight issues
                                                     const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0);
                                                     setScheduledDate(d);
                                                 },
@@ -425,7 +427,7 @@ export default function WorkoutDetailsView({
                                             <View style={[styles.datePickerButton, { padding: 0 }]}>
                                                 {React.createElement('input', {
                                                     type: 'date',
-                                                    value: scheduledDate.toLocaleDateString('sv-SE'),
+                                                    value: formatDateStr(scheduledDate),
                                                     onChange: (e: any) => {
                                                         if (!e.target.value) return;
                                                         const parts = e.target.value.split('-');
@@ -505,8 +507,13 @@ export default function WorkoutDetailsView({
                                             <View style={[styles.datePickerButton, { padding: 0 }]}>
                                                 {React.createElement('input', {
                                                     type: 'date',
-                                                    value: scheduledDate.toISOString().split('T')[0],
-                                                    onChange: (e: any) => setScheduledDate(new Date(e.target.value)),
+                                                    value: formatDateStr(scheduledDate),
+                                                    onChange: (e: any) => {
+                                                        if (!e.target.value) return;
+                                                        const parts = e.target.value.split('-');
+                                                        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0);
+                                                        setScheduledDate(d);
+                                                    },
                                                     style: {
                                                         border: 'none',
                                                         background: 'transparent',
@@ -566,8 +573,13 @@ export default function WorkoutDetailsView({
                                                 <View style={[styles.datePickerButton, { padding: 0 }]}>
                                                     {React.createElement('input', {
                                                         type: 'date',
-                                                        value: scheduledDate.toISOString().split('T')[0],
-                                                        onChange: (e: any) => setScheduledDate(new Date(e.target.value)),
+                                                        value: formatDateStr(scheduledDate),
+                                                        onChange: (e: any) => {
+                                                            if (!e.target.value) return;
+                                                            const parts = e.target.value.split('-');
+                                                            const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0);
+                                                            setScheduledDate(d);
+                                                        },
                                                         style: { border: 'none', background: 'transparent', padding: 12, fontSize: 16, color: Palette.text.primary, fontFamily: 'inherit', outline: 'none', width: 'fit-content' }
                                                     })}
                                                 </View>
