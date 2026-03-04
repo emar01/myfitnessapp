@@ -1,19 +1,21 @@
 import ConfirmationModal from '@/components/ConfirmationModal';
 import DayCard, { DayCardType } from '@/components/DayCard';
 import ProfileMenuModal from '@/components/ProfileMenuModal';
+import StravaActivityPicker from '@/components/StravaActivityPicker';
 import StravaSyncModal from '@/components/StravaSyncModal';
 import WorkoutDetailsView from '@/components/WorkoutDetailsView';
 import WorkoutTypeSelector from '@/components/WorkoutTypeSelector';
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
 import { ListItem, useHomeData } from '@/hooks/useHomeData';
+import { mapStravaType } from '@/services/stravaService';
 import { workoutService } from '@/services/workoutService';
 import { Workout } from '@/types';
 import { getScaleWeekNumber } from '@/utils/dateUtils';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function DesktopHome() {
     const router = useRouter();
@@ -42,6 +44,8 @@ export default function DesktopHome() {
     const [isProfileMenuVisible, setProfileMenuVisible] = useState(false);
     const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
     const [isWorkoutTypeModalVisible, setWorkoutTypeModalVisible] = useState(false);
+    const [showStravaPicker, setShowStravaPicker] = useState(false);
+    const [isSavingStrava, setIsSavingStrava] = useState(false);
     const [deleteModalVisible, setDeleteModalVisible] = useState(false);
     const [workoutToDelete, setWorkoutToDelete] = useState<{ id: string, isCompleted: boolean } | null>(null);
 
@@ -69,6 +73,43 @@ export default function DesktopHome() {
         };
         await workoutService.updateWorkout(user.uid, workoutId, updatePayload);
         refresh(true);
+    };
+
+    const handleStravaSelect = async (activity: any) => {
+        if (!user) return;
+        setShowStravaPicker(false);
+        setIsSavingStrava(true);
+
+        try {
+            const km = (activity.distance / 1000).toFixed(2);
+            const min = Math.round(activity.moving_time / 60);
+            const mapping = mapStravaType(activity.type);
+
+            const workoutData: any = {
+                userId: user.uid,
+                name: activity.name,
+                date: new Date(),
+                scheduledDate: new Date(activity.start_date),
+                completedAt: new Date(activity.start_date),
+                status: 'Completed',
+                category: mapping.category,
+                distance: parseFloat(km),
+                duration: min * 60,
+                stravaActivityId: activity.id.toString(),
+                exercises: []
+            };
+
+            if (mapping.subcategory) {
+                workoutData.subcategory = mapping.subcategory;
+            }
+
+            await workoutService.saveWorkout(user.uid, workoutData);
+            refresh(true);
+        } catch (e) {
+            console.error("Failed to save Strava workout from desktop home:", e);
+        } finally {
+            setIsSavingStrava(false);
+        }
     };
 
 
@@ -107,7 +148,7 @@ export default function DesktopHome() {
                                 ? (item.workout.subcategory as DayCardType || 'styrka')
                                 : (item.workout.category === 'rörlighet' || item.workout.category === 'rehab'
                                     ? 'rörlighet'
-                                    : 'rest'))
+                                    : (item.workout.category === 'övrigt' ? 'övrigt' : 'rest')))
                     }
                     // @ts-ignore
                     status={item.workout.status === 'Completed' ? 'completed' : 'pending'}
@@ -319,6 +360,17 @@ export default function DesktopHome() {
                     setWorkoutToDelete(null);
                 }}
             />
+            <StravaActivityPicker
+                visible={showStravaPicker}
+                onClose={() => setShowStravaPicker(false)}
+                onSelect={handleStravaSelect}
+            />
+            {isSavingStrava && (
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.7)', justifyContent: 'center', alignItems: 'center' }]}>
+                    <ActivityIndicator size="large" color={Palette.primary.main} />
+                    <Text style={{ marginTop: 10, fontWeight: 'bold' }}>Sparar pass...</Text>
+                </View>
+            )}
 
             <WorkoutTypeSelector
                 visible={isWorkoutTypeModalVisible}
@@ -329,6 +381,8 @@ export default function DesktopHome() {
                         router.push('/workout/select');
                     } else if (type === 'custom') {
                         router.push('/workout/create-custom');
+                    } else if (type === 'strava') {
+                        setTimeout(() => setShowStravaPicker(true), 150);
                     } else {
                         router.push({
                             pathname: '/workout/log',
@@ -339,18 +393,11 @@ export default function DesktopHome() {
             />
 
             {/* Workout Detail Modal */}
-            <Modal
-                visible={!!selectedWorkout}
-                animationType="fade"
-                transparent={true}
-                onRequestClose={() => {
-                    setSelectedWorkout(null);
-                    refresh(true); // Silent refresh
-                }}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        {selectedWorkout && (
+            {Platform.OS === 'web' ? (
+                /* Custom overlay for Web to avoid z-index/portal issues with nested Modals */
+                !!selectedWorkout && (
+                    <View style={[StyleSheet.absoluteFill, { zIndex: 100, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }]}>
+                        <View style={styles.modalContent}>
                             <WorkoutDetailsView
                                 workoutId={selectedWorkout.id!}
                                 initialData={selectedWorkout}
@@ -360,10 +407,36 @@ export default function DesktopHome() {
                                 }}
                                 isModal={true}
                             />
-                        )}
+                        </View>
                     </View>
-                </View>
-            </Modal>
+                )
+            ) : (
+                <Modal
+                    visible={!!selectedWorkout}
+                    animationType="fade"
+                    transparent={true}
+                    onRequestClose={() => {
+                        setSelectedWorkout(null);
+                        refresh(true); // Silent refresh
+                    }}
+                >
+                    <View style={styles.modalOverlay}>
+                        <View style={styles.modalContent}>
+                            {selectedWorkout && (
+                                <WorkoutDetailsView
+                                    workoutId={selectedWorkout.id!}
+                                    initialData={selectedWorkout}
+                                    onClose={() => {
+                                        setSelectedWorkout(null);
+                                        refresh(true); // Silent refresh
+                                    }}
+                                    isModal={true}
+                                />
+                            )}
+                        </View>
+                    </View>
+                </Modal>
+            )}
         </View>
     );
 }

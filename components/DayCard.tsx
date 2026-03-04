@@ -7,7 +7,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 export type DayCardType =
     | 'distans' | 'långpass' | 'intervall'
     | 'crossfit' | 'styrka' | 'rörlighet'
-    | 'rest';
+    | 'rest' | 'övrigt';
 
 export type DayCardStatus = 'completed' | 'pending' | 'skipped';
 
@@ -58,6 +58,7 @@ export default function DayCard({
             case 'rörlighet': return '#009688'; // Teal
 
             case 'rest': return Palette.text.disabled;
+            case 'övrigt': return Palette.text.secondary;
             default: return Palette.text.disabled;
         }
     };
@@ -66,7 +67,7 @@ export default function DayCard({
 
     return (
         <View style={styles.container}>
-            {isRest ? (
+            {type === 'rest' ? (
                 <View style={styles.restCard}>
                     <Ionicons name="leaf-outline" size={16} color={Palette.text.secondary} style={{ marginRight: 8 }} />
                     <Text style={styles.restText}>Vilodag</Text>

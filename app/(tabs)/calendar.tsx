@@ -4,7 +4,7 @@ import WorkoutTypeSelector from '@/components/WorkoutTypeSelector';
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
-import { StravaActivity } from '@/services/stravaService';
+import { mapStravaType, StravaActivity } from '@/services/stravaService';
 import { Workout } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -66,21 +66,25 @@ export default function CalendarScreen() {
         try {
             const km = (activity.distance / 1000).toFixed(2);
             const min = Math.round(activity.moving_time / 60);
+            const mapping = mapStravaType(activity.type);
 
-            const workoutData: Partial<Workout> = {
+            const workoutData: any = {
                 userId: user.uid,
                 name: activity.name,
                 date: new Date(),
                 scheduledDate: new Date(activity.start_date),
                 completedAt: new Date(activity.start_date),
                 status: 'Completed',
-                category: 'löpning',
-                subcategory: 'distans',
+                category: mapping.category,
                 distance: parseFloat(km),
                 duration: min * 60,
                 stravaActivityId: activity.id.toString(),
                 exercises: []
             };
+
+            if (mapping.subcategory) {
+                workoutData.subcategory = mapping.subcategory;
+            }
 
             await addDoc(collection(db, 'users', user.uid, 'workouts'), workoutData);
             fetchWorkouts(); // Refresh the list
@@ -253,7 +257,7 @@ export default function CalendarScreen() {
                                                 ? (workout.subcategory as DayCardType || 'styrka')
                                                 : (workout.category === 'rörlighet' || workout.category === 'rehab'
                                                     ? 'rörlighet'
-                                                    : 'rest'))
+                                                    : (workout.category === 'övrigt' ? 'övrigt' : 'rest')))
                                     }
                                     // @ts-ignore
                                     status={workout.status === 'Completed' ? 'completed' : 'pending'}

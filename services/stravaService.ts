@@ -1,4 +1,5 @@
 import { db } from '@/lib/firebaseConfig';
+import { RunningSubcategory, StrengthSubcategory, WorkoutCategory } from '@/types';
 import { makeRedirectUri } from 'expo-auth-session';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -138,10 +139,57 @@ export const getStravaActivities = async (userId: string, page = 1, perPage = 30
     return await response.json();
 };
 
+export const mapStravaType = (stravaType: string): { category: WorkoutCategory, subcategory?: RunningSubcategory | StrengthSubcategory } => {
+    const type = stravaType.toLowerCase();
+
+    switch (type) {
+        // Running / Walking
+        case 'run':
+        case 'trailrun':
+        case 'walk':
+        case 'hike':
+            return { category: 'löpning', subcategory: 'distans' };
+
+        // Strength
+        case 'weighttraining':
+            return { category: 'styrketräning', subcategory: 'styrka' };
+        case 'crossfit':
+            return { category: 'styrketräning', subcategory: 'crossfit' };
+
+        // Mobility / Recovery
+        case 'yoga':
+        case 'stretch':
+            return { category: 'rörlighet', subcategory: 'rörlighet' };
+
+        // Rehab
+        case 'rehab':
+            return { category: 'rehab' };
+
+        // Other common types to map to 'övrigt' instead of defaulting to 'rest' in UI
+        case 'ride':
+        case 'virtualride':
+        case 'ebikeride':
+        case 'swim':
+        case 'rowing':
+        case 'stairstepper':
+            return { category: 'övrigt' };
+
+        // Default
+        default:
+            return { category: 'övrigt' };
+    }
+};
+
 export const linkStravaActivityToWorkout = async (activity: StravaActivity, workoutId: string) => {
-    return {
+    const mapping = mapStravaType(activity.type);
+    const result: any = {
         distance: activity.distance / 1000, // convert to km
         duration: activity.moving_time,
         stravaActivityId: activity.id.toString(),
+        category: mapping.category,
     };
+    if (mapping.subcategory) {
+        result.subcategory = mapping.subcategory;
+    }
+    return result;
 };

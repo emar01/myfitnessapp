@@ -7,11 +7,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import DayCard, { DayCardType } from '@/components/DayCard';
 import ProfileMenuModal from '@/components/ProfileMenuModal';
+import StravaActivityPicker from '@/components/StravaActivityPicker';
 import StravaSyncModal from '@/components/StravaSyncModal';
 import WorkoutTypeSelector from '@/components/WorkoutTypeSelector';
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
 import { ListItem, useHomeData } from '@/hooks/useHomeData';
+import { mapStravaType } from '@/services/stravaService';
 import { workoutService } from '@/services/workoutService'; // Import Service
 import { getScaleWeekNumber } from '@/utils/dateUtils';
 import { Ionicons } from '@expo/vector-icons';
@@ -46,6 +48,8 @@ export default function MobileHome() {
     const [isProfileMenuVisible, setProfileMenuVisible] = useState(false);
     const [isStravaModalVisible, setStravaModalVisible] = useState(false);
     const [isWorkoutTypeModalVisible, setWorkoutTypeModalVisible] = useState(false);
+    const [showStravaPicker, setShowStravaPicker] = useState(false);
+    const [isSavingStrava, setIsSavingStrava] = useState(false);
     const [deleteModalVisible, setDeleteModalVisible] = useState(false);
     const [workoutToDelete, setWorkoutToDelete] = useState<{ id: string, isCompleted: boolean } | null>(null);
 
@@ -117,6 +121,43 @@ export default function MobileHome() {
         };
         await workoutService.updateWorkout(user.uid, workoutId, updatePayload);
         refresh(true);
+    };
+
+    const handleStravaSelect = async (activity: any) => {
+        if (!user) return;
+        setShowStravaPicker(false);
+        setIsSavingStrava(true);
+
+        try {
+            const km = (activity.distance / 1000).toFixed(2);
+            const min = Math.round(activity.moving_time / 60);
+            const mapping = mapStravaType(activity.type);
+
+            const workoutData: any = {
+                userId: user.uid,
+                name: activity.name,
+                date: new Date(),
+                scheduledDate: new Date(activity.start_date),
+                completedAt: new Date(activity.start_date),
+                status: 'Completed',
+                category: mapping.category,
+                distance: parseFloat(km),
+                duration: min * 60,
+                stravaActivityId: activity.id.toString(),
+                exercises: []
+            };
+
+            if (mapping.subcategory) {
+                workoutData.subcategory = mapping.subcategory;
+            }
+
+            await workoutService.saveWorkout(user.uid, workoutData);
+            refresh(true);
+        } catch (e) {
+            console.error("Failed to save Strava workout from home:", e);
+        } finally {
+            setIsSavingStrava(false);
+        }
     };
 
     const handleDeleteWorkout = (workoutId: string, isCompleted: boolean = false) => {
@@ -365,6 +406,17 @@ export default function MobileHome() {
                     setWorkoutToDelete(null);
                 }}
             />
+            <StravaActivityPicker
+                visible={showStravaPicker}
+                onClose={() => setShowStravaPicker(false)}
+                onSelect={handleStravaSelect}
+            />
+            {isSavingStrava && (
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.7)', justifyContent: 'center', alignItems: 'center' }]}>
+                    <ActivityIndicator size="large" color={Palette.primary.main} />
+                    <Text style={{ marginTop: 10, fontWeight: 'bold' }}>Sparar pass...</Text>
+                </View>
+            )}
             <WorkoutTypeSelector
                 visible={isWorkoutTypeModalVisible}
                 onClose={() => setWorkoutTypeModalVisible(false)}
@@ -374,6 +426,8 @@ export default function MobileHome() {
                         router.push('/workout/select');
                     } else if (type === 'custom') {
                         router.push('/workout/create-custom');
+                    } else if (type === 'strava') {
+                        setTimeout(() => setShowStravaPicker(true), 150);
                     } else {
                         router.push({
                             pathname: '/workout/log',

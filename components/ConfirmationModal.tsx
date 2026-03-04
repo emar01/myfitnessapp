@@ -83,6 +83,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         padding: Spacing.l,
+        zIndex: 1000, // Ensure it's above other modals
     },
     modalContent: {
         width: '100%',
