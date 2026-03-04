@@ -19,13 +19,18 @@ export const getStravaAuthRequestConfig = () => {
 export const saveStravaCredentials = async (userId: string, tokenData: any) => {
     try {
         const ref = doc(db, 'users', userId, 'integrations', 'strava');
-        await setDoc(ref, {
+        const payload: any = {
             access_token: tokenData.access_token,
             refresh_token: tokenData.refresh_token,
             expires_at: tokenData.expires_at,
-            athlete: tokenData.athlete,
             updated_at: new Date()
-        }, { merge: true });
+        };
+
+        if (tokenData.athlete !== undefined) {
+            payload.athlete = tokenData.athlete;
+        }
+
+        await setDoc(ref, payload, { merge: true });
         // console.log('Strava credentials saved.');
     } catch (e) {
         console.error('Failed to save Strava credentials', e);

@@ -299,7 +299,6 @@ export default function MobileHome() {
                     // @ts-ignore
                     status={item.workout.status === 'Completed' ? 'completed' : 'pending'}
                     onPress={() => router.push({ pathname: '/workout/[id]', params: { id: item.workout.id!, title: item.workout.name, status: item.workout.status === 'Completed' ? 'completed' : 'planned' } })}
-                    onDeletePress={() => handleDeleteWorkout(item.workout.id!, item.workout.status === 'Completed')}
                     onToggleComplete={() => handleToggleComplete(item.workout.id!, item.workout.status)}
                     showDragHandle={false}
                 />

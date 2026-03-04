@@ -112,7 +112,6 @@ export default function DesktopHome() {
                     // @ts-ignore
                     status={item.workout.status === 'Completed' ? 'completed' : 'pending'}
                     onPress={() => setSelectedWorkout(item.workout)}
-                    onDeletePress={() => handleDeleteWorkout(item.workout.id!, item.workout.status === 'Completed')}
                     onToggleComplete={() => handleToggleComplete(item.workout.id!, item.workout.status)}
                     showDragHandle={false}
                 />

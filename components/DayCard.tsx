@@ -113,7 +113,7 @@ export default function DayCard({
                         </View>
                     </TouchableOpacity>
 
-                    {/* Right Action Area: Menu OR Delete OR Drag Handle */}
+                    {/* Right Action Area: Menu OR Drag Handle */}
                     {showDragHandle ? (
                         <TouchableOpacity
                             style={styles.actionButton}
@@ -125,15 +125,6 @@ export default function DayCard({
                         </TouchableOpacity>
                     ) : (
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            {onDeletePress && (
-                                <TouchableOpacity
-                                    style={styles.actionButton}
-                                    onPress={onDeletePress}
-                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                >
-                                    <Ionicons name="trash-outline" size={22} color={Palette.text.secondary} />
-                                </TouchableOpacity>
-                            )}
                             {onMenuPress && (
                                 <TouchableOpacity
                                     style={styles.actionButton}
