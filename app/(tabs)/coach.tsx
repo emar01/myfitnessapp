@@ -211,10 +211,12 @@ export default function CoachScreen() {
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsEditing: false, // Let user send full picture for best OCR
                 quality: 0.8,
+                base64: true, // Request base64 directly to support web
             });
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
-                await processWorkoutImage(result.assets[0].uri);
+                const asset = result.assets[0];
+                await processWorkoutImage(asset.uri, asset.base64);
             }
         } catch (error) {
             console.error("Image pick error:", error);
@@ -222,11 +224,19 @@ export default function CoachScreen() {
         }
     };
 
-    const processWorkoutImage = async (imageUri: string) => {
+    const processWorkoutImage = async (imageUri: string, base64Data?: string | null) => {
         setIsParsingImage(true);
         try {
-            // Read image as base64
-            const base64Image = await FileSystem.readAsStringAsync(imageUri, { encoding: 'base64' });
+            let base64Image = base64Data;
+
+            // If base64 isn't provided by the picker (rare but possible on some native configs), fallback to FileSystem
+            if (!base64Image) {
+                if (Platform.OS === 'web') {
+                    throw new Error("Base64 string saknas från webbläsaren.");
+                } else {
+                    base64Image = await FileSystem.readAsStringAsync(imageUri, { encoding: 'base64' });
+                }
+            }
 
             // Fetch available exercises to match against
             const exercisesSnapshot = await getDocs(collection(db, 'exercises'));
