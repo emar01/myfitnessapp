@@ -247,13 +247,24 @@ export default function CoachScreen() {
             setIsParsingImage(false);
 
             if (parsedData && parsedData.exercises) {
+                // Pre-process sets to ensure every set has weight, reps and type to avoid UI crashes
+                const sanitizedExercises = parsedData.exercises.map((ex: any) => ({
+                    ...ex,
+                    sets: (ex.sets || []).map((s: any) => ({
+                        reps: s.reps ?? 0,
+                        weight: s.weight ?? 0,
+                        type: s.type || 'normal',
+                        isCompleted: false
+                    }))
+                }));
+
                 // Navigate to log view with pre-filled exercises
                 router.push({
                     pathname: '/workout/log',
                     params: {
                         workoutName: parsedData.workoutName || 'Bild-genererat pass',
                         category: 'styrketräning',
-                        initialExercises: JSON.stringify(parsedData.exercises)
+                        initialExercises: JSON.stringify(sanitizedExercises)
                     }
                 });
             } else {
