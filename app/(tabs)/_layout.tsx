@@ -2,6 +2,7 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { Palette } from '@/constants/DesignSystem';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Tabs } from 'expo-router';
+import React from 'react';
 
 // You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
 function TabBarIcon(props: {
@@ -17,6 +18,14 @@ import { useWindowDimensions, View } from 'react-native';
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const { width } = useWindowDimensions();
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) return null;
+
   const isDesktop = width > 768;
 
   if (isDesktop) {
@@ -32,6 +41,7 @@ export default function TabLayout() {
               tabBarStyle: { display: 'none' }, // Always hide bottom tabs on desktop
             }}>
             <Tabs.Screen name="index" options={{ href: null }} />
+            <Tabs.Screen name="stats" options={{ href: null }} />
             <Tabs.Screen name="library" options={{ href: null }} />
             <Tabs.Screen name="settings" options={{ href: null }} />
             <Tabs.Screen name="calendar" options={{ href: null }} />
@@ -71,6 +81,13 @@ export default function TabLayout() {
         options={{
           title: 'Bibliotek',
           tabBarIcon: ({ color }) => <FontAwesome name="book" size={24} color={color} style={{ marginBottom: -3 }} />,
+        }}
+      />
+      <Tabs.Screen
+        name="stats"
+        options={{
+          title: 'Statistik',
+          tabBarIcon: ({ color }) => <FontAwesome name="line-chart" size={22} color={color} style={{ marginBottom: -3 }} />,
         }}
       />
       <Tabs.Screen

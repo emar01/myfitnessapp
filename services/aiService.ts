@@ -92,3 +92,92 @@ export async function generateAtlasResponse(
         return "Kunde inte nå Atlas just nu. Kontrollera din internetanslutning.";
     }
 }
+
+export async function parseWorkoutImage(base64Image: string, availableExercises: { id: string, name: string }[]): Promise<any | null> {
+    if (!WEEKLY_PLAN_API_KEY || WEEKLY_PLAN_API_KEY.includes('YOUR_OPENAI_API_KEY')) {
+        console.error("API Key missing");
+        return null;
+    }
+
+    try {
+        const prompt = `
+Du är en AI-assistent i en träningsapp. Din uppgift är att tolka en bild på ett träningspass (kanske skrivet på en whiteboard eller papper) och konvertera det till JSON-format som appen kan logga.
+
+Här är en lista på alla tillgängliga styrkeövningar i databasen:
+${JSON.stringify(availableExercises)}
+
+Regler:
+1. Identifiera alla övningar i bilden.
+2. Mappa namnet i bilden mot den mest troliga övningen i "availableExercises" och använd det ID:t ('exerciseId') och namnet ('name').
+3. Om en övning helt saknar en bra matchning, använd exerciseId: "custom" och name: det som stod i bilden.
+4. Tolka set och reps. Exempel: "3x10" = 3 set med 10 reps. "12, 10, 8" = 3 set med 12, 10 och 8 reps. 
+5. Om vikt anges, inkludera det i setet.
+6. Returnera ENDAST ett giltigt JSON-objekt med denna struktur, INGEN extatext eller markdown-block:
+{
+  "workoutName": "Titel på passet (tolkat eller genererat)",
+  "exercises": [
+    {
+      "exerciseId": "matching-id-eller-custom",
+      "name": "Övningens namn",
+      "sets": [
+         { "reps": 10, "weight": 50 },
+         { "reps": 8, "weight": 55 }
+      ]
+    }
+  ]
+}
+`;
+
+        const payload = {
+            contents: [
+                {
+                    parts: [
+                        { text: prompt },
+                        {
+                            inline_data: {
+                                mime_type: "image/jpeg",
+                                data: base64Image
+                            }
+                        }
+                    ]
+                }
+            ],
+            generationConfig: {
+                temperature: 0.1, // Låg temp för mer exakt JSON
+                maxOutputTokens: 2000,
+            }
+        };
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${WEEKLY_PLAN_API_KEY}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            console.error("Gemini Image Error:", data.error);
+            return null;
+        }
+
+        const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!aiText) return null;
+
+        // Clean up potential markdown formatting block
+        const jsonStr = aiText.replace(/```json/i, '').replace(/```/g, '').trim();
+
+        try {
+            return JSON.parse(jsonStr);
+        } catch (parseError) {
+            console.error("Failed to parse AI response as JSON", aiText);
+            return null;
+        }
+
+    } catch (e) {
+        console.error("Network/API Error Parsing Image:", e);
+        return null;
+    }
+}

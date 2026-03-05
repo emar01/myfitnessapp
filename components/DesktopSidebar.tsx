@@ -38,6 +38,7 @@ export default function DesktopSidebar() {
             <Text style={styles.logoText}>MyFitness</Text>
             <View style={styles.navLinks}>
                 <NavItem label="Översikt" icon="home" route="/(tabs)" />
+                <NavItem label="Statistik" icon="stats-chart" route="/stats" />
                 <NavItem label="Bibliotek" icon="book" route="/library" />
                 <NavItem label="Kalender" icon="calendar" route="/calendar" />
                 <NavItem label="Coach" icon="flash" route="/coach" />

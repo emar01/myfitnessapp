@@ -2,13 +2,14 @@ import ExerciseCard from '@/components/ExerciseCard';
 import RunningSession from '@/components/RunningSession';
 import VideoPlayer from '@/components/VideoPlayer';
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
+import { useAlert } from '@/context/AlertContext';
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
 import { checkAndSavePrs, getUserPrs } from '@/services/prService';
 import { Exercise, PersonalRecord, Workout, WorkoutExercise } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { addDoc, collection, getDocs } from 'firebase/firestore'; // Check imports
+import { addDoc, collection, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -20,74 +21,50 @@ const formatTime = (seconds: number) => {
     return `${h > 0 ? h + ':' : ''}${m < 10 && h > 0 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
 };
 
-
-
+// Helper to remove undefined properties recursively
+const cleanUndefined = (obj: any): any => {
+    if (Array.isArray(obj)) {
+        return obj.map(cleanUndefined);
+    } else if (obj !== null && typeof obj === 'object' && !(obj instanceof Date)) {
+        const cleaned: any = {};
+        for (const key in obj) {
+            if (obj[key] !== undefined) {
+                cleaned[key] = cleanUndefined(obj[key]);
+            }
+        }
+        return cleaned;
+    }
+    return obj;
+};
 
 export default function WorkoutLoggerScreen() {
     const { user } = useSession();
     const router = useRouter();
     const params = useLocalSearchParams();
+    const { showAlert, showConfirm } = useAlert();
 
     const [workoutMode, setWorkoutMode] = useState<'strength' | 'running'>(
         (params.category as string) === 'löpning' ? 'running' : 'strength'
     );
 
+    // Main Workout State - Defined EARLY to avoid hoisting issues
     const [workout, setWorkout] = useState<Workout>({
         userId: user?.uid || '',
         name: (params.workoutName as string) || 'New Workout',
         date: new Date(),
         status: 'In Progress',
         exercises: params.initialExercises ? JSON.parse(params.initialExercises as string) : [],
-        category: (params.category as string) as any || 'styrketräning'
+        category: (params.category as string) as any || 'styrketräning',
+        programId: params.programId as string,
+        workoutTemplateId: params.workoutTemplateId as string
     });
 
-    // ... other state
+    // Running Template State
+    const [runningTemplates, setRunningTemplates] = useState<any[]>([]);
+    const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+    const [runSubFilter, setRunSubFilter] = useState<string | null>(null);
 
-    const finishRun = async (distance: number, duration: number) => {
-        if (!user) return;
-        setIsLoading(true);
-        try {
-            const runningExercise: WorkoutExercise = {
-                exerciseId: 'running-session', // specific ID or generate one
-                name: 'Löpning',
-                isBodyweight: true,
-                sets: [{
-                    id: Date.now().toString(),
-                    reps: 0,
-                    weight: 0,
-                    isCompleted: true,
-                    distance: distance,
-                    duration: duration,
-                    type: 'normal'
-                }]
-            };
-
-            const workoutData = {
-                ...workout,
-                status: 'Completed',
-                date: new Date(),
-                userId: user.uid,
-                exercises: [runningExercise],
-                category: 'löpning',
-                subcategory: 'distans' // Default subcategory
-            } as any; // Cast to any to avoid strict type issues if mismatch
-
-            // Save Workout
-            const workoutsRef = collection(db, `users/${user.uid}/workouts`);
-            await addDoc(workoutsRef, workoutData);
-
-            alert(`Löpning sparad!\nDistans: ${distance} km\nTid: ${formatTime(duration)}`);
-            router.back();
-
-        } catch (e: any) {
-            console.error("Error saving run: ", e);
-            alert(`Failed to save run: ${e.message}`);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-
+    // Other State
     const [isModalVisible, setModalVisible] = useState(false);
     const [availableExercises, setAvailableExercises] = useState<Exercise[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -107,6 +84,12 @@ export default function WorkoutLoggerScreen() {
     const [existingPrs, setExistingPrs] = useState<Record<string, PersonalRecord>>({});
 
     useEffect(() => {
+        if (workoutMode === 'running') {
+            fetchRunningTemplates();
+        }
+    }, [workoutMode]);
+
+    useEffect(() => {
         fetchExercises();
 
         // Fetch PRs
@@ -123,17 +106,30 @@ export default function WorkoutLoggerScreen() {
         return () => clearInterval(interval);
     }, [isPaused, user]);
 
+    const fetchRunningTemplates = async () => {
+        if (!user) return;
+        setIsLoadingTemplates(true);
+        try {
+            const q = query(collection(db, 'workout_templates'), where('category', '==', 'löpning'));
+            const snap = await getDocs(q);
+            const list = snap.docs.map(d => d.data());
+            setRunningTemplates(list);
+        } catch (e) {
+            console.error("Failed to fetch running templates", e);
+        } finally {
+            setIsLoadingTemplates(false);
+        }
+    };
+
     const fetchExercises = async () => {
         setIsLoading(true);
         try {
-            console.log("Fetching exercises...");
             const querySnapshot = await getDocs(collection(db, "exercises"));
             const exercisesList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Exercise));
-            console.log(`Fetched ${exercisesList.length} exercises`);
             setAvailableExercises(exercisesList);
         } catch (e: any) {
             console.error("Error fetching exercises: ", e);
-            alert(`Error loading exercises: ${e.message || JSON.stringify(e)}`);
+            showAlert('Fel', `Error loading exercises: ${e.message || JSON.stringify(e)}`);
         } finally {
             setIsLoading(false);
         }
@@ -143,15 +139,10 @@ export default function WorkoutLoggerScreen() {
         const newExercise: WorkoutExercise = {
             exerciseId: exercise.id!,
             name: exercise.name,
-            sets: [], // Start empty, let user add
+            sets: [],
             isBodyweight: exercise.isBodyweight,
-            videoLink: exercise.defaultVideoUrl // Map from Exercise to WorkoutExercise
+            videoLink: exercise.defaultVideoUrl
         };
-        // Logic to maybe copy sets if copySets is true could go here (mocked for now)
-        if (copySets) {
-            // Mock copying sets logic if needed
-        }
-
         setWorkout(prev => ({ ...prev, exercises: [...prev.exercises, newExercise] }));
         setModalVisible(false);
     };
@@ -167,40 +158,128 @@ export default function WorkoutLoggerScreen() {
         setWorkout(prev => ({ ...prev, exercises: newExercises }));
     };
 
+    const finishRun = async (distance: number, duration: number) => {
+        if (!user) return;
+        setIsLoading(true);
+        try {
+            const runningExercise: WorkoutExercise = {
+                exerciseId: 'running-session',
+                name: 'Löpning',
+                isBodyweight: true,
+                sets: [{
+                    id: Date.now().toString(),
+                    reps: 0,
+                    weight: 0,
+                    isCompleted: true,
+                    distance: distance,
+                    duration: duration,
+                    type: 'normal'
+                }]
+            };
+
+            const workoutData = cleanUndefined({
+                ...workout,
+                status: 'Completed',
+                date: new Date(),
+                scheduledDate: new Date(),
+                userId: user.uid,
+                duration: duration, // Add duration at root in seconds
+                distance: distance, // Add distance at root in km
+                exercises: [runningExercise],
+                category: 'löpning',
+                subcategory: runSubFilter || 'distans' // Use default if lost, but ideally from template
+            });
+
+            const workoutsRef = collection(db, `users/${user.uid}/workouts`);
+            await addDoc(workoutsRef, workoutData);
+
+            await showAlert('Sparat', `Löpning sparad!\nDistans: ${distance} km\nTid: ${formatTime(duration)}`);
+            router.back();
+
+        } catch (e: any) {
+            console.error("Error saving run: ", e);
+            showAlert('Fel', `Failed to save run: ${e.message}`);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const finishWorkout = async () => {
         if (!user) {
-            alert('You must be logged in to save a workout.');
+            showAlert('Logga in', 'You must be logged in to save a workout.');
             return;
         }
 
         setIsLoading(true);
         try {
-            const workoutData = {
+            const workoutData = cleanUndefined({
                 ...workout,
                 status: 'Completed',
                 date: new Date(),
+                scheduledDate: new Date(),
                 userId: user.uid,
-                // Filter out empty exercises if any
+                duration: secondsElapsed, // Add duration at root in seconds
                 exercises: workout.exercises.filter(ex => ex.sets.length > 0)
-            };
+            });
 
-            // Save Workout to Firestore
             const workoutsRef = collection(db, `users/${user.uid}/workouts`);
             const docRef = await addDoc(workoutsRef, workoutData);
 
-            // Check for New PRs
             const newPrs = await checkAndSavePrs(user.uid, workoutData.exercises, existingPrs, docRef.id);
 
             if (newPrs.length > 0) {
-                alert(`Workout saved! 🎉 NEW RECORDS: \n${newPrs.join('\n')}`);
+                await showAlert('Sparat', `Workout saved! 🎉 NEW RECORDS: \n${newPrs.join('\n')}`);
             } else {
-                alert('Workout saved successfully!');
+                await showAlert('Sparat', 'Workout saved successfully!');
             }
+
+            // Sync Logic
+            if (workout.programId && workout.workoutTemplateId && workoutData.exercises.length > 0) {
+                const syncMsg = "Vill du uppdatera alla framtida pass av denna typ i programmet med de nya övningarna?";
+                const shouldSync = await showConfirm(
+                    "Synkronisera program",
+                    syncMsg,
+                    { confirmText: "Ja", cancelText: "Nej", isDestructive: false }
+                );
+
+                if (shouldSync) {
+                    try {
+                        const futureWorkoutsRef = collection(db, `users/${user.uid}/workouts`);
+                        const q = query(
+                            futureWorkoutsRef,
+                            where('programId', '==', workout.programId),
+                            where('workoutTemplateId', '==', workout.workoutTemplateId),
+                            where('status', '==', 'Planned')
+                        );
+
+                        const snap = await getDocs(q);
+                        const now = new Date();
+                        const updatePromises = snap.docs
+                            .filter(doc => {
+                                const data = doc.data();
+                                const scheduledDate = data.scheduledDate?.toDate?.() || data.scheduledDate;
+                                return scheduledDate > now;
+                            })
+                            .map(d => updateDoc(d.ref, {
+                                exercises: workoutData.exercises,
+                                notes: workoutData.notes || ""
+                            }));
+
+                        if (updatePromises.length > 0) {
+                            await Promise.all(updatePromises);
+                            showAlert('Synkroniserat', `${updatePromises.length} framtida pass uppdaterades.`);
+                        }
+                    } catch (syncErr) {
+                        console.error("Sync failed:", syncErr);
+                    }
+                }
+            }
+
             router.back();
 
         } catch (e: any) {
             console.error("Error saving workout: ", e);
-            alert(`Failed to save workout: ${e.message || JSON.stringify(e)}`);
+            showAlert('Fel', `Failed to save workout: ${e.message || JSON.stringify(e)}`);
         } finally {
             setIsLoading(false);
         }
@@ -211,8 +290,106 @@ export default function WorkoutLoggerScreen() {
             setCurrentVideoUrl(url);
             setVideoModalVisible(true);
         } else {
-            alert('No video available for this exercise.');
+            showAlert('Ingen video', 'No video available for this exercise.');
         }
+    };
+
+    const [showTemplates, setShowTemplates] = useState(false);
+
+    const renderRunningSelection = () => {
+        if (!showTemplates) {
+            return (
+                <View style={{ flex: 1, padding: Spacing.xl, justifyContent: 'center', alignItems: 'center' }}>
+                    <Text style={{ fontSize: Typography.size.xl, fontWeight: 'bold', marginBottom: Spacing.xxl, color: Palette.text.primary, textAlign: 'center' }}>
+                        Hur vill du registrera din löpning?
+                    </Text>
+
+                    <TouchableOpacity
+                        style={[styles.largeButton, { width: '100%', marginBottom: Spacing.l, minHeight: 80 }]}
+                        onPress={() => setWorkout(prev => ({ ...prev, name: 'Fritt pass', category: 'löpning', subcategory: 'distans' }))}
+                    >
+                        <Ionicons name="stopwatch-outline" size={32} color={Palette.primary.main} />
+                        <Text style={[styles.largeButtonText, { fontSize: Typography.size.l }]}>Fritt pass (ange egna data)</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.largeButton, { width: '100%', minHeight: 80 }]}
+                        onPress={() => setShowTemplates(true)}
+                    >
+                        <Ionicons name="list-outline" size={32} color={Palette.accent.main} />
+                        <Text style={[styles.largeButtonText, { fontSize: Typography.size.l }]}>Välj från mall</Text>
+                    </TouchableOpacity>
+                </View>
+            );
+        }
+
+        let filtered = runningTemplates;
+        if (runSubFilter) {
+            filtered = filtered.filter(t => t.subcategory === runSubFilter);
+        }
+
+        return (
+            <View style={{ flex: 1, padding: Spacing.m }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.m }}>
+                    <TouchableOpacity onPress={() => setShowTemplates(false)} style={{ marginRight: Spacing.s }}>
+                        <Ionicons name="arrow-back" size={24} color={Palette.text.primary} />
+                    </TouchableOpacity>
+                    <Text style={{ fontSize: 18, fontWeight: 'bold', color: Palette.text.primary }}>
+                        Välj löppass
+                    </Text>
+                </View>
+
+                {/* Filters */}
+                <View style={{ flexDirection: 'row', marginBottom: Spacing.m }}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                        <TouchableOpacity
+                            style={[styles.filterChip, runSubFilter === null && styles.filterChipActive]}
+                            onPress={() => setRunSubFilter(null)}
+                        >
+                            <Text style={[styles.filterText, runSubFilter === null && styles.filterTextActive]}>Alla</Text>
+                        </TouchableOpacity>
+                        {['distans', 'intervall', 'långpass'].map(tag => (
+                            <TouchableOpacity
+                                key={tag}
+                                style={[styles.filterChip, runSubFilter === tag && styles.filterChipActive]}
+                                onPress={() => setRunSubFilter(tag)}
+                            >
+                                <Text style={[styles.filterText, runSubFilter === tag && styles.filterTextActive]}>
+                                    {tag.charAt(0).toUpperCase() + tag.slice(1)}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                </View>
+
+                {isLoadingTemplates ? <ActivityIndicator color={Palette.primary.main} /> : (
+                    <FlatList
+                        data={filtered}
+                        keyExtractor={(item, index) => index.toString()}
+                        renderItem={({ item }) => (
+                            <TouchableOpacity
+                                style={styles.exerciseItem}
+                                onPress={() => setWorkout(prev => ({
+                                    ...prev,
+                                    name: item.name,
+                                    category: 'löpning',
+                                    subcategory: item.subcategory || 'distans'
+                                }))}
+                            >
+                                <View>
+                                    <Text style={styles.exerciseName}>{item.name}</Text>
+                                    <Text style={{ fontSize: 12, color: Palette.text.secondary }}>
+                                        {item.subcategory ? item.subcategory.charAt(0).toUpperCase() + item.subcategory.slice(1) : 'Distans'}
+                                    </Text>
+                                </View>
+                                <Ionicons name="chevron-forward" size={20} color={Palette.text.disabled} />
+                            </TouchableOpacity>
+                        )}
+                        ListEmptyComponent={<Text style={{ textAlign: 'center', color: Palette.text.secondary, marginTop: 20 }}>Inga mallar hittades. Skapa i biblioteket.</Text>}
+                    />
+                )}
+            </View>
+        )
     };
 
     // Filter exercises based on search
@@ -262,9 +439,19 @@ export default function WorkoutLoggerScreen() {
             </View>
 
             {workoutMode === 'running' ? (
-                <View style={styles.container}>
-                    <RunningSession onSave={finishRun} />
-                </View>
+                workout.name === 'New Workout' ? (
+                    renderRunningSelection()
+                ) : (
+                    <View style={styles.container}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.m, marginBottom: Spacing.s }}>
+                            <Text style={styles.workoutName}>{workout.name}</Text>
+                            <TouchableOpacity onPress={() => setWorkout(prev => ({ ...prev, name: 'New Workout' }))}>
+                                <Text style={{ color: Palette.primary.main }}>Byt pass</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <RunningSession onSave={finishRun} />
+                    </View>
+                )
             ) : (
                 <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
                     {/* Workout Name */}
@@ -679,6 +866,33 @@ const styles = StyleSheet.create({
     exerciseName: {
         fontSize: Typography.size.m,
         fontWeight: '500',
+        color: Palette.text.primary,
+    },
+    // Filter Styles
+    filterChip: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: '#FFF',
+        marginRight: 8,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+    },
+    filterChipActive: {
+        backgroundColor: Palette.primary.dark,
+        borderColor: Palette.primary.dark,
+    },
+    filterText: {
+        fontSize: Typography.size.s,
+        color: Palette.text.primary,
+    },
+    filterTextActive: {
+        color: '#FFF',
+        fontWeight: 'bold',
+    },
+    workoutName: {
+        fontSize: Typography.size.l,
+        fontWeight: 'bold',
         color: Palette.text.primary,
     },
 });

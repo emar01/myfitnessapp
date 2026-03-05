@@ -1,13 +1,18 @@
-import { BorderRadius, Palette, Spacing, Typography } from '@/constants/DesignSystem';
+import { BorderRadius, Layout, Palette, Spacing, Typography } from '@/constants/DesignSystem';
+import { RUNNING_SUBCATEGORIES, WORKOUT_CATEGORIES } from '@/constants/WorkoutTypes';
+import { useAlert } from '@/context/AlertContext';
+import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
-import { Program, WorkoutTemplate } from '@/types';
+import { workoutService } from '@/services/workoutService';
+import { Exercise, Program, Workout, WorkoutTemplate } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { collection, getDocs } from 'firebase/firestore';
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import React, { useCallback, useState } from 'react';
 import {
-    ActivityIndicator,
     FlatList,
+    Linking,
+    Modal,
     RefreshControl,
     SafeAreaView,
     ScrollView,
@@ -19,35 +24,106 @@ import {
 
 export default function LibraryScreen() {
     const router = useRouter();
+    const { user } = useSession(); // Get User
+    const { showConfirm } = useAlert();
     const [isLoading, setIsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
     // Data
     const [workouts, setWorkouts] = useState<WorkoutTemplate[]>([]);
     const [programs, setPrograms] = useState<Program[]>([]);
+    const [exercises, setExercises] = useState<Exercise[]>([]);
+    const [completedActivities, setCompletedActivities] = useState<Workout[]>([]);
+    const [activePrograms, setActivePrograms] = useState<Set<string>>(new Set());
 
     // View State
-    const [activeTab, setActiveTab] = useState<'workouts' | 'programs'>('workouts');
+    const [activeTab, setActiveTab] = useState<'workouts' | 'programs' | 'exercises' | 'aktiviteter'>('workouts');
     const [activeFilter, setActiveFilter] = useState<string | null>(null);
+    const [subFilter, setSubFilter] = useState<string | null>(null);
 
-    useEffect(() => {
-        fetchData();
-    }, []);
+    // Exercise Filters
+    const [activeMuscleGroup, setActiveMuscleGroup] = useState<string | null>(null);
+
+    // Creation Modal
+    const [createModalVisible, setCreateModalVisible] = useState(false);
+
+
+    useFocusEffect(
+        useCallback(() => {
+            if (user) fetchData();
+        }, [user])
+    );
 
     const fetchData = async () => {
         setIsLoading(true);
         try {
-            // Fetch Workouts
-            const wSnap = await getDocs(collection(db, 'workout_templates'));
-            const wList = wSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as WorkoutTemplate));
+            // Helper to fetch Public + Private
+            const fetchDual = async (colName: string): Promise<any[]> => {
+                const colRef = collection(db, colName);
+
+                // 1. Fetch Public
+                const qPublic = query(colRef, where('isPublic', '==', true));
+                const snapPublic = await getDocs(qPublic);
+                const publicDocs = snapPublic.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                // 2. Fetch My Private (if user exists)
+                let privateDocs: any[] = [];
+                if (user?.uid) {
+                    const qPrivate = query(colRef, where('createdBy', '==', user.uid));
+                    const snapPrivate = await getDocs(qPrivate);
+                    privateDocs = snapPrivate.docs.map(d => ({ id: d.id, ...d.data() }));
+                }
+
+                // Merge (Dedupe by ID just in case overlap)
+                const combined = [...publicDocs];
+                privateDocs.forEach(p => {
+                    if (!combined.find(c => c.id === p.id)) {
+                        combined.push(p);
+                    }
+                });
+
+                return combined;
+            };
+
+            const wList = await fetchDual('workout_templates') as WorkoutTemplate[];
+            // Sort client side for mixed sources
+            wList.sort((a, b) => a.name.localeCompare(b.name));
             setWorkouts(wList);
 
-            // Fetch Programs (All non-daily?)
-            const pSnap = await getDocs(collection(db, 'programs'));
-            const pList = pSnap.docs
-                .map(doc => ({ id: doc.id, ...doc.data() } as Program))
-                .filter(p => p.type !== 'daily'); // Exclude daily from main list
+            const pListRaw = await fetchDual('programs') as Program[];
+            const pList = pListRaw; // Show all programs
+            pList.sort((a, b) => a.title.localeCompare(b.title));
             setPrograms(pList);
+
+            const eList = await fetchDual('exercises') as Exercise[];
+            eList.sort((a, b) => a.name.localeCompare(b.name));
+            setExercises(eList);
+
+            if (user?.uid) {
+                const activeProgsRef = collection(db, 'users', user.uid, 'active_programs');
+                const activeProgsSnap = await getDocs(activeProgsRef);
+                const aSet = new Set<string>();
+                activeProgsSnap.docs.forEach(d => aSet.add(d.id));
+                setActivePrograms(aSet);
+
+                // Fetch completed workouts — same method as home screen (ensures consistent field mapping)
+                const allWorkouts = await workoutService.getUserWorkouts(user.uid);
+                const completed = allWorkouts
+                    .filter((w: any) => w.status === 'Completed')
+                    .sort((a: any, b: any) => {
+                        const getMs = (d: any) => {
+                            if (!d) return 0;
+                            if (d instanceof Date) return d.getTime();
+                            if (d.toDate) return d.toDate().getTime();
+                            if (d.toMillis) return d.toMillis();
+                            if (d.seconds) return d.seconds * 1000;
+                            return 0;
+                        };
+                        return getMs(b.date) - getMs(a.date);
+                    });
+                setCompletedActivities(completed);
+
+            }
 
         } catch (e) {
             console.error('Failed to fetch library data', e);
@@ -62,14 +138,58 @@ export default function LibraryScreen() {
         fetchData();
     };
 
-    const filteredWorkouts = activeFilter
-        ? workouts.filter(w => w.category === activeFilter)
-        : workouts;
+    const filteredWorkouts = workouts.filter(w => {
+        if (activeFilter && w.category?.toLowerCase() !== activeFilter) return false;
+        if (subFilter && w.subcategory !== subFilter) return false;
+        return true;
+    });
+
+    const filteredExercises = exercises.filter(e => {
+        if (!activeMuscleGroup) return true;
+        return e.primaryMuscleGroup === activeMuscleGroup;
+    });
+
+    const muscleGroups = Array.from(new Set(exercises.map(e => e.primaryMuscleGroup))).sort();
+
+
+    // Navigation Handlers
+    const handleCreate = (type: 'workout' | 'program' | 'exercise') => {
+        setCreateModalVisible(false);
+        if (type === 'workout') {
+            router.push('/workout/edit-template'); // Assuming this exists or points correctly
+        } else if (type === 'program') {
+            router.push('/program/edit');
+        } else if (type === 'exercise') {
+            router.push('/exercise/edit');
+        }
+    };
+
+    const handleEdit = (item: any, type: 'workout' | 'program' | 'exercise') => {
+        if (!item.id) return;
+        if (type === 'workout') {
+            router.push({ pathname: '/workout/edit-template', params: { id: item.id } });
+        } else if (type === 'program') {
+            router.push({ pathname: '/program/edit', params: { id: item.id } });
+        } else if (type === 'exercise') {
+            router.push({ pathname: '/exercise/edit', params: { id: item.id } });
+        }
+    };
 
     const renderHeader = () => (
         <View>
+            <View style={[styles.headerTop, Layout.contentContainer]}>
+                {/* Empty left to center title or just spacer */}
+                <View style={{ width: 40 }} />
+                <Text style={styles.headerTitle}>Bibliotek</Text>
+
+                {/* Add Button */}
+                <TouchableOpacity onPress={() => setCreateModalVisible(true)} style={styles.addButton}>
+                    <Ionicons name="add" size={28} color={Palette.text.primary} />
+                </TouchableOpacity>
+            </View>
+
             {/* Tabs */}
-            <View style={styles.tabsContainer}>
+            <View style={[styles.tabsContainer, Layout.contentContainer]}>
                 <TouchableOpacity
                     style={[styles.tab, activeTab === 'workouts' && styles.tabActive]}
                     onPress={() => setActiveTab('workouts')}
@@ -82,11 +202,23 @@ export default function LibraryScreen() {
                 >
                     <Text style={[styles.tabText, activeTab === 'programs' && styles.tabTextActive]}>Program</Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.tab, activeTab === 'exercises' && styles.tabActive]}
+                    onPress={() => setActiveTab('exercises')}
+                >
+                    <Text style={[styles.tabText, activeTab === 'exercises' && styles.tabTextActive]}>Övningar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.tab, activeTab === 'aktiviteter' && styles.tabActive]}
+                    onPress={() => setActiveTab('aktiviteter')}
+                >
+                    <Text style={[styles.tabText, activeTab === 'aktiviteter' && styles.tabTextActive]}>Aktiviteter</Text>
+                </TouchableOpacity>
             </View>
 
             {/* Filters (Only for Workouts) */}
             {activeTab === 'workouts' && (
-                <View style={styles.filterContainer}>
+                <View style={[styles.filterContainer, Layout.contentContainer]}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                         <TouchableOpacity
                             style={[styles.filterChip, activeFilter === null && styles.filterChipActive]}
@@ -94,14 +226,66 @@ export default function LibraryScreen() {
                         >
                             <Text style={[styles.filterText, activeFilter === null && styles.filterTextActive]}>Alla</Text>
                         </TouchableOpacity>
-                        {['styrketräning', 'löpning', 'rehab'].map(tag => (
+                        {WORKOUT_CATEGORIES.map(cat => (
                             <TouchableOpacity
-                                key={tag}
-                                style={[styles.filterChip, activeFilter === tag && styles.filterChipActive]}
-                                onPress={() => setActiveFilter(tag)}
+                                key={cat.value}
+                                style={[styles.filterChip, activeFilter === cat.value && styles.filterChipActive]}
+                                onPress={() => {
+                                    setActiveFilter(cat.value);
+                                    setSubFilter(null); // Reset subfilter when changing main filter
+                                }}
                             >
-                                <Text style={[styles.filterText, activeFilter === tag && styles.filterTextActive]}>
-                                    {tag.charAt(0).toUpperCase() + tag.slice(1)}
+                                <Text style={[styles.filterText, activeFilter === cat.value && styles.filterTextActive]}>
+                                    {cat.label}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                </View>
+            )}
+            {/* Sub-Filters */}
+            {activeTab === 'workouts' && activeFilter === 'löpning' && (
+                <View style={[styles.filterContainer, Layout.contentContainer]}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                        <TouchableOpacity
+                            style={[styles.filterChip, subFilter === null && styles.filterChipActive]}
+                            onPress={() => setSubFilter(null)}
+                        >
+                            <Text style={[styles.filterText, subFilter === null && styles.filterTextActive]}>Alla typer</Text>
+                        </TouchableOpacity>
+                        {RUNNING_SUBCATEGORIES.map(sub => (
+                            <TouchableOpacity
+                                key={sub.value}
+                                style={[styles.filterChip, subFilter === sub.value && styles.filterChipActive]}
+                                onPress={() => setSubFilter(sub.value)}
+                            >
+                                <Text style={[styles.filterText, subFilter === sub.value && styles.filterTextActive]}>
+                                    {sub.label}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                </View>
+            )}
+
+            {/* Filters (Exercises) */}
+            {activeTab === 'exercises' && (
+                <View style={[styles.filterContainer, Layout.contentContainer]}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                        <TouchableOpacity
+                            style={[styles.filterChip, activeMuscleGroup === null && styles.filterChipActive]}
+                            onPress={() => setActiveMuscleGroup(null)}
+                        >
+                            <Text style={[styles.filterText, activeMuscleGroup === null && styles.filterTextActive]}>Alla</Text>
+                        </TouchableOpacity>
+                        {muscleGroups.map(group => (
+                            <TouchableOpacity
+                                key={group}
+                                style={[styles.filterChip, activeMuscleGroup === group && styles.filterChipActive]}
+                                onPress={() => setActiveMuscleGroup(group)}
+                            >
+                                <Text style={[styles.filterText, activeMuscleGroup === group && styles.filterTextActive]}>
+                                    {group}
                                 </Text>
                             </TouchableOpacity>
                         ))}
@@ -111,126 +295,336 @@ export default function LibraryScreen() {
         </View>
     );
 
+    // Render Helpers
+    const renderPrivateBadge = (isPublic?: boolean) => {
+        if (isPublic) return null;
+        return (
+            <View style={styles.privateBadge}>
+                <Ionicons name="lock-closed" size={12} color="#666" />
+                <Text style={styles.privateText}>Privat</Text>
+            </View>
+        );
+    };
+
+    const isOwner = (item: any) => {
+        const ADMIN_EMAILS = ['emil.artursson@gmail.com', 'test@test.com'];
+        const isAdmin = ADMIN_EMAILS.includes(user?.email || '');
+        return (user?.uid && item.createdBy === user.uid) || isAdmin;
+    };
+
+
     const renderWorkoutItem = ({ item }: { item: WorkoutTemplate }) => {
         const cat = item.category || 'Övrigt';
         const displayCat = cat.charAt(0).toUpperCase() + cat.slice(1);
+        const owned = isOwner(item);
 
         return (
             <TouchableOpacity
                 style={styles.itemCard}
-                onPress={() => router.push({ pathname: '/workout/[id]', params: { id: item.id || 'new', title: item.name } })}
+                onPress={() => router.push({ pathname: '/workout/[id]', params: { id: item.id || 'new', title: item.name, type: 'template' } })}
             >
-                <View>
-                    <Text style={styles.itemTitle}>{item.name}</Text>
+                <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <Text style={styles.itemTitle}>{item.name}</Text>
+                        {renderPrivateBadge(item.isPublic)}
+                    </View>
                     <Text style={styles.itemSubtitle}>
-                        {displayCat} • {item.exercises ? item.exercises.length : 0} Övningar
+                        {displayCat}
+                        {cat !== 'löpning' && item.exercises ? ` • ${item.exercises.length} Övningar` : ''}
                     </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color={Palette.text.disabled} />
+                {owned ? (
+                    <TouchableOpacity onPress={() => handleEdit(item, 'workout')} hitSlop={10}>
+                        <Ionicons name="pencil-outline" size={20} color={Palette.text.secondary} />
+                    </TouchableOpacity>
+                ) : (
+                    <Ionicons name="chevron-forward" size={20} color={Palette.text.disabled} />
+                )}
             </TouchableOpacity>
         );
     };
 
-    const renderProgramItem = ({ item }: { item: Program }) => (
-        <TouchableOpacity
-            style={styles.itemCard}
-            onPress={() => router.push({ pathname: '/program/[id]', params: { id: item.id! } })}
-        >
-            <View>
-                <Text style={styles.itemTitle}>{item.title}</Text>
-                <Text style={styles.itemSubtitle}>{item.duration || 'N/A'} • {item.category || 'Generellt'}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={Palette.text.disabled} />
-        </TouchableOpacity>
-    );
+    const renderProgramItem = ({ item }: { item: Program }) => {
+        const owned = isOwner(item);
+        const isFollowed = item.id ? activePrograms.has(item.id) : false;
 
-    const getListData = () => activeTab === 'workouts' ? filteredWorkouts : programs;
+        return (
+            <TouchableOpacity
+                style={styles.itemCard}
+                onPress={() => router.push({ pathname: '/program/[id]', params: { id: item.id! } })}
+            >
+                <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Text style={styles.itemTitle}>{item.title}</Text>
+                            {isFollowed && (
+                                <View style={styles.followedBadge}>
+                                    <Ionicons name="star" size={12} color="#FFF" />
+                                    <Text style={styles.followedBadgeText}>Följer</Text>
+                                </View>
+                            )}
+                        </View>
+                        {renderPrivateBadge(item.isPublic)}
+                    </View>
+                    <Text style={styles.itemSubtitle}>{item.duration || 'N/A'} • {item.category || 'Generellt'}</Text>
+                </View>
+                {owned ? (
+                    <TouchableOpacity onPress={() => handleEdit(item, 'program')} hitSlop={10}>
+                        <Ionicons name="pencil-outline" size={20} color={Palette.text.secondary} />
+                    </TouchableOpacity>
+                ) : (
+                    <Ionicons name="chevron-forward" size={20} color={Palette.text.disabled} />
+                )}
+            </TouchableOpacity>
+        );
+    };
+
+    const renderExerciseItem = ({ item }: { item: Exercise }) => {
+        const owned = isOwner(item);
+        return (
+            <TouchableOpacity
+                style={styles.itemCard}
+                onPress={() => {
+                    if (item.videoLink) {
+                        Linking.openURL(item.videoLink);
+                    }
+                }}
+            >
+                <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Text style={styles.itemTitle}>{item.name}</Text>
+                            {renderPrivateBadge(item.isPublic)}
+                        </View>
+                        <View style={styles.muscleBadge}>
+                            <Text style={styles.muscleBadgeText}>{item.primaryMuscleGroup}</Text>
+                        </View>
+                    </View>
+                    <Text style={styles.itemSubtitle}>
+                        {item.type} {item.isBodyweight ? '(Kroppsvikt)' : ''}
+                    </Text>
+                </View>
+                {item.videoLink && (
+                    <View style={{ marginLeft: 16 }}>
+                        <Ionicons name="play-circle" size={28} color={Palette.primary.main} />
+                    </View>
+                )}
+                {owned && (
+                    <TouchableOpacity onPress={() => handleEdit(item, 'exercise')} style={{ paddingLeft: 16 }} hitSlop={10}>
+                        <Ionicons name="pencil-outline" size={20} color={Palette.text.secondary} />
+                    </TouchableOpacity>
+                )}
+            </TouchableOpacity>
+        );
+    };
+
+    const handleDeleteActivity = async (workoutId: string) => {
+        const confirmed = await showConfirm(
+            'Ta bort aktivitet',
+            'Vill du ta bort denna genomförda aktivitet?',
+            { confirmText: 'Ta bort', cancelText: 'Avbryt', isDestructive: true }
+        );
+        if (confirmed) {
+            if (!user?.uid) return;
+            await workoutService.deleteWorkout(user.uid, workoutId);
+            // Remove from local state immediately
+            setCompletedActivities(prev => prev.filter(a => a.id !== workoutId));
+        }
+    };
+
+    const renderActivityItem = ({ item }: { item: Workout }) => {
+        const w = item as any;
+        const isRunning = w.category === 'löpning';
+        const iconName = isRunning ? 'footsteps-outline' : 'barbell-outline';
+
+        // Safe date parsing — handles Date objects, Firestore Timestamps (.toDate, .toMillis, .seconds)
+        let dateObj: Date | null = null;
+        const raw = w.date || w.scheduledDate;
+        if (raw instanceof Date) {
+            dateObj = raw;
+        } else if (raw?.toDate) {
+            dateObj = raw.toDate();
+        } else if (raw?.toMillis) {
+            dateObj = new Date(raw.toMillis());
+        } else if (raw?.seconds) {
+            dateObj = new Date(raw.seconds * 1000);
+        }
+        const dateStr = dateObj
+            ? dateObj.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: 'numeric' })
+            : '';
+
+        // Safe duration — stored in seconds, convert to min; guard against NaN/undefined
+        const durationSec = typeof w.duration === 'number' ? w.duration : null;
+        const distance = typeof w.distance === 'number' ? w.distance : null;
+        let statText = '';
+        if (isRunning && distance != null) {
+            statText = `${distance} km`;
+        } else if (durationSec != null && durationSec > 0) {
+            statText = `${Math.round(durationSec / 60)} min`;
+        }
+
+        // Name fallback — different fields used depending on how workout was created
+        const displayName = w.name || w.title || w.workoutTitle || w.workoutName || 'Träningspass';
+
+        return (
+            <TouchableOpacity
+                style={styles.itemCard}
+                onPress={() => router.push({ pathname: '/workout/[id]', params: { id: item.id! } })}
+            >
+                <View style={[styles.activityIcon, { backgroundColor: isRunning ? '#E8F5E9' : '#EDE7F6' }]}>
+                    <Ionicons name={iconName as any} size={20} color={isRunning ? '#2E7D32' : '#512DA8'} />
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={styles.itemTitle} numberOfLines={1}>{displayName}</Text>
+                    <Text style={styles.itemSubtitle}>
+                        {dateStr}{statText ? ` • ${statText}` : ''}
+                    </Text>
+                </View>
+                <TouchableOpacity onPress={() => handleDeleteActivity(item.id!)} hitSlop={10}>
+                    <Ionicons name="trash-outline" size={20} color={Palette.text.disabled} />
+                </TouchableOpacity>
+            </TouchableOpacity>
+        );
+    };
+
+
+    const getListData = () => {
+        if (activeTab === 'workouts') return filteredWorkouts;
+        if (activeTab === 'exercises') return filteredExercises;
+        if (activeTab === 'aktiviteter') return completedActivities;
+        return programs;
+    };
+
+
+    const renderItem = ({ item }: { item: any }) => {
+        if (activeTab === 'workouts') return renderWorkoutItem({ item });
+        if (activeTab === 'exercises') return renderExerciseItem({ item });
+        if (activeTab === 'aktiviteter') return renderActivityItem({ item });
+        return renderProgramItem({ item });
+    }
+
+    const getEmptyText = () => {
+        if (activeTab === 'workouts') {
+            const categories = Array.from(new Set(workouts.map(w => w.category))).join(', ');
+            return `Inga träningspass hittades.\n(Debug: Fetched ${workouts.length}, Filter: ${activeFilter}, Cats: ${categories})`;
+        }
+        if (activeTab === 'exercises') return 'Inga övningar hittades.';
+        if (activeTab === 'aktiviteter') return 'Inga genomförda aktiviteter hittades.';
+        return 'Inga program hittades.';
+    }
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>Bibliotek</Text>
-            </View>
+            {/* Custom Modal for Selection */}
+            <Modal
+                transparent={true}
+                visible={createModalVisible}
+                animationType="fade"
+                onRequestClose={() => setCreateModalVisible(false)}
+            >
+                <TouchableOpacity
+                    style={styles.modalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setCreateModalVisible(false)}
+                >
+                    <View style={styles.actionSheet}>
+                        <Text style={styles.actionSheetTitle}>Skapa nytt</Text>
 
-            {isLoading ? (
-                <View style={styles.center}>
-                    <ActivityIndicator size="large" color={Palette.primary.main} />
-                </View>
-            ) : (
-                <FlatList
-                    data={getListData()}
-                    keyExtractor={(item) => item.id || Math.random().toString()}
-                    renderItem={activeTab === 'workouts' ? renderWorkoutItem : renderProgramItem}
-                    ListHeaderComponent={renderHeader}
-                    contentContainerStyle={styles.listContent}
-                    ListEmptyComponent={
-                        <Text style={styles.emptyText}>
-                            {activeTab === 'workouts' ? 'Inga träningspass hittades.' : 'Inga program hittades.'}
-                        </Text>
-                    }
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-                />
-            )}
+                        <TouchableOpacity style={styles.actionButton} onPress={() => handleCreate('workout')}>
+                            <Ionicons name="barbell-outline" size={24} color={Palette.text.primary} style={{ marginRight: 12 }} />
+                            <Text style={styles.actionButtonText}>Träningspass</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.actionButton} onPress={() => handleCreate('program')}>
+                            <Ionicons name="calendar-outline" size={24} color={Palette.text.primary} style={{ marginRight: 12 }} />
+                            <Text style={styles.actionButtonText}>Program</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.actionButton} onPress={() => handleCreate('exercise')}>
+                            <Ionicons name="body-outline" size={24} color={Palette.text.primary} style={{ marginRight: 12 }} />
+                            <Text style={styles.actionButtonText}>Övning</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={[styles.actionButton, styles.cancelButton]} onPress={() => setCreateModalVisible(false)}>
+                            <Text style={[styles.actionButtonText, { color: Palette.status.error }]}>Avbryt</Text>
+                        </TouchableOpacity>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
+
+
+            <FlatList
+                data={getListData() as any[]}
+                keyExtractor={(item: any) => item.id || item.name || Math.random().toString()}
+                renderItem={renderItem as any}
+                ListHeaderComponent={renderHeader}
+                contentContainerStyle={styles.listContent}
+                ListEmptyComponent={
+                    <Text style={styles.emptyText}>
+                        {getEmptyText()}
+                    </Text>
+                }
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            />
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F5F5F7' },
-    header: {
-        padding: Spacing.m,
-        backgroundColor: '#FFF',
-        borderBottomWidth: 1,
-        borderBottomColor: '#EEE',
+    container: {
+        flex: 1,
+        backgroundColor: '#F5F5F7',
+    },
+    headerTop: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: Spacing.m,
+        paddingTop: Spacing.s,
+        paddingBottom: Spacing.s
     },
     headerTitle: {
         fontSize: Typography.size.l,
         fontWeight: 'bold',
         color: Palette.text.primary,
     },
-    center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-    listContent: { padding: Spacing.m },
-
-    // Tabs
+    addButton: {
+        padding: 4,
+    },
     tabsContainer: {
         flexDirection: 'row',
-        backgroundColor: '#FFF',
-        borderRadius: BorderRadius.s,
-        padding: 4,
-        marginBottom: Spacing.m,
-        borderWidth: 1,
-        borderColor: '#EEE',
+        paddingHorizontal: Spacing.m,
+        marginBottom: Spacing.s,
     },
     tab: {
-        flex: 1,
+        marginRight: Spacing.m,
         paddingVertical: 8,
-        alignItems: 'center',
-        borderRadius: BorderRadius.s - 2,
+        borderBottomWidth: 2,
+        borderBottomColor: 'transparent',
     },
     tabActive: {
-        backgroundColor: Palette.background.default,
+        borderBottomColor: Palette.primary.main,
     },
     tabText: {
-        fontSize: Typography.size.s,
+        fontSize: Typography.size.m,
         color: Palette.text.secondary,
         fontWeight: '600',
     },
     tabTextActive: {
-        color: Palette.text.primary,
+        color: Palette.primary.main,
     },
-
-    // Filters
     filterContainer: {
+        paddingHorizontal: Spacing.m,
         marginBottom: Spacing.m,
     },
     filterChip: {
-        paddingVertical: 6,
         paddingHorizontal: 16,
+        paddingVertical: 8,
         borderRadius: 20,
         backgroundColor: '#FFF',
-        borderWidth: 1,
-        borderColor: '#EEE',
         marginRight: 8,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
     },
     filterChipActive: {
         backgroundColor: Palette.primary.dark,
@@ -238,14 +632,15 @@ const styles = StyleSheet.create({
     },
     filterText: {
         fontSize: Typography.size.s,
-        color: Palette.text.secondary,
+        color: Palette.text.primary,
     },
     filterTextActive: {
         color: '#FFF',
         fontWeight: 'bold',
     },
-
-    // List Items
+    listContent: {
+        padding: Spacing.m,
+    },
     itemCard: {
         backgroundColor: '#FFF',
         padding: Spacing.m,
@@ -254,8 +649,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        borderWidth: 1,
-        borderColor: '#F0F0F0',
+        // Shadow
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
     },
     itemTitle: {
         fontSize: Typography.size.m,
@@ -265,11 +664,95 @@ const styles = StyleSheet.create({
     itemSubtitle: {
         fontSize: Typography.size.s,
         color: Palette.text.secondary,
-        marginTop: 2,
+        marginTop: 4,
+    },
+    muscleBadge: {
+        backgroundColor: '#F0F0F0',
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 4,
+    },
+    muscleBadgeText: {
+        fontSize: 10,
+        color: Palette.text.secondary,
+        fontWeight: 'bold',
     },
     emptyText: {
         textAlign: 'center',
         color: Palette.text.secondary,
         marginTop: 20,
+    },
+    privateBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#E0E0E0',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+        gap: 4
+    },
+    privateText: {
+        fontSize: 10,
+        color: '#666',
+        fontWeight: '600'
+    },
+    // Modal Styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+    },
+    actionSheet: {
+        backgroundColor: '#FFF',
+        borderTopLeftRadius: BorderRadius.l,
+        borderTopRightRadius: BorderRadius.l,
+        padding: Spacing.m,
+        paddingBottom: Spacing.xl, // Safe area
+    },
+    actionSheetTitle: {
+        fontSize: Typography.size.m,
+        fontWeight: 'bold',
+        color: Palette.text.secondary,
+        marginBottom: Spacing.m,
+        textAlign: 'center'
+    },
+    actionButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: Spacing.m,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F0F0'
+    },
+    actionButtonText: {
+        fontSize: Typography.size.m,
+        color: Palette.text.primary,
+        fontWeight: '500'
+    },
+    cancelButton: {
+        borderBottomWidth: 0,
+        justifyContent: 'center',
+        marginTop: Spacing.s
+    },
+    followedBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: Palette.primary.main,
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 8,
+        gap: 4,
+    },
+    followedBadgeText: {
+        fontSize: 10,
+        color: '#FFF',
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+    },
+    activityIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
     }
 });

@@ -50,8 +50,8 @@ export default function SetRow({ set, index, setIndexWithinType, onUpdate, onDel
                     <TextInput
                         style={styles.input}
                         keyboardType="numeric"
-                        value={set.weight.toString()}
-                        onChangeText={(text) => onUpdate({ ...set, weight: Number(text) })}
+                        value={set.weight !== undefined && set.weight !== null ? set.weight.toString() : ''}
+                        onChangeText={(text) => onUpdate({ ...set, weight: text === '' ? 0 : Number(text.replace(',', '.')) })}
                         selectTextOnFocus
                     />
                     <Text style={styles.unitText}>kg</Text>
@@ -61,8 +61,8 @@ export default function SetRow({ set, index, setIndexWithinType, onUpdate, onDel
                     <TextInput
                         style={styles.input}
                         keyboardType="numeric"
-                        value={set.reps.toString()}
-                        onChangeText={(text) => onUpdate({ ...set, reps: Number(text) })}
+                        value={set.reps !== undefined && set.reps !== null ? set.reps.toString() : ''}
+                        onChangeText={(text) => onUpdate({ ...set, reps: text === '' ? 0 : Number(text) })}
                         selectTextOnFocus
                     />
                     <Text style={styles.unitText}>reps</Text>

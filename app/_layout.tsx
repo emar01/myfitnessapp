@@ -1,9 +1,8 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
@@ -24,7 +23,8 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-    ...FontAwesome.font,
+    FontAwesome: require('../assets/fonts/FontAwesome.ttf'),
+    Ionicons: require('../assets/fonts/Ionicons.ttf'),
   });
 
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
@@ -49,12 +49,19 @@ import { SessionProvider, useSession } from '@/context/ctx';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { AlertProvider } from '@/context/AlertContext';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
 function RootLayoutNav() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SessionProvider>
-        <ProtectedLayout />
-      </SessionProvider>
+      <SafeAreaProvider>
+        <AlertProvider>
+          <SessionProvider>
+            <ProtectedLayout />
+          </SessionProvider>
+        </AlertProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
@@ -64,6 +71,11 @@ function ProtectedLayout() {
   const segments = useSegments();
   const router = useRouter();
   const colorScheme = useColorScheme();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     if (isLoading) return;
@@ -81,6 +93,8 @@ function ProtectedLayout() {
     }
   }, [user, segments, isLoading]);
 
+  if (!isMounted) return null;
+
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
@@ -91,7 +105,6 @@ function ProtectedLayout() {
         <Stack.Screen name="workout/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="workout/log" options={{ headerShown: false }} />
         <Stack.Screen name="program/settings" options={{ headerShown: false }} />
-        <Stack.Screen name="settings/profile" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
       </Stack>
     </ThemeProvider>

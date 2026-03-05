@@ -1,5 +1,5 @@
-export type WorkoutCategory = 'löpning' | 'styrketräning' | 'rehab' | 'övrigt';
-export type RunningSubcategory = 'distans' | 'långpass' | 'intervall';
+export type WorkoutCategory = 'löpning' | 'styrketräning' | 'rehab' | 'rörlighet' | 'övrigt';
+export type RunningSubcategory = 'distans' | 'långpass' | 'intervall' | 'fartpass' | 'testlopp';
 export type StrengthSubcategory = 'crossfit' | 'styrka' | 'rörlighet';
 
 export interface Exercise {
@@ -8,7 +8,10 @@ export interface Exercise {
     type: string;
     primaryMuscleGroup: string;
     isBodyweight: boolean;
-    defaultVideoUrl?: string;
+    videoLink?: string;
+    defaultVideoUrl?: string; // Legacy/Fallback
+    isPublic?: boolean;
+    createdBy?: string;
 }
 
 export interface WorkoutSet {
@@ -43,7 +46,11 @@ export interface Workout {
     subcategory?: RunningSubcategory | StrengthSubcategory;
     notes?: string;
     programId?: string;
+    workoutTemplateId?: string;
     stravaActivityId?: string;
+    distance?: number; // in km
+    duration?: number; // in seconds
+    completedAt?: Date | any; // Firestore timestamp or Date
 }
 
 export interface UserProfile {
@@ -56,6 +63,7 @@ export interface UserProfile {
     gender?: 'Man' | 'Kvinna' | 'Annat';
     aiEnabled?: boolean;
     aiTotalCost?: number; // Accumulated cost in USD
+    role?: 'user' | 'admin';
 }
 
 export interface PersonalRecord {
@@ -84,6 +92,8 @@ export interface Program {
     description?: string;
     workoutIds?: string[];
     schedule?: ProgramScheduleItem[];
+    isPublic?: boolean;
+    createdBy?: string;
 }
 
 export interface WorkoutTemplate {
@@ -93,4 +103,8 @@ export interface WorkoutTemplate {
     subcategory?: RunningSubcategory | StrengthSubcategory;
     exercises: WorkoutExercise[];
     note?: string;
+    distance?: number; // km
+    duration?: number; // minutes
+    isPublic?: boolean;
+    createdBy?: string;
 }

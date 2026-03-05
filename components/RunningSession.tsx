@@ -51,8 +51,8 @@ export default function RunningSession({ initialDistance, initialDuration, onSav
                 <TextInput
                     style={styles.input}
                     value={distance}
-                    onChangeText={setDistance}
-                    keyboardType="numeric"
+                    onChangeText={(val) => setDistance(val.replace(',', '.'))}
+                    keyboardType="decimal-pad"
                     placeholder="0.0"
                     placeholderTextColor={Palette.text.disabled}
                 />

@@ -1,196 +1,164 @@
+import ConfirmationModal from '@/components/ConfirmationModal';
 import DayCard, { DayCardType } from '@/components/DayCard';
+import ProfileMenuModal from '@/components/ProfileMenuModal';
+import StravaActivityPicker from '@/components/StravaActivityPicker';
 import StravaSyncModal from '@/components/StravaSyncModal';
+import WorkoutDetailsView from '@/components/WorkoutDetailsView';
+import WorkoutTypeSelector from '@/components/WorkoutTypeSelector';
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
-import { db } from '@/lib/firebaseConfig';
-import { Program, Workout } from '@/types';
+import { ListItem, useHomeData } from '@/hooks/useHomeData';
+import { mapStravaType } from '@/services/stravaService';
+import { workoutService } from '@/services/workoutService';
+import { Workout } from '@/types';
+import { getScaleWeekNumber } from '@/utils/dateUtils';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { collection, doc, getDocs, limit, query, updateDoc, where } from 'firebase/firestore';
-import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
-import { TouchableOpacity as GHTouchableOpacity } from 'react-native-gesture-handler';
-import { getWeekDates, ListItem } from './MobileHome';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
+import { ActivityIndicator, Image, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function DesktopHome() {
     const router = useRouter();
     const { user, signOut, isLoading: sessionLoading } = useSession();
-    const [dailyProgram, setDailyProgram] = useState<Program | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [currentDate, setCurrentDate] = useState(new Date());
-    const [listData, setListData] = useState<ListItem[]>([]);
-    const [isStravaModalVisible, setStravaModalVisible] = useState(false);
 
-    useEffect(() => {
-        if (!sessionLoading) {
-            if (user) {
-                fetchData();
-            } else {
-                setLoading(false);
+    // Use Custom Hook
+    const {
+        dailyProgram,
+        listData,
+        weeklyStats,
+        loading,
+        currentDate,
+        activePrograms,
+        workouts,
+        changeWeek,
+        refresh
+    } = useHomeData(user);
+
+    useFocusEffect(
+        useCallback(() => {
+            refresh(true); // Silent refresh
+        }, [refresh])
+    );
+
+    const [isStravaModalVisible, setStravaModalVisible] = useState(false);
+    const [isProfileMenuVisible, setProfileMenuVisible] = useState(false);
+    const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
+    const [isWorkoutTypeModalVisible, setWorkoutTypeModalVisible] = useState(false);
+    const [showStravaPicker, setShowStravaPicker] = useState(false);
+    const [isSavingStrava, setIsSavingStrava] = useState(false);
+    const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+    const [workoutToDelete, setWorkoutToDelete] = useState<{ id: string, isCompleted: boolean } | null>(null);
+
+    const handleDeleteWorkout = (workoutId: string, isCompleted: boolean = false) => {
+        setWorkoutToDelete({ id: workoutId, isCompleted });
+        setDeleteModalVisible(true);
+    };
+
+    const confirmDeleteWorkout = async () => {
+        if (!workoutToDelete || !user?.uid) return;
+
+        await workoutService.deleteWorkout(user.uid, workoutToDelete.id);
+        setDeleteModalVisible(false);
+        setWorkoutToDelete(null);
+        refresh(true);
+    };
+
+    const handleToggleComplete = async (workoutId: string, currentStatus: string) => {
+        if (!user?.uid) return;
+        const newStatus = currentStatus === 'Completed' ? 'Planned' : 'Completed';
+        const updatePayload: any = {
+            status: newStatus,
+            completedAt: newStatus === 'Completed' ? new Date() : null,
+            date: newStatus === 'Completed' ? new Date() : new Date(), // Keep date updated for sorting
+        };
+        await workoutService.updateWorkout(user.uid, workoutId, updatePayload);
+        refresh(true);
+    };
+
+    const handleStravaSelect = async (activity: any) => {
+        if (!user) return;
+        setShowStravaPicker(false);
+        setIsSavingStrava(true);
+
+        try {
+            const km = (activity.distance / 1000).toFixed(2);
+            const min = Math.round(activity.moving_time / 60);
+            const mapping = mapStravaType(activity.type);
+
+            const workoutData: any = {
+                userId: user.uid,
+                name: activity.name,
+                date: new Date(),
+                scheduledDate: new Date(activity.start_date),
+                completedAt: new Date(activity.start_date),
+                status: 'Completed',
+                category: mapping.category,
+                distance: parseFloat(km),
+                duration: min * 60,
+                stravaActivityId: activity.id.toString(),
+                exercises: []
+            };
+
+            if (mapping.subcategory) {
+                workoutData.subcategory = mapping.subcategory;
             }
+
+            await workoutService.saveWorkout(user.uid, workoutData);
+            refresh(true);
+        } catch (e) {
+            console.error("Failed to save Strava workout from desktop home:", e);
+        } finally {
+            setIsSavingStrava(false);
         }
-    }, [user, sessionLoading, currentDate]);
+    };
+
 
     const handleSignOut = () => {
-        Alert.alert(
-            'Logga ut',
-            `Är du säker på att du vill logga ut från ${user?.email}?`,
-            [
-                { text: 'Avbryt', style: 'cancel' },
-                {
-                    text: 'Logga ut',
-                    style: 'destructive',
-                    onPress: () => {
-                        signOut();
-                        // router.replace('/login'); 
-                    }
-                }
-            ]
-        );
+        setProfileMenuVisible(false);
+        signOut();
     };
 
-    const fetchData = async () => {
-        setLoading(true);
-        try {
-            const qDaily = query(collection(db, 'programs'), where('type', '==', 'daily'), limit(1));
-            const dailySnap = await getDocs(qDaily);
-            if (!dailySnap.empty) {
-                setDailyProgram({ id: dailySnap.docs[0].id, ...dailySnap.docs[0].data() } as Program);
-            }
-
-            // Fetch user workouts
-            if (user) {
-                // Fetch ALL workouts to ensure nothing is missed due to date logic
-                const userWorkoutsRef = collection(db, 'users', user.uid, 'workouts');
-                const qWorkouts = query(userWorkoutsRef);
-                const wSnap = await getDocs(qWorkouts);
-                const workouts = wSnap.docs.map(d => ({ id: d.id, ...d.data() } as Workout));
-
-                // Construct List Data
-                const dates = getWeekDates(currentDate);
-                const newList: ListItem[] = [];
-
-                dates.forEach(date => {
-                    // Create Header
-                    const dayName = date.toLocaleDateString('sv-SE', { weekday: 'long' });
-                    const dateLabel = date.toLocaleDateString('sv-SE', { day: 'numeric', month: 'long' });
-                    const dateStr = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
-
-                    // Push Header
-                    newList.push({
-                        type: 'header',
-                        id: `header-${dateStr}`,
-                        dayName: dayName.charAt(0).toUpperCase() + dayName.slice(1),
-                        dateLabel,
-                        dateObj: date
-                    });
-
-                    // Find workouts for this date
-                    const daysWorkouts = workouts.filter(w => {
-                        if (!w.scheduledDate) return false;
-                        const wDate = w.scheduledDate instanceof Date ? w.scheduledDate : (w.scheduledDate as any).toDate();
-                        return wDate.getFullYear() === date.getFullYear() &&
-                            wDate.getMonth() === date.getMonth() &&
-                            wDate.getDate() === date.getDate();
-                    });
-
-                    daysWorkouts.forEach(w => {
-                        newList.push({ type: 'workout', id: w.id!, workout: w });
-                    });
-                });
-
-                setListData(newList);
-            }
-        } catch (e) {
-            console.error('Failed to fetch data', e);
-        } finally {
-            setLoading(false);
-        }
+    const handleProfileNavigation = () => {
+        setProfileMenuVisible(false);
+        router.push('/settings/profile');
     };
 
-    const handleDragEnd = async ({ data }: { data: ListItem[] }) => {
-        console.log('DesktopHome: Drag Ended. New List Length:', data.length);
-        console.log('Ids:', data.map(i => i.id).join(', '));
 
-        setListData(data);
 
-        // Logic to update dates
-        let currentHeaderDate: Date | null = null;
-        const updates: Promise<any>[] = [];
-
-        for (const item of data) {
-            if (item.type === 'header') {
-                currentHeaderDate = item.dateObj;
-                // console.log('Found Header:', item.dateLabel);
-            } else if (item.type === 'workout' && currentHeaderDate) {
-                // Check if this workout's date needs update
-                const oldDate = item.workout.scheduledDate instanceof Date
-                    ? item.workout.scheduledDate
-                    : (item.workout.scheduledDate as any).toDate();
-
-                const isSameDay = oldDate.getFullYear() === currentHeaderDate.getFullYear() &&
-                    oldDate.getMonth() === currentHeaderDate.getMonth() &&
-                    oldDate.getDate() === currentHeaderDate.getDate();
-
-                if (!isSameDay) {
-                    console.log(`Moving workout ${item.workout.name} from ${oldDate.toDateString()} to ${currentHeaderDate.toDateString()}`);
-                    // Update Local State (optimistic)
-                    item.workout.scheduledDate = currentHeaderDate;
-                    if (item.workout.id && user) {
-                        const ref = doc(db, 'users', user.uid, 'workouts', item.workout.id);
-                        updates.push(updateDoc(ref, { scheduledDate: currentHeaderDate }));
-                    }
-                }
-            }
-        }
-
-        if (updates.length > 0) {
-            console.log(`Pushing ${updates.length} updates to Firestore...`);
-            try {
-                await Promise.all(updates);
-                console.log('Firestore updates successful');
-            } catch (e) {
-                console.error("Failed to batch update workouts", e);
-            }
-        } else {
-            console.log('No date changes detected.');
-        }
-    };
-
-    const changeWeek = (direction: 'next' | 'prev') => {
-        const newDate = new Date(currentDate);
-        newDate.setDate(newDate.getDate() + (direction === 'next' ? 7 : -7));
-        setCurrentDate(newDate);
-    };
-
-    const renderItem = useCallback(({ item, drag, isActive }: RenderItemParams<ListItem>) => {
+    const renderItem = (item: ListItem) => {
         if (item.type === 'header') {
             return (
-                <View style={styles.dayHeader}>
+                <View key={item.id} style={styles.dayHeader}>
                     <Text style={styles.dayHeaderText}>{item.dayName}</Text>
                     <Text style={styles.dayDateText}>{item.dateLabel}</Text>
                 </View>
             );
         }
 
-        // Workout Item
         return (
-            <View style={[styles.itemContainer, isActive && { opacity: 0.5 }]}>
+            <View key={item.id} style={styles.itemContainer}>
                 <DayCard
-                    day="" // Hidden in list view as header handles it
+                    day=""
                     date=""
                     title={item.workout.name}
-                    type={item.workout.category === 'löpning' ? (item.workout.subcategory as DayCardType || 'distans') : (item.workout.category === 'styrketräning' ? (item.workout.subcategory as DayCardType || 'styrka') : 'rest')}
+                    type={
+                        item.workout.category === 'löpning'
+                            ? (item.workout.subcategory as DayCardType || 'distans')
+                            : (item.workout.category === 'styrketräning'
+                                ? (item.workout.subcategory as DayCardType || 'styrka')
+                                : (item.workout.category === 'rörlighet' || item.workout.category === 'rehab'
+                                    ? 'rörlighet'
+                                    : (item.workout.category === 'övrigt' ? 'övrigt' : 'rest')))
+                    }
                     // @ts-ignore
                     status={item.workout.status === 'Completed' ? 'completed' : 'pending'}
-                    onPress={() => router.push({ pathname: '/workout/[id]', params: { id: item.workout.id!, title: item.workout.name, status: item.workout.status === 'Completed' ? 'completed' : 'planned' } })}
-                    onLongPress={drag}
-                    showDragHandle={true}
+                    onPress={() => setSelectedWorkout(item.workout)}
+                    onToggleComplete={() => handleToggleComplete(item.workout.id!, item.workout.status)}
+                    showDragHandle={false}
                 />
             </View>
         );
-    }, []);
+    };
 
     return (
         <View style={styles.container}>
@@ -200,7 +168,10 @@ export default function DesktopHome() {
             <View style={styles.mainContent}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Välkommen tillbaka!</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Image source={require('@/assets/images/icon.png')} style={{ width: 40, height: 40, borderRadius: 10, marginRight: Spacing.m }} />
+                        <Text style={styles.headerTitle}>Välkommen tillbaka!</Text>
+                    </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <View style={styles.weekControl}>
                             <TouchableOpacity onPress={() => changeWeek('prev')} style={styles.arrowBtn}>
@@ -212,21 +183,15 @@ export default function DesktopHome() {
                             </TouchableOpacity>
                         </View>
 
-                        <TouchableOpacity
-                            style={[styles.startWorkoutButton, { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#EEE', marginRight: 16 }]}
-                            onPress={() => setStravaModalVisible(true)}
-                        >
-                            <Ionicons name="sync" size={20} color="#FC4C02" />
-                            <Text style={[styles.startWorkoutText, { color: Palette.text.primary }]}>Synka</Text>
-                        </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.startWorkoutButton} onPress={() => router.push({ pathname: '/workout/log', params: { workoutName: 'New Workout' } })}>
+
+                        <TouchableOpacity style={styles.startWorkoutButton} onPress={() => setWorkoutTypeModalVisible(true)}>
                             <Ionicons name="add" size={20} color="#FFF" />
                             <Text style={styles.startWorkoutText}>Starta pass</Text>
                         </TouchableOpacity>
-                        <GHTouchableOpacity onPress={handleSignOut} style={styles.profileAvatar}>
+                        <TouchableOpacity onPress={() => setProfileMenuVisible(true)} style={styles.profileAvatar}>
                             <FontAwesome name="user" size={20} color={Palette.text.secondary} />
-                        </GHTouchableOpacity>
+                        </TouchableOpacity>
                     </View>
                 </View>
 
@@ -234,67 +199,249 @@ export default function DesktopHome() {
                 <View style={styles.gridContainer}>
                     {/* Left Column: Daily & Stats (Scrollable if needed, or fixed) */}
                     <ScrollView style={styles.leftColumn} contentContainerStyle={{ gap: Spacing.l }}>
-                        {dailyProgram && (
-                            <TouchableOpacity style={styles.dailyCard} onPress={() => router.push({ pathname: '/program/[id]', params: { id: dailyProgram.id! } })}>
-                                <View>
-                                    <Text style={styles.cardLabel}>DAGENS PASS</Text>
-                                    <Text style={styles.cardTitle}>{dailyProgram.title}</Text>
-                                    <Text style={styles.cardSubtitle}>{dailyProgram.duration} • {dailyProgram.category}</Text>
+
+                        {/* Active Programs Section */}
+                        {activePrograms && activePrograms.length > 0 && (
+                            <View>
+                                <Text style={styles.sectionTitle}>Mina Aktiva Program</Text>
+                                <View style={{ gap: Spacing.s }}>
+                                    {activePrograms.map((prog) => (
+                                        <TouchableOpacity
+                                            key={prog.id}
+                                            style={styles.activeProgramCard}
+                                            onPress={() => router.push({ pathname: '/program/[id]', params: { id: prog.programId } })}
+                                        >
+                                            <View style={styles.activeProgramIcon}>
+                                                <Ionicons name="fitness-outline" size={24} color={Palette.primary.main} />
+                                            </View>
+                                            <View style={{ flex: 1, marginLeft: 12 }}>
+                                                <Text style={styles.activeProgramTitle} numberOfLines={1}>{prog.title}</Text>
+                                                <Text style={styles.activeProgramSubtitle}>
+                                                    Startat: {prog.startedAt ? new Date(prog.startedAt.seconds * 1000).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' }) : 'Okänt'}
+                                                </Text>
+                                            </View>
+                                            <Ionicons name="chevron-forward" size={16} color={Palette.text.disabled} />
+                                        </TouchableOpacity>
+                                    ))}
                                 </View>
-                                <Ionicons name="flame" size={48} color="#FFF" />
-                            </TouchableOpacity>
+                            </View>
                         )}
 
-                        <View style={styles.statsRow}>
-                            <View style={styles.statCard}>
-                                <Text style={styles.statValue}>3</Text>
-                                <Text style={styles.statLabel}>Pass i veckan</Text>
-                            </View>
-                            <View style={styles.statCard}>
-                                <Text style={styles.statValue}>12h</Text>
-                                <Text style={styles.statLabel}>Träningstid</Text>
+                        <View>
+                            <Text style={styles.sectionTitle}>Min progress</Text>
+                            <View style={styles.statsRow}>
+                                <View style={styles.statCard}>
+                                    <Text style={styles.statValue}>
+                                        {weeklyStats?.completedWorkouts || 0} / {weeklyStats?.totalWorkouts || 0}
+                                    </Text>
+                                    <Text style={styles.statLabel}>Pass i veckan</Text>
+                                </View>
+                                <View style={styles.statCard}>
+                                    <Text style={styles.statValue}>
+                                        {Math.round((weeklyStats?.completedDurationMinutes || 0) / 60)}h / {Math.round((weeklyStats?.totalDurationMinutes || 0) / 60)}h
+                                    </Text>
+                                    <Text style={styles.statLabel}>Träningstid</Text>
+                                </View>
                             </View>
                         </View>
+
+                        {(() => {
+                            const recentWorkouts = workouts
+                                .filter((w: any) => w.status === 'Completed')
+                                .sort((a: any, b: any) => {
+                                    const getSortDate = (w: any) => {
+                                        const d = w.completedAt || w.date;
+                                        if (!d) return 0;
+                                        return d instanceof Date ? d.getTime() : (d as any).toMillis();
+                                    };
+                                    return getSortDate(b) - getSortDate(a);
+                                })
+                                .slice(0, 5);
+
+                            if (recentWorkouts.length === 0) return null;
+
+                            return (
+                                <View>
+                                    <Text style={styles.sectionTitle}>Senaste Aktiviteter</Text>
+                                    <View style={{ gap: Spacing.s }}>
+                                        {recentWorkouts.map((w) => {
+                                            const isRunning = w.category === 'löpning';
+                                            const iconName = isRunning ? 'footsteps-outline' : 'barbell-outline';
+                                            const statText = isRunning && w.distance
+                                                ? `${w.distance} km`
+                                                : w.duration ? `${Math.round(w.duration / 60)} min` : '';
+
+                                            return (
+                                                <View
+                                                    key={w.id}
+                                                    style={styles.recentActivityCard}
+                                                >
+                                                    <TouchableOpacity
+                                                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+                                                        onPress={() => router.push({ pathname: '/workout/[id]', params: { id: w.id! } })}
+                                                    >
+                                                        <View style={styles.recentActivityIcon}>
+                                                            <Ionicons name={iconName as any} size={20} color={Palette.text.secondary} />
+                                                        </View>
+                                                        <View style={{ flex: 1, marginLeft: 10 }}>
+                                                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                                <Text style={styles.recentActivityTitle} numberOfLines={1}>{w.name}</Text>
+                                                                <TouchableOpacity
+                                                                    onPress={() => handleToggleComplete(w.id!, w.status)}
+                                                                    style={{ marginLeft: 6 }}
+                                                                >
+                                                                    <Ionicons name="checkmark-circle" size={18} color={Palette.primary.main} />
+                                                                </TouchableOpacity>
+                                                            </View>
+                                                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                                <Text style={styles.recentActivitySubtitle}>
+                                                                    {(() => {
+                                                                        const d = w.completedAt || w.date;
+                                                                        if (!d) return '';
+                                                                        const dateObj = d instanceof Date ? d : (d as any).toMillis ? (d as any).toMillis() : d;
+                                                                        return new Date(dateObj).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' });
+                                                                    })()}
+                                                                </Text>
+                                                                {statText ? <Text style={styles.recentActivityStat}>{statText}</Text> : null}
+                                                            </View>
+                                                        </View>
+                                                    </TouchableOpacity>
+                                                </View>
+                                            );
+                                        })}
+                                    </View>
+                                </View>
+                            );
+                        })()}
                     </ScrollView>
 
-                    {/* Right Column: Weekly Schedule (Draggable List) */}
-                    <View style={styles.rightColumn}>
+                    {/* Middle Column: Weekly Schedule */}
+                    <View style={styles.middleColumn}>
                         <Text style={styles.sectionTitle}>Veckans Schema</Text>
-                        {/* DraggableFlatList needs bounded height */}
                         {loading ? (
                             <ActivityIndicator />
                         ) : (
-                            <DraggableFlatList
-                                data={listData}
-                                onDragEnd={handleDragEnd}
-                                onDragBegin={() => console.log('DesktopHome: Drag Began')}
-                                onPlaceholderIndexChange={(index) => console.log('DesktopHome: Placeholder Index Changed to:', index)}
-                                keyExtractor={(item) => item.id}
-                                renderItem={renderItem}
-                                containerStyle={{ flex: 1 }}
-                                autoscrollThreshold={50}
-                            />
+                            <ScrollView showsVerticalScrollIndicator={false}>
+                                {listData.map(item => renderItem(item))}
+                            </ScrollView>
                         )}
+                    </View>
+
+                    {/* Right Column: Empty for now */}
+                    <View style={styles.rightColumn}>
+                        {/* Placeholder for future content */}
                     </View>
                 </View>
             </View>
+
+            {/* Strava Modal */}
             <StravaSyncModal
                 visible={isStravaModalVisible}
                 onClose={() => setStravaModalVisible(false)}
                 userId={user?.uid || ''}
             />
+            <ProfileMenuModal
+                visible={isProfileMenuVisible}
+                onClose={() => setProfileMenuVisible(false)}
+                onProfile={handleProfileNavigation}
+                onLogout={handleSignOut}
+                userEmail={user?.email}
+            />
+
+            <ConfirmationModal
+                visible={deleteModalVisible}
+                title={workoutToDelete?.isCompleted ? "Ta bort aktivitet" : "Ta bort planerat pass"}
+                message={workoutToDelete?.isCompleted
+                    ? "Vill du ta bort denna genomförda aktivitet?"
+                    : "Vill du ta bort detta planerade pass?"}
+                onConfirm={confirmDeleteWorkout}
+                onCancel={() => {
+                    setDeleteModalVisible(false);
+                    setWorkoutToDelete(null);
+                }}
+            />
+            <StravaActivityPicker
+                visible={showStravaPicker}
+                onClose={() => setShowStravaPicker(false)}
+                onSelect={handleStravaSelect}
+            />
+            {isSavingStrava && (
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.7)', justifyContent: 'center', alignItems: 'center' }]}>
+                    <ActivityIndicator size="large" color={Palette.primary.main} />
+                    <Text style={{ marginTop: 10, fontWeight: 'bold' }}>Sparar pass...</Text>
+                </View>
+            )}
+
+            <WorkoutTypeSelector
+                visible={isWorkoutTypeModalVisible}
+                onClose={() => setWorkoutTypeModalVisible(false)}
+                onSelectType={(type) => {
+                    setWorkoutTypeModalVisible(false);
+                    if (type === 'template') {
+                        router.push('/workout/select');
+                    } else if (type === 'custom') {
+                        router.push('/workout/create-custom');
+                    } else if (type === 'strava') {
+                        setTimeout(() => setShowStravaPicker(true), 150);
+                    } else {
+                        router.push({
+                            pathname: '/workout/log',
+                            params: { workoutName: 'New Workout', category: type }
+                        });
+                    }
+                }}
+            />
+
+            {/* Workout Detail Modal */}
+            {Platform.OS === 'web' ? (
+                /* Custom overlay for Web to avoid z-index/portal issues with nested Modals */
+                !!selectedWorkout && (
+                    <View style={[StyleSheet.absoluteFill, { zIndex: 100, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }]}>
+                        <View style={styles.modalContent}>
+                            <WorkoutDetailsView
+                                workoutId={selectedWorkout.id!}
+                                initialData={selectedWorkout}
+                                onClose={() => {
+                                    setSelectedWorkout(null);
+                                    refresh(true); // Silent refresh
+                                }}
+                                isModal={true}
+                            />
+                        </View>
+                    </View>
+                )
+            ) : (
+                <Modal
+                    visible={!!selectedWorkout}
+                    animationType="fade"
+                    transparent={true}
+                    onRequestClose={() => {
+                        setSelectedWorkout(null);
+                        refresh(true); // Silent refresh
+                    }}
+                >
+                    <View style={styles.modalOverlay}>
+                        <View style={styles.modalContent}>
+                            {selectedWorkout && (
+                                <WorkoutDetailsView
+                                    workoutId={selectedWorkout.id!}
+                                    initialData={selectedWorkout}
+                                    onClose={() => {
+                                        setSelectedWorkout(null);
+                                        refresh(true); // Silent refresh
+                                    }}
+                                    isModal={true}
+                                />
+                            )}
+                        </View>
+                    </View>
+                </Modal>
+            )}
         </View>
     );
 }
 
-// Reuse helper for week number 
-function getScaleWeekNumber(d: Date) {
-    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-    const dayNum = date.getUTCDay() || 7;
-    date.setUTCDate(date.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-    return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-}
+// function getScaleWeekNumber removed
 
 const styles = StyleSheet.create({
     container: {
@@ -305,6 +452,7 @@ const styles = StyleSheet.create({
 
     mainContent: {
         flex: 1,
+        backgroundColor: '#F5F7FA',
     },
     header: {
         height: 80,
@@ -315,6 +463,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: Spacing.l,
+        width: '100%',
     },
     headerTitle: {
         fontSize: 24,
@@ -339,17 +488,22 @@ const styles = StyleSheet.create({
     weekControl: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F5F5F7',
-        borderRadius: BorderRadius.m,
+        backgroundColor: '#FFF',
+        borderRadius: 30, // Pill shape
         padding: 4,
         marginRight: Spacing.l,
+        borderWidth: 1,
+        borderColor: '#EEE',
+        ...Shadows.small,
     },
     arrowBtn: {
         padding: 8,
+        backgroundColor: '#F7F7F7',
+        borderRadius: 20,
     },
     weekLabel: {
         fontSize: 14,
-        fontWeight: '600',
+        fontWeight: 'bold',
         color: Palette.text.primary,
         marginHorizontal: Spacing.m,
         minWidth: 70,
@@ -368,17 +522,21 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: Spacing.l,
         padding: Spacing.l,
+        width: '100%',
     },
     leftColumn: {
-        flex: 2,
-        // gap handled in contentContainerStyle
+        flex: 1,
     },
-    rightColumn: {
-        flex: 3,
+    middleColumn: {
+        flex: 1,
         backgroundColor: '#FFF',
         borderRadius: BorderRadius.l,
         padding: Spacing.l,
         ...Shadows.small,
+    },
+    rightColumn: {
+        flex: 1,
+        // Empty panel for future use
     },
     dailyCard: {
         backgroundColor: Palette.primary.main,
@@ -403,31 +561,118 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFF',
         borderRadius: BorderRadius.l,
         padding: Spacing.l,
-        alignItems: 'center',
-        ...Shadows.small,
+        alignItems: 'flex-start', // Left align
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#EFEFEF',
+        // No shadow for flatter look
     },
-    statValue: { fontSize: 32, fontWeight: 'bold', color: Palette.text.primary },
-    statLabel: { fontSize: 14, color: Palette.text.secondary },
+    statValue: { fontSize: 36, fontWeight: '800', color: Palette.primary.main, marginBottom: 4 },
+    statLabel: { fontSize: 13, color: Palette.text.secondary, textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: '600' },
     sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: Spacing.l, color: Palette.text.primary },
 
     // Draggable List Styles
     dayHeader: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
         paddingVertical: Spacing.s,
-        marginTop: Spacing.m,
-        borderBottomWidth: 1,
-        borderBottomColor: Palette.border.default,
-        marginBottom: Spacing.s,
+        marginTop: Spacing.l,
+        marginBottom: Spacing.xs,
+        paddingHorizontal: Spacing.xs,
     },
     dayHeaderText: {
-        fontSize: Typography.size.m,
-        fontWeight: 'bold',
+        fontSize: 16,
+        fontWeight: '800',
         color: Palette.text.primary,
+        marginRight: 8,
     },
     dayDateText: {
-        fontSize: Typography.size.s,
+        fontSize: 14,
         color: Palette.text.secondary,
+        fontWeight: '500',
     },
     itemContainer: {
         marginBottom: Spacing.s,
     },
+
+    // Modal Styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalContent: {
+        width: '90%',
+        maxWidth: 600,
+        height: '80%',
+        backgroundColor: Palette.background.default,
+        borderRadius: BorderRadius.l,
+        overflow: 'hidden',
+        ...Shadows.large,
+    },
+
+    // --- Recent Activities Styles ---
+    recentActivityCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFF',
+        padding: Spacing.m,
+        borderRadius: BorderRadius.m,
+        borderWidth: 1,
+        borderColor: Palette.border.default,
+        ...Shadows.small,
+    },
+    recentActivityIcon: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: Palette.background.default,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    recentActivityTitle: {
+        fontSize: Typography.size.m,
+        fontWeight: '600',
+        color: Palette.text.primary,
+        marginBottom: 2,
+    },
+    recentActivitySubtitle: {
+        fontSize: Typography.size.s,
+        color: Palette.text.secondary,
+    },
+    recentActivityStat: {
+        fontSize: Typography.size.s,
+        fontWeight: '500',
+        color: Palette.primary.main,
+    },
+
+    activeProgramCard: {
+        backgroundColor: '#FFF',
+        borderRadius: BorderRadius.m,
+        padding: Spacing.m,
+        flexDirection: 'row',
+        alignItems: 'center',
+        ...Shadows.small,
+        borderWidth: 1,
+        borderColor: Palette.border.default,
+    },
+    activeProgramIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: Palette.background.default,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    activeProgramTitle: {
+        fontSize: Typography.size.m,
+        fontWeight: 'bold',
+        color: Palette.text.primary,
+        marginBottom: 2,
+    },
+    activeProgramSubtitle: {
+        fontSize: Typography.size.xs,
+        color: Palette.text.secondary,
+    }
 });

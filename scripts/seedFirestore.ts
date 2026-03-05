@@ -62,11 +62,58 @@ export async function seedPrograms() {
             name: 'Knästabilitet & Prehab',
             category: 'rehab',
             exercises: [
-                { exerciseId: 'ex_squat', name: 'Knäböj (kroppsvikt)', sets: [{ id: 's1', reps: 15, weight: 0, isCompleted: false, type: 'normal' }], isBodyweight: true },
-                { exerciseId: 'ex_stepup', name: 'Step-ups', sets: [{ id: 's2', reps: 12, weight: 0, isCompleted: false, type: 'normal' }], isBodyweight: true },
-                { exerciseId: 'ex_plank', name: 'Plankan', sets: [{ id: 's3', reps: 60, weight: 0, isCompleted: false, type: 'normal' }], isBodyweight: true }, // duration as reps logic for now
+                {
+                    exerciseId: 'ex_squat',
+                    name: 'Knäböj (kroppsvikt)',
+                    isBodyweight: true,
+                    sets: [
+                        { id: 's1', reps: 15, weight: 0, isCompleted: false, type: 'normal' },
+                        { id: 's2', reps: 15, weight: 0, isCompleted: false, type: 'normal' },
+                        { id: 's3', reps: 15, weight: 0, isCompleted: false, type: 'normal' },
+                    ]
+                },
+                {
+                    exerciseId: 'ex_stepup',
+                    name: 'Step-ups',
+                    isBodyweight: true,
+                    sets: [
+                        { id: 's1', reps: 12, weight: 0, isCompleted: false, type: 'normal' },
+                        { id: 's2', reps: 12, weight: 0, isCompleted: false, type: 'normal' },
+                        { id: 's3', reps: 12, weight: 0, isCompleted: false, type: 'normal' },
+                    ]
+                },
+                {
+                    exerciseId: 'ex_plank',
+                    name: 'Plankan',
+                    isBodyweight: true,
+                    sets: [
+                        { id: 's1', reps: 1, weight: 0, isCompleted: false, type: 'normal', duration: 60 },
+                        { id: 's2', reps: 1, weight: 0, isCompleted: false, type: 'normal', duration: 60 },
+                        { id: 's3', reps: 1, weight: 0, isCompleted: false, type: 'normal', duration: 60 },
+                    ]
+                },
+                {
+                    exerciseId: 'ex_glute_bridge',
+                    name: 'Höftlyft / Glute Bridge',
+                    isBodyweight: true,
+                    sets: [
+                        { id: 's1', reps: 15, weight: 0, isCompleted: false, type: 'normal' },
+                        { id: 's2', reps: 15, weight: 0, isCompleted: false, type: 'normal' },
+                        { id: 's3', reps: 15, weight: 0, isCompleted: false, type: 'normal' },
+                    ]
+                },
+                {
+                    exerciseId: 'ex_side_plank',
+                    name: 'Sidoplankan',
+                    isBodyweight: true,
+                    sets: [
+                        { id: 's1', reps: 1, weight: 0, isCompleted: false, type: 'normal', duration: 45 },
+                        { id: 's2', reps: 1, weight: 0, isCompleted: false, type: 'normal', duration: 45 },
+                        { id: 's3', reps: 1, weight: 0, isCompleted: false, type: 'normal', duration: 45 },
+                    ]
+                },
             ],
-            note: 'Fokus på kontroll och balans.'
+            note: 'Fokus på kontroll och balans. Vila 60 sek mellan set.'
         },
         {
             id: 'template_strength_runner_leg',
@@ -74,9 +121,56 @@ export async function seedPrograms() {
             category: 'styrketräning',
             subcategory: 'styrka',
             exercises: [
-                { exerciseId: 'ex_lunge', name: 'Utfall', sets: [{ id: 's1', reps: 10, weight: 10, isCompleted: false, type: 'normal' }], isBodyweight: false },
-                { exerciseId: 'ex_dl', name: 'Marklyft', sets: [{ id: 's2', reps: 8, weight: 40, isCompleted: false, type: 'normal' }], isBodyweight: false },
-                { exerciseId: 'ex_calf', name: 'Tåhävningar', sets: [{ id: 's3', reps: 20, weight: 0, isCompleted: false, type: 'normal' }], isBodyweight: true },
+                {
+                    exerciseId: 'ex_lunge',
+                    name: 'Utfall',
+                    isBodyweight: false,
+                    sets: [
+                        { id: 's1', reps: 10, weight: 10, isCompleted: false, type: 'normal' },
+                        { id: 's2', reps: 10, weight: 10, isCompleted: false, type: 'normal' },
+                        { id: 's3', reps: 10, weight: 10, isCompleted: false, type: 'normal' },
+                    ]
+                },
+                {
+                    exerciseId: 'ex_dl',
+                    name: 'Marklyft',
+                    isBodyweight: false,
+                    sets: [
+                        { id: 's1', reps: 8, weight: 40, isCompleted: false, type: 'normal' },
+                        { id: 's2', reps: 8, weight: 40, isCompleted: false, type: 'normal' },
+                        { id: 's3', reps: 8, weight: 40, isCompleted: false, type: 'normal' },
+                    ]
+                },
+                {
+                    exerciseId: 'ex_calf',
+                    name: 'Tåhävningar',
+                    isBodyweight: true,
+                    sets: [
+                        { id: 's1', reps: 20, weight: 0, isCompleted: false, type: 'normal' },
+                        { id: 's2', reps: 20, weight: 0, isCompleted: false, type: 'normal' },
+                        { id: 's3', reps: 20, weight: 0, isCompleted: false, type: 'normal' },
+                    ]
+                },
+                {
+                    exerciseId: 'ex_squat',
+                    name: 'Knäböj',
+                    isBodyweight: false,
+                    sets: [
+                        { id: 's1', reps: 10, weight: 40, isCompleted: false, type: 'normal' },
+                        { id: 's2', reps: 10, weight: 40, isCompleted: false, type: 'normal' },
+                        { id: 's3', reps: 10, weight: 40, isCompleted: false, type: 'normal' },
+                    ]
+                },
+                {
+                    exerciseId: 'ex_single_leg_dl',
+                    name: 'Enbensmarklyft',
+                    isBodyweight: false,
+                    sets: [
+                        { id: 's1', reps: 10, weight: 15, isCompleted: false, type: 'normal' },
+                        { id: 's2', reps: 10, weight: 15, isCompleted: false, type: 'normal' },
+                        { id: 's3', reps: 10, weight: 15, isCompleted: false, type: 'normal' },
+                    ]
+                },
             ],
         }
     ];

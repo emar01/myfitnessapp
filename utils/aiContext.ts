@@ -4,8 +4,6 @@ import { collection, doc, getDoc, getDocs, limit, orderBy, query } from 'firebas
 
 export async function buildAiContext(userId: string): Promise<string> {
     try {
-        console.log("Building AI Context for user:", userId);
-
         // 1. Fetch Recent Workouts (Last 14 days)
         // We calculate the date 14 days ago
         const twoWeeksAgo = new Date();
@@ -36,8 +34,6 @@ export async function buildAiContext(userId: string): Promise<string> {
                 } as any;
             })
             .filter(w => new Date(w.date) >= twoWeeksAgo); // Client-side filter to be safe
-
-        console.log(`Found ${workouts.length} recent workouts`);
 
         // 1. User Profile & Stats
         const userDoc = await getDoc(doc(db, 'users', userId));

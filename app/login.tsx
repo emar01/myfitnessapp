@@ -1,24 +1,35 @@
 import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
+import { useAlert } from '@/context/AlertContext';
 import { auth } from '@/lib/firebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
-// import { GoogleSignin } from '@react-native-google-signin/google-signin'; // TODO: Enable when installed/configured
 import { useRouter } from 'expo-router';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
-// Google Signin Config Placeholder
-// GoogleSignin.configure({
-//     webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-// });
+import { ActivityIndicator, Platform, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function LoginScreen() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
+    const { showAlert } = useAlert();
 
     const handleGoogleLogin = async () => {
-        // Validation check for real Google Auth
-        Alert.alert('Google Login', 'Google Sign-In kräver konfiguration i Firebase Console. I dev-läge, använd "Dev Login" om du inte har nycklar.');
+        if (Platform.OS === 'web') {
+            try {
+                setLoading(true);
+                const provider = new GoogleAuthProvider();
+                await signInWithPopup(auth, provider);
+                router.replace('/(tabs)');
+            } catch (error: any) {
+                console.error("Google Web Login Error:", error);
+                if (error.code === 'auth/popup-closed-by-user') return;
+                showAlert('Inloggning misslyckades', error.message);
+            } finally {
+                setLoading(false);
+            }
+        } else {
+            // Validation check for real Google Auth
+            showAlert('Google Login', 'Google Sign-In kräver konfiguration i Firebase Console. I dev-läge, använd "Dev Login" om du inte har nycklar.');
+        }
     };
 
     const handleDevLogin = async () => {
@@ -26,36 +37,32 @@ export default function LoginScreen() {
         const DEV_EMAIL = "dev_admin@myfitnessapp.com";
         const DEV_PASS = "DevPass123!";
 
-        console.log("Attempting Dev Login...");
-
         try {
             await signInWithEmailAndPassword(auth, DEV_EMAIL, DEV_PASS);
             router.replace('/(tabs)');
         } catch (loginError: any) {
-            console.log("Dev Login failed, attempting creation...", loginError.code);
-
             // auth/invalid-credential or auth/user-not-found means user doesn't exist (or wrong pass, but we use const pass)
             if (loginError.code === 'auth/invalid-credential' || loginError.code === 'auth/user-not-found' || loginError.code === 'auth/invalid-email') {
                 try {
                     await createUserWithEmailAndPassword(auth, DEV_EMAIL, DEV_PASS);
-                    Alert.alert('Konto Skapat', 'Dev-konto skapat och inloggad!');
+                    showAlert('Konto Skapat', 'Dev-konto skapat och inloggad!');
                     router.replace('/(tabs)');
                 } catch (createError: any) {
                     console.error("Dev Creation Error:", createError);
                     if (createError.code === 'auth/operation-not-allowed') {
-                        Alert.alert(
+                        showAlert(
                             'Kräver Inställning',
                             'Email/Lösenord är INTE aktiverat i ditt Firebase-projekt.\n\nGå till Firebase Console -> Authentication -> Sign-in method och aktivera "Email/Password".'
                         );
                     } else if (createError.code === 'auth/email-already-in-use') {
                         // Should satisfy the login first, but weird race condition or password changed?
-                        Alert.alert('Fel', 'Kontot finns redan men lösenordet stämmer inte?');
+                        showAlert('Fel', 'Kontot finns redan men lösenordet stämmer inte?');
                     } else {
-                        Alert.alert('Kunde inte skapa konto', createError.message);
+                        showAlert('Kunde inte skapa konto', createError.message);
                     }
                 }
             } else {
-                Alert.alert('Login Error', loginError.message);
+                showAlert('Login Error', loginError.message);
             }
         } finally {
             setLoading(false);
@@ -65,7 +72,7 @@ export default function LoginScreen() {
     // Hidden trigger info
     const handleLongPressSecret = async () => {
         if (__DEV__) {
-            Alert.alert('Dev Info', 'Dev läge är aktivt.');
+            showAlert('Dev Info', 'Dev läge är aktivt.');
         }
     };
 

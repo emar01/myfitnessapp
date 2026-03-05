@@ -1,14 +1,19 @@
+import { MarkdownDisplay } from '@/components/MarkdownDisplay';
 import { BorderRadius, Palette, Spacing, Typography } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
-import { generateAtlasResponse } from '@/services/aiService';
+import { generateAtlasResponse, parseWorkoutImage } from '@/services/aiService';
 import { UserProfile } from '@/types';
 import { buildAiContext } from '@/utils/aiContext';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
-import { addDoc, collection, doc, increment, limit, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
+import * as FileSystem from 'expo-file-system';
+import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
+import { addDoc, collection, doc, getDocs, increment, limit, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     FlatList,
     KeyboardAvoidingView,
     Platform,
@@ -19,7 +24,6 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import Markdown from 'react-native-markdown-display';
 
 interface Message {
     id: string;
@@ -37,9 +41,11 @@ const QUICK_ACTIONS = [
 
 export default function CoachScreen() {
     const { user } = useSession();
+    const router = useRouter();
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputText, setInputText] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [isParsingImage, setIsParsingImage] = useState(false);
     const [context, setContext] = useState<string | null>(null);
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const flatListRef = useRef<FlatList>(null);
@@ -171,7 +177,7 @@ export default function CoachScreen() {
                 createdAt: serverTimestamp()
             });
 
-            // 5. Update Cost
+            // 6. Update Cost
             const cost = calculateCost(text, aiText);
             const userRef = doc(db, 'users', user.uid);
             await updateDoc(userRef, {
@@ -182,6 +188,93 @@ export default function CoachScreen() {
             console.error("Chat Error", e);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handlePickImage = async () => {
+        if (!user) return;
+
+        // CHECK IF AI IS ENABLED
+        if (profile?.aiEnabled === false) {
+            Alert.alert("Spärrad", "Atlas är avstängd i din profil.");
+            return;
+        }
+
+        try {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert("Behörighet saknas", "Appen behöver åtkomst till dina bilder för att ladda upp träningspass.");
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: false, // Let user send full picture for best OCR
+                quality: 0.8,
+                base64: true, // Request base64 directly to support web
+            });
+
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                const asset = result.assets[0];
+                await processWorkoutImage(asset.uri, asset.base64);
+            }
+        } catch (error) {
+            console.error("Image pick error:", error);
+            Alert.alert("Fel", "Kunde inte öppna bildväljaren.");
+        }
+    };
+
+    const processWorkoutImage = async (imageUri: string, base64Data?: string | null) => {
+        setIsParsingImage(true);
+        try {
+            let base64Image = base64Data;
+
+            // If base64 isn't provided by the picker (rare but possible on some native configs), fallback to FileSystem
+            if (!base64Image) {
+                if (Platform.OS === 'web') {
+                    throw new Error("Base64 string saknas från webbläsaren.");
+                } else {
+                    base64Image = await FileSystem.readAsStringAsync(imageUri, { encoding: 'base64' });
+                }
+            }
+
+            // Fetch available exercises to match against
+            const exercisesSnapshot = await getDocs(collection(db, 'exercises'));
+            const availableExercises = exercisesSnapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
+
+            const parsedData = await parseWorkoutImage(base64Image, availableExercises);
+
+            setIsParsingImage(false);
+
+            if (parsedData && parsedData.exercises) {
+                // Pre-process sets to ensure every set has weight, reps and type to avoid UI crashes
+                const sanitizedExercises = parsedData.exercises.map((ex: any) => ({
+                    ...ex,
+                    sets: (ex.sets || []).map((s: any) => ({
+                        reps: s.reps ?? 0,
+                        weight: s.weight ?? 0,
+                        type: s.type || 'normal',
+                        isCompleted: false
+                    }))
+                }));
+
+                // Navigate to log view with pre-filled exercises
+                router.push({
+                    pathname: '/workout/log',
+                    params: {
+                        workoutName: parsedData.workoutName || 'Bild-genererat pass',
+                        category: 'styrketräning',
+                        initialExercises: JSON.stringify(sanitizedExercises)
+                    }
+                });
+            } else {
+                Alert.alert("Kunde inte tolka bilden", "Atlas hade svårt att se vad som stod på bilden. Prova en tydligare bild.");
+            }
+
+        } catch (error) {
+            console.error(error);
+            setIsParsingImage(false);
+            Alert.alert("Fel", "Ett fel uppstod vid tolkning av bilden.");
         }
     };
 
@@ -204,9 +297,9 @@ export default function CoachScreen() {
                     </Text>
                 ) : (
                     <View style={{ flex: 1 }}>
-                        <Markdown style={markdownStyles}>
+                        <MarkdownDisplay style={markdownStyles}>
                             {item.text}
-                        </Markdown>
+                        </MarkdownDisplay>
                     </View>
                 )}
             </View>
@@ -257,7 +350,20 @@ export default function CoachScreen() {
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
             >
+                {isParsingImage && (
+                    <View style={styles.parsingOverlay}>
+                        <ActivityIndicator size="small" color={Palette.primary.main} />
+                        <Text style={styles.parsingText}>Atlas tolkar passet...</Text>
+                    </View>
+                )}
                 <View style={styles.inputContainer}>
+                    <TouchableOpacity
+                        style={styles.attachButton}
+                        onPress={handlePickImage}
+                        disabled={isLoading || isParsingImage}
+                    >
+                        <Ionicons name="camera" size={24} color={Palette.text.secondary} />
+                    </TouchableOpacity>
                     <TextInput
                         style={styles.input}
                         placeholder="Fråga Atlas..."
@@ -383,6 +489,10 @@ const styles = StyleSheet.create({
         borderTopColor: Palette.border.default,
         alignItems: 'center',
     },
+    attachButton: {
+        padding: Spacing.s,
+        marginRight: Spacing.xs,
+    },
     input: {
         flex: 1,
         backgroundColor: Palette.background.default,
@@ -401,6 +511,21 @@ const styles = StyleSheet.create({
     sendButtonDisabled: {
         backgroundColor: Palette.text.disabled,
     },
+    parsingOverlay: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: Spacing.s,
+        backgroundColor: '#F0F9FF',
+        borderTopWidth: 1,
+        borderTopColor: Palette.border.default,
+    },
+    parsingText: {
+        marginLeft: Spacing.s,
+        color: Palette.primary.main,
+        fontSize: Typography.size.s,
+        fontWeight: 'bold',
+    }
 });
 
 const markdownStyles = StyleSheet.create({

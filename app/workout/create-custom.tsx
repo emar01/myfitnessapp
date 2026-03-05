@@ -1,0 +1,250 @@
+import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
+import { useSession } from '@/context/ctx';
+import { db } from '@/lib/firebaseConfig';
+import { Workout } from '@/types';
+import { FontAwesome, Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useRouter } from 'expo-router';
+import { addDoc, collection } from 'firebase/firestore';
+import React, { useState } from 'react';
+import { ActivityIndicator, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+
+export default function CreateCustomWorkoutScreen() {
+    const router = useRouter();
+    const { user } = useSession();
+
+    const [title, setTitle] = useState('');
+    const [description, setDescription] = useState('');
+    const [distance, setDistance] = useState('');
+    const [duration, setDuration] = useState('');
+    const [scheduledDate, setScheduledDate] = useState(new Date());
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [saving, setSaving] = useState(false);
+
+    const handleSave = async (status: 'Planned' | 'Completed') => {
+        if (!user) return;
+        if (!title) {
+            alert('Vänligen ange en titel.');
+            return;
+        }
+
+        setSaving(true);
+        try {
+            const workoutData: Partial<Workout> = {
+                userId: user.uid,
+                name: title,
+                notes: description,
+                category: 'löpning',
+                subcategory: 'distans',
+                status: status,
+                date: new Date(),
+                scheduledDate: status === 'Completed' ? new Date() : scheduledDate,
+                distance: distance ? parseFloat(distance.replace(',', '.')) : undefined,
+                duration: duration ? parseInt(duration, 10) * 60 : undefined,
+                exercises: []
+            };
+
+            await addDoc(collection(db, 'users', user.uid, 'workouts'), workoutData);
+
+            router.dismissAll();
+            router.push('/(tabs)');
+        } catch (e) {
+            console.error(e);
+            alert('Kunde inte spara passet.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const formatDateStr = (d: Date) => {
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    const onChangeDate = (event: any, selectedDate?: Date) => {
+        const currentDate = selectedDate || scheduledDate;
+        if (Platform.OS !== 'ios') {
+            setShowDatePicker(false);
+        }
+        if (event.type === 'set' || Platform.OS === 'ios') {
+            setScheduledDate(currentDate);
+        }
+    };
+
+    return (
+        <SafeAreaView style={styles.container}>
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <Ionicons name="arrow-back" size={24} color={Palette.text.primary} />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>Skapa Eget Pass</Text>
+                <View style={{ width: 40 }} />
+            </View>
+
+            <ScrollView contentContainerStyle={styles.content}>
+                <View style={styles.formGroup}>
+                    <Text style={styles.label}>Titel</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="T.ex. Morgonjogg"
+                        value={title}
+                        onChangeText={setTitle}
+                    />
+                </View>
+
+                <View style={styles.formGroup}>
+                    <Text style={styles.label}>Beskrivning</Text>
+                    <TextInput
+                        style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+                        placeholder="Kort beskrivning av passet..."
+                        multiline
+                        value={description}
+                        onChangeText={setDescription}
+                    />
+                </View>
+
+                <View style={{ flexDirection: 'row', gap: Spacing.m }}>
+                    <View style={[styles.formGroup, { flex: 1 }]}>
+                        <Text style={styles.label}>Sträcka (km)</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="0.0"
+                            keyboardType="numeric"
+                            value={distance}
+                            onChangeText={setDistance}
+                        />
+                    </View>
+                    <View style={[styles.formGroup, { flex: 1 }]}>
+                        <Text style={styles.label}>Tid (min)</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="0"
+                            keyboardType="numeric"
+                            value={duration}
+                            onChangeText={setDuration}
+                        />
+                    </View>
+                </View>
+
+                <View style={styles.formGroup}>
+                    <Text style={styles.label}>Planerat datum</Text>
+                    {Platform.OS === 'web' ? (
+                        <View style={[styles.input, { padding: 0 }]}>
+                            {React.createElement('input', {
+                                type: 'date',
+                                value: formatDateStr(scheduledDate),
+                                onChange: (e: any) => {
+                                    if (!e.target.value) return;
+                                    const parts = e.target.value.split('-');
+                                    const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0);
+                                    setScheduledDate(d);
+                                },
+                                style: { border: 'none', background: 'transparent', padding: Spacing.m, fontSize: Typography.size.m, color: Palette.text.primary, fontFamily: 'inherit', outline: 'none', width: '100%' }
+                            })}
+                        </View>
+                    ) : (
+                        <>
+                            <TouchableOpacity onPress={() => setShowDatePicker(true)} style={[styles.input, { flexDirection: 'row', alignItems: 'center' }]}>
+                                <FontAwesome name="calendar" size={16} color={Palette.primary.main} style={{ marginRight: 8 }} />
+                                <Text style={{ fontSize: Typography.size.m, color: Palette.text.primary }}>{scheduledDate.toLocaleDateString()}</Text>
+                            </TouchableOpacity>
+                            {showDatePicker && (
+                                <DateTimePicker
+                                    testID="dateTimePicker"
+                                    value={scheduledDate}
+                                    mode="date"
+                                    display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                                    onChange={onChangeDate}
+                                    style={{ width: '100%', marginTop: 8 }}
+                                />
+                            )}
+                        </>
+                    )}
+                </View>
+
+                <View style={{ marginTop: Spacing.xl }}>
+                    <TouchableOpacity
+                        style={[styles.button, styles.primaryButton]}
+                        onPress={() => handleSave('Planned')}
+                        disabled={saving}
+                    >
+                        {saving ? <ActivityIndicator color="#FFF" /> : <Text style={styles.buttonText}>Spara som Planerat</Text>}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.button, styles.secondaryButton]}
+                        onPress={() => handleSave('Completed')}
+                        disabled={saving}
+                    >
+                        <Text style={[styles.buttonText, { color: Palette.text.primary }]}>Spara & Klarmarkera</Text>
+                    </TouchableOpacity>
+                </View>
+
+            </ScrollView>
+        </SafeAreaView>
+    );
+}
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: Palette.background.default,
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: Spacing.m,
+        paddingVertical: Spacing.s,
+        backgroundColor: Palette.background.paper,
+        borderBottomWidth: 1,
+        borderBottomColor: Palette.border.default,
+    },
+    backButton: {
+        padding: 8,
+    },
+    headerTitle: {
+        fontSize: Typography.size.l,
+        fontWeight: 'bold',
+        color: Palette.text.primary,
+    },
+    content: {
+        padding: Spacing.l,
+    },
+    formGroup: {
+        marginBottom: Spacing.l,
+    },
+    label: {
+        fontSize: Typography.size.s,
+        fontWeight: '600',
+        color: Palette.text.secondary,
+        marginBottom: 8,
+    },
+    input: {
+        backgroundColor: '#FFF',
+        borderWidth: 1,
+        borderColor: Palette.border.default,
+        borderRadius: BorderRadius.m,
+        padding: Spacing.m,
+        fontSize: Typography.size.m,
+    },
+    button: {
+        paddingVertical: Spacing.m,
+        borderRadius: BorderRadius.round,
+        alignItems: 'center',
+        marginBottom: Spacing.m,
+        ...Shadows.small,
+    },
+    primaryButton: {
+        backgroundColor: Palette.primary.main,
+    },
+    secondaryButton: {
+        backgroundColor: '#FFF',
+        borderWidth: 1,
+        borderColor: Palette.border.default,
+    },
+    buttonText: {
+        fontSize: Typography.size.m,
+        fontWeight: 'bold',
+        color: '#FFF',
+    },
+});
