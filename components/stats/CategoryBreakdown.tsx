@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { BorderRadius, Palette, Spacing, Typography } from '../../constants/DesignSystem';
+import { useTheme } from '../../constants/DesignSystem';
 import { WorkoutCategory } from '../../types';
 
 interface CategoryBreakdownProps {
@@ -8,11 +8,13 @@ interface CategoryBreakdownProps {
 }
 
 export default function CategoryBreakdown({ breakdown }: CategoryBreakdownProps) {
+    const { palette, spacing, borderRadius, typography, shadows } = useTheme();
+    const styles = getStyles(palette, spacing, borderRadius, typography, shadows);
     const total = Object.values(breakdown).reduce((sum, count) => sum + count, 0);
 
     const categoryColors: Record<WorkoutCategory, string> = {
-        'löpning': Palette.accent.main,
-        'styrketräning': Palette.primary.main,
+        'löpning': palette.accent.main,
+        'styrketräning': palette.primary.main,
         'rehab': '#2196F3',
         'rörlighet': '#9C27B0',
         'övrigt': '#757575'
@@ -63,34 +65,34 @@ export default function CategoryBreakdown({ breakdown }: CategoryBreakdownProps)
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (palette: any, spacing: any, borderRadius: any, typography: any, shadows: any) => StyleSheet.create({
     container: {
-        marginTop: Spacing.xl,
-        padding: Spacing.m,
-        backgroundColor: Palette.background.paper,
-        borderRadius: BorderRadius.l,
+        marginTop: spacing.xl,
+        padding: spacing.m,
+        backgroundColor: palette.background.paper,
+        borderRadius: borderRadius.l,
         borderWidth: 1,
-        borderColor: Palette.border.default,
+        borderColor: palette.border.default,
     },
     title: {
-        fontSize: Typography.size.l,
-        fontWeight: Typography.weight.bold as any,
-        color: Palette.text.primary,
-        marginBottom: Spacing.m,
+        fontSize: typography.size.l,
+        fontWeight: typography.weight.bold as any,
+        color: palette.text.primary,
+        marginBottom: spacing.m,
     },
     progressBarContainer: {
         height: 12,
         flexDirection: 'row',
         borderRadius: 6,
         overflow: 'hidden',
-        backgroundColor: Palette.border.default,
-        marginBottom: Spacing.l,
+        backgroundColor: palette.border.default,
+        marginBottom: spacing.l,
     },
     progressSegment: {
         height: '100%',
     },
     legend: {
-        gap: Spacing.s,
+        gap: spacing.s,
     },
     legendItem: {
         flexDirection: 'row',
@@ -100,15 +102,15 @@ const styles = StyleSheet.create({
         width: 10,
         height: 10,
         borderRadius: 5,
-        marginRight: Spacing.s,
+        marginRight: spacing.s,
     },
     categoryName: {
         flex: 1,
-        fontSize: Typography.size.s,
-        color: Palette.text.primary,
+        fontSize: typography.size.s,
+        color: palette.text.primary,
     },
     categoryCount: {
-        fontSize: Typography.size.s,
-        color: Palette.text.secondary,
+        fontSize: typography.size.s,
+        color: palette.text.secondary,
     },
 });

@@ -1,11 +1,11 @@
 import ExerciseCard from '@/components/ExerciseCard';
 import RunningSession from '@/components/RunningSession';
 import VideoPlayer from '@/components/VideoPlayer';
-import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
+import { useTheme } from '@/constants/DesignSystem';
 import { useAlert } from '@/context/AlertContext';
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
-import { checkAndSavePrs, getUserPrs } from '@/services/prService';
+import { checkAndPrs as checkAndSavePrs, getUserPrs } from '@/services/prService';
 import { Exercise, PersonalRecord, Workout, WorkoutExercise } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -38,6 +38,8 @@ const cleanUndefined = (obj: any): any => {
 };
 
 export default function WorkoutLoggerScreen() {
+    const { palette, spacing, borderRadius, typography, shadows, isDark } = useTheme();
+    const styles = getStyles(palette, spacing, borderRadius, typography, shadows, isDark);
     const { user } = useSession();
     const router = useRouter();
     const params = useLocalSearchParams();
@@ -299,25 +301,25 @@ export default function WorkoutLoggerScreen() {
     const renderRunningSelection = () => {
         if (!showTemplates) {
             return (
-                <View style={{ flex: 1, padding: Spacing.xl, justifyContent: 'center', alignItems: 'center' }}>
-                    <Text style={{ fontSize: Typography.size.xl, fontWeight: 'bold', marginBottom: Spacing.xxl, color: Palette.text.primary, textAlign: 'center' }}>
+                <View style={{ flex: 1, padding: spacing.xl, justifyContent: 'center', alignItems: 'center' }}>
+                    <Text style={{ fontSize: typography.size.xl, fontWeight: 'bold', marginBottom: spacing.xxl, color: palette.text.primary, textAlign: 'center' }}>
                         Hur vill du registrera din löpning?
                     </Text>
 
                     <TouchableOpacity
-                        style={[styles.largeButton, { width: '100%', marginBottom: Spacing.l, minHeight: 80 }]}
+                        style={[styles.largeButton, { width: '100%', marginBottom: spacing.l, minHeight: 80 }]}
                         onPress={() => setWorkout(prev => ({ ...prev, name: 'Fritt pass', category: 'löpning', subcategory: 'distans' }))}
                     >
-                        <Ionicons name="stopwatch-outline" size={32} color={Palette.primary.main} />
-                        <Text style={[styles.largeButtonText, { fontSize: Typography.size.l }]}>Fritt pass (ange egna data)</Text>
+                        <Ionicons name="stopwatch-outline" size={32} color={palette.primary.main} />
+                        <Text style={[styles.largeButtonText, { fontSize: typography.size.l }]}>Fritt pass (ange egna data)</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
                         style={[styles.largeButton, { width: '100%', minHeight: 80 }]}
                         onPress={() => setShowTemplates(true)}
                     >
-                        <Ionicons name="list-outline" size={32} color={Palette.accent.main} />
-                        <Text style={[styles.largeButtonText, { fontSize: Typography.size.l }]}>Välj från mall</Text>
+                        <Ionicons name="list-outline" size={32} color={palette.accent.main} />
+                        <Text style={[styles.largeButtonText, { fontSize: typography.size.l }]}>Välj från mall</Text>
                     </TouchableOpacity>
                 </View>
             );
@@ -329,18 +331,18 @@ export default function WorkoutLoggerScreen() {
         }
 
         return (
-            <View style={{ flex: 1, padding: Spacing.m }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.m }}>
-                    <TouchableOpacity onPress={() => setShowTemplates(false)} style={{ marginRight: Spacing.s }}>
-                        <Ionicons name="arrow-back" size={24} color={Palette.text.primary} />
+            <View style={{ flex: 1, padding: spacing.m }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.m }}>
+                    <TouchableOpacity onPress={() => setShowTemplates(false)} style={{ marginRight: spacing.s }}>
+                        <Ionicons name="arrow-back" size={24} color={palette.text.primary} />
                     </TouchableOpacity>
-                    <Text style={{ fontSize: 18, fontWeight: 'bold', color: Palette.text.primary }}>
+                    <Text style={{ fontSize: 18, fontWeight: 'bold', color: palette.text.primary }}>
                         Välj löppass
                     </Text>
                 </View>
 
                 {/* Filters */}
-                <View style={{ flexDirection: 'row', marginBottom: Spacing.m }}>
+                <View style={{ flexDirection: 'row', marginBottom: spacing.m }}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                         <TouchableOpacity
                             style={[styles.filterChip, runSubFilter === null && styles.filterChipActive]}
@@ -362,7 +364,7 @@ export default function WorkoutLoggerScreen() {
                     </ScrollView>
                 </View>
 
-                {isLoadingTemplates ? <ActivityIndicator color={Palette.primary.main} /> : (
+                {isLoadingTemplates ? <ActivityIndicator color={palette.primary.main} /> : (
                     <FlatList
                         data={filtered}
                         keyExtractor={(item, index) => index.toString()}
@@ -378,14 +380,14 @@ export default function WorkoutLoggerScreen() {
                             >
                                 <View>
                                     <Text style={styles.exerciseName}>{item.name}</Text>
-                                    <Text style={{ fontSize: 12, color: Palette.text.secondary }}>
+                                    <Text style={{ fontSize: 12, color: palette.text.secondary }}>
                                         {item.subcategory ? item.subcategory.charAt(0).toUpperCase() + item.subcategory.slice(1) : 'Distans'}
                                     </Text>
                                 </View>
-                                <Ionicons name="chevron-forward" size={20} color={Palette.text.disabled} />
+                                <Ionicons name="chevron-forward" size={20} color={palette.text.disabled} />
                             </TouchableOpacity>
                         )}
-                        ListEmptyComponent={<Text style={{ textAlign: 'center', color: Palette.text.secondary, marginTop: 20 }}>Inga mallar hittades. Skapa i biblioteket.</Text>}
+                        ListEmptyComponent={<Text style={{ textAlign: 'center', color: palette.text.secondary, marginTop: 20 }}>Inga mallar hittades. Skapa i biblioteket.</Text>}
                     />
                 )}
             </View>
@@ -402,7 +404,7 @@ export default function WorkoutLoggerScreen() {
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.iconButton}>
-                    <Ionicons name="close" size={24} color={Palette.text.secondary} />
+                    <Ionicons name="close" size={24} color={palette.text.secondary} />
                 </TouchableOpacity>
 
                 {/* Mode Selector */}
@@ -424,15 +426,15 @@ export default function WorkoutLoggerScreen() {
                 {workoutMode === 'strength' && (
                     <View style={{ flexDirection: 'row' }}>
                         <TouchableOpacity style={[styles.iconButton, { marginRight: 8 }]} onPress={() => setIsPaused(!isPaused)}>
-                            <Ionicons name={isPaused ? "play" : "pause"} size={18} color={Palette.text.primary} />
+                            <Ionicons name={isPaused ? "play" : "pause"} size={18} color={palette.text.primary} />
                         </TouchableOpacity>
 
                         <TouchableOpacity style={[styles.iconButton, { marginRight: 8 }]}>
-                            <Ionicons name="settings-sharp" size={18} color={Palette.text.primary} />
+                            <Ionicons name="settings-sharp" size={18} color={palette.text.primary} />
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.finishCircle} onPress={finishWorkout}>
-                            <Ionicons name="checkmark" size={18} color={Palette.primary.main} />
+                            <Ionicons name="checkmark" size={18} color={palette.primary.main} />
                         </TouchableOpacity>
                     </View>
                 )}
@@ -443,10 +445,10 @@ export default function WorkoutLoggerScreen() {
                     renderRunningSelection()
                 ) : (
                     <View style={styles.container}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.m, marginBottom: Spacing.s }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.m, marginBottom: spacing.s }}>
                             <Text style={styles.workoutName}>{workout.name}</Text>
                             <TouchableOpacity onPress={() => setWorkout(prev => ({ ...prev, name: 'New Workout' }))}>
-                                <Text style={{ color: Palette.primary.main }}>Byt pass</Text>
+                                <Text style={{ color: palette.primary.main }}>Byt pass</Text>
                             </TouchableOpacity>
                         </View>
                         <RunningSession onSave={finishRun} />
@@ -471,12 +473,12 @@ export default function WorkoutLoggerScreen() {
                     {/* Action Buttons */}
                     <View style={styles.actionsRow}>
                         <TouchableOpacity style={styles.largeButton} onPress={() => setModalVisible(true)}>
-                            <Ionicons name="add" size={20} color={Palette.accent.main} />
+                            <Ionicons name="add" size={20} color={palette.accent.main} />
                             <Text style={styles.largeButtonText}>Exercise</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={[styles.largeButton, { marginLeft: Spacing.m }]}>
-                            <Ionicons name="add" size={20} color={Palette.accent.main} />
+                        <TouchableOpacity style={[styles.largeButton, { marginLeft: spacing.m }]}>
+                            <Ionicons name="add" size={20} color={palette.accent.main} />
                             <Text style={styles.largeButtonText}>Special set</Text>
                         </TouchableOpacity>
                     </View>
@@ -485,10 +487,10 @@ export default function WorkoutLoggerScreen() {
                     <View style={styles.summaryCard}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                             <Text style={styles.summaryTitle}>Summary</Text>
-                            <Ionicons name="help-circle-outline" size={20} color={Palette.text.secondary} />
+                            <Ionicons name="help-circle-outline" size={20} color={palette.text.secondary} />
                         </View>
                         <View style={{ height: 100, alignItems: 'center', justifyContent: 'center' }}>
-                            <Ionicons name="body-outline" size={64} color={Palette.text.disabled} />
+                            <Ionicons name="body-outline" size={64} color={palette.text.disabled} />
                             {/* Placeholder for muscle map */}
                         </View>
                     </View>
@@ -500,13 +502,13 @@ export default function WorkoutLoggerScreen() {
             <View style={styles.bottomBar}>
                 <View style={styles.timerBar}>
                     <TouchableOpacity style={styles.resetButton}>
-                        <Ionicons name="refresh" size={18} color={Palette.text.primary} />
+                        <Ionicons name="refresh" size={18} color={palette.text.primary} />
                     </TouchableOpacity>
 
                     <Text style={styles.bottomTimer}>{formatTime(secondsElapsed)}</Text>
 
                     <TouchableOpacity style={styles.pauseButton} onPress={() => setIsPaused(!isPaused)}>
-                        <Ionicons name={isPaused ? "play" : "pause"} size={18} color={Palette.text.primary} />
+                        <Ionicons name={isPaused ? "play" : "pause"} size={18} color={palette.text.primary} />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -520,10 +522,10 @@ export default function WorkoutLoggerScreen() {
                     <View style={styles.modalHeaderContainer}>
                         <View style={styles.modalTopRow}>
                             <TouchableOpacity onPress={() => setModalVisible(false)} style={{ padding: 4 }}>
-                                <Ionicons name="arrow-back" size={24} color={Palette.text.primary} />
+                                <Ionicons name="arrow-back" size={24} color={palette.text.primary} />
                             </TouchableOpacity>
                             <View style={styles.modalSearchContainer}>
-                                <Ionicons name="search" size={20} color={Palette.text.secondary} style={{ marginRight: 8 }} />
+                                <Ionicons name="search" size={20} color={palette.text.secondary} style={{ marginRight: 8 }} />
                                 <TextInput
                                     style={styles.modalSearchInput}
                                     placeholder="Search"
@@ -532,12 +534,12 @@ export default function WorkoutLoggerScreen() {
                                 />
                                 {searchQuery.length > 0 &&
                                     <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                        <Ionicons name="close-circle" size={16} color={Palette.text.disabled} />
+                                        <Ionicons name="close-circle" size={16} color={palette.text.disabled} />
                                     </TouchableOpacity>
                                 }
                             </View>
                             <TouchableOpacity onPress={() => setModalVisible(false)} style={{ padding: 4 }}>
-                                <Ionicons name="close" size={24} color={Palette.text.primary} />
+                                <Ionicons name="close" size={24} color={palette.text.primary} />
                             </TouchableOpacity>
                         </View>
 
@@ -577,24 +579,24 @@ export default function WorkoutLoggerScreen() {
                                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                         {/* Stick Figure Icon Placeholder */}
                                         <View style={styles.exerciseIconContainer}>
-                                            <Ionicons name="body" size={16} color={Palette.accent.main} />
+                                            <Ionicons name="body" size={16} color={palette.accent.main} />
                                         </View>
                                         <Text style={styles.exerciseName}>{item.name}</Text>
                                     </View>
                                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                         <TouchableOpacity style={{ padding: 4 }} onPress={() => openVideo(item.defaultVideoUrl)}>
-                                            <Ionicons name="play-circle-outline" size={24} color={Palette.primary.main} />
+                                            <Ionicons name="play-circle-outline" size={24} color={palette.primary.main} />
                                         </TouchableOpacity>
                                     </View>
                                 </TouchableOpacity>
                             )}
                             ListEmptyComponent={
                                 <View style={{ padding: 20, alignItems: 'center' }}>
-                                    <Text style={{ textAlign: 'center', color: Palette.text.secondary, marginBottom: 12 }}>
+                                    <Text style={{ textAlign: 'center', color: palette.text.secondary, marginBottom: 12 }}>
                                         No exercises found.
                                     </Text>
                                     <TouchableOpacity
-                                        style={{ backgroundColor: Palette.primary.main, padding: 10, borderRadius: 8 }}
+                                        style={{ backgroundColor: palette.primary.main, padding: 10, borderRadius: 8 }}
                                         onPress={fetchExercises}
                                     >
                                         <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Load Default Exercises</Text>
@@ -623,24 +625,24 @@ export default function WorkoutLoggerScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (palette: any, spacing: any, borderRadius: any, typography: any, shadows: any, isDark: boolean) => StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#F5F5F7',
+        backgroundColor: palette.background.default,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: Spacing.m,
-        paddingVertical: Spacing.s,
-        backgroundColor: '#F5F5F7',
+        paddingHorizontal: spacing.m,
+        paddingVertical: spacing.s,
+        backgroundColor: palette.background.default,
     },
     iconButton: {
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: '#FFF',
+        backgroundColor: palette.background.paper,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -648,22 +650,22 @@ const styles = StyleSheet.create({
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: '#E0F8E0',
+        backgroundColor: isDark ? '#1b4436' : '#E0F8E0',
         alignItems: 'center',
         justifyContent: 'center',
     },
     timerContainer: {
-        paddingHorizontal: Spacing.m,
+        paddingHorizontal: spacing.m,
     },
     timerText: {
-        fontSize: Typography.size.m,
+        fontSize: typography.size.m,
         fontWeight: '500',
-        color: Palette.text.primary,
+        color: palette.text.primary,
         fontVariant: ['tabular-nums'],
     },
     modeSelector: {
         flexDirection: 'row',
-        backgroundColor: '#E0E0E0',
+        backgroundColor: palette.border.default,
         borderRadius: 20,
         padding: 2,
     },
@@ -673,54 +675,55 @@ const styles = StyleSheet.create({
         borderRadius: 18,
     },
     modeButtonActive: {
-        backgroundColor: '#FFF',
+        backgroundColor: palette.background.paper,
     },
     modeText: {
         fontSize: 12,
         fontWeight: '600',
-        color: Palette.text.secondary,
+        color: palette.text.secondary,
     },
     modeTextActive: {
-        color: Palette.text.primary,
+        color: palette.text.primary,
     },
     container: {
         flex: 1,
     },
     contentContainer: {
-        padding: Spacing.m,
+        padding: spacing.m,
         paddingBottom: 100,
     },
     actionsRow: {
         flexDirection: 'row',
-        marginBottom: Spacing.m,
+        marginBottom: spacing.m,
     },
     largeButton: {
         flex: 1,
-        backgroundColor: '#FFF',
-        borderRadius: BorderRadius.l,
-        paddingVertical: Spacing.m,
+        backgroundColor: palette.background.paper,
+        borderRadius: borderRadius.l,
+        paddingVertical: spacing.m,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
-        borderColor: '#FFF',
-        ...Shadows.small,
+        borderColor: palette.background.paper,
+        ...shadows.small,
     },
     largeButtonText: {
-        fontSize: Typography.size.m,
+        fontSize: typography.size.m,
         fontWeight: '500',
-        color: Palette.text.primary,
+        color: palette.text.primary,
         marginLeft: 8,
     },
     summaryCard: {
-        backgroundColor: '#FFF',
-        borderRadius: BorderRadius.l,
-        padding: Spacing.m,
-        ...Shadows.small,
+        backgroundColor: palette.background.paper,
+        borderRadius: borderRadius.l,
+        padding: spacing.m,
+        ...shadows.small,
     },
     summaryTitle: {
-        fontSize: Typography.size.m,
+        fontSize: typography.size.m,
         fontWeight: 'bold',
+        color: palette.text.primary,
     },
 
     // Bottom Bar
@@ -729,29 +732,30 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        backgroundColor: '#FFF',
+        backgroundColor: palette.background.paper,
         borderTopWidth: 1,
-        borderTopColor: '#EEE',
-        paddingTop: Spacing.s,
+        borderTopColor: palette.border.default,
+        paddingTop: spacing.s,
         paddingBottom: 30, // SafeArea
     },
     timerBar: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: Spacing.l,
-        paddingBottom: Spacing.s,
+        paddingHorizontal: spacing.l,
+        paddingBottom: spacing.s,
     },
     bottomTimer: {
-        fontSize: Typography.size.l,
+        fontSize: typography.size.l,
         fontWeight: 'bold',
+        color: palette.text.primary,
         fontVariant: ['tabular-nums'],
     },
     resetButton: {
         width: 40,
         height: 40,
         borderRadius: 8,
-        backgroundColor: '#F0F0F5',
+        backgroundColor: palette.background.default,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -759,11 +763,11 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#FFF',
+        backgroundColor: palette.background.paper,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
-        borderColor: '#EEE',
+        borderColor: palette.border.default,
     },
 
     // -------------------
@@ -771,39 +775,38 @@ const styles = StyleSheet.create({
     // -------------------
     modalContainer: {
         flex: 1,
-        backgroundColor: '#F5F5F7',
+        backgroundColor: palette.background.default,
     },
     modalHeaderContainer: {
-        backgroundColor: '#FFF',
+        backgroundColor: palette.background.paper,
         paddingTop: 16,
         paddingBottom: 0,
-        ...Shadows.small,
+        ...shadows.small,
         zIndex: 10,
     },
     modalTopRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: Spacing.m,
-        marginBottom: Spacing.s,
+        paddingHorizontal: spacing.m,
+        marginBottom: spacing.s,
     },
     modalSearchContainer: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F5F5F7',
+        backgroundColor: palette.background.default,
         borderRadius: 20,
-        marginHorizontal: Spacing.s,
-        paddingHorizontal: Spacing.m,
+        marginHorizontal: spacing.s,
+        paddingHorizontal: spacing.m,
         height: 40,
     },
     modalSearchInput: {
         flex: 1,
-        fontSize: Typography.size.s,
-        color: Palette.text.primary,
-        height: '100%',
+        color: palette.text.primary,
     },
     modalTabs: {
         flexDirection: 'row',
+        marginTop: spacing.s,
     },
     modalTab: {
         flex: 1,
@@ -813,86 +816,95 @@ const styles = StyleSheet.create({
         borderBottomColor: 'transparent',
     },
     modalTabActive: {
-        borderBottomColor: Palette.text.primary,
+        borderBottomColor: palette.primary.main,
     },
     modalTabText: {
-        fontSize: Typography.size.s,
+        fontSize: typography.size.s,
         fontWeight: '600',
-        color: Palette.text.secondary,
+        color: palette.text.secondary,
     },
     modalTabTextActive: {
-        color: Palette.text.primary,
+        color: palette.primary.main,
     },
-    checkboxRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FFF',
-        marginTop: Spacing.s,
-        paddingHorizontal: Spacing.m,
-        paddingVertical: 12,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: Palette.border.default,
-    },
-    checkbox: {
-        width: 20,
-        height: 20,
-        borderRadius: 4,
-        backgroundColor: Palette.accent.main, // If active
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 12,
-    },
-    checkboxActive: {
-        backgroundColor: Palette.accent.main,
-    },
-    checkboxText: {
-        fontSize: Typography.size.s,
-        color: Palette.text.primary,
-    },
-    exerciseItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: '#FFF',
-        paddingVertical: 14,
-        paddingHorizontal: Spacing.m,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: '#EEE',
-    },
-    exerciseIconContainer: {
-        marginRight: 12,
-        // Could enable this to look like the red stick figure
-    },
-    exerciseName: {
-        fontSize: Typography.size.m,
-        fontWeight: '500',
-        color: Palette.text.primary,
-    },
-    // Filter Styles
+
+    // Filter Chips
     filterChip: {
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 20,
-        backgroundColor: '#FFF',
-        marginRight: 8,
+        backgroundColor: palette.background.paper,
+        marginRight: spacing.s,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
+        borderColor: palette.border.default,
     },
     filterChipActive: {
-        backgroundColor: Palette.primary.dark,
-        borderColor: Palette.primary.dark,
+        backgroundColor: palette.primary.main,
+        borderColor: palette.primary.main,
     },
     filterText: {
-        fontSize: Typography.size.s,
-        color: Palette.text.primary,
+        fontSize: typography.size.xs,
+        fontWeight: '600',
+        color: palette.text.secondary,
     },
     filterTextActive: {
         color: '#FFF',
-        fontWeight: 'bold',
+    },
+
+    // Checkbox
+    checkboxRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: spacing.m,
+        backgroundColor: palette.background.paper,
+        marginBottom: spacing.s,
+    },
+    checkbox: {
+        width: 18,
+        height: 18,
+        borderRadius: 4,
+        borderWidth: 2,
+        borderColor: palette.border.default,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 10,
+    },
+    checkboxActive: {
+        backgroundColor: palette.primary.main,
+        borderColor: palette.primary.main,
+    },
+    checkboxText: {
+        fontSize: typography.size.s,
+        color: palette.text.primary,
+    },
+
+    // Exercise List
+    exerciseItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: spacing.m,
+        paddingVertical: spacing.m,
+        backgroundColor: palette.background.paper,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: palette.border.default,
+    },
+    exerciseIconContainer: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: palette.background.default,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    exerciseName: {
+        fontSize: typography.size.m,
+        fontWeight: '500',
+        color: palette.text.primary,
     },
     workoutName: {
-        fontSize: Typography.size.l,
+        fontSize: typography.size.l,
         fontWeight: 'bold',
-        color: Palette.text.primary,
+        color: palette.text.primary,
     },
 });

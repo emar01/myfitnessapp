@@ -1,4 +1,4 @@
-import { BorderRadius, Layout, Palette, Spacing, Typography } from '@/constants/DesignSystem';
+import { useTheme } from '@/constants/DesignSystem';
 import { RUNNING_SUBCATEGORIES, WORKOUT_CATEGORIES } from '@/constants/WorkoutTypes';
 import { useAlert } from '@/context/AlertContext';
 import { useSession } from '@/context/ctx';
@@ -10,6 +10,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import React, { useCallback, useState } from 'react';
 import {
+    ActivityIndicator,
     FlatList,
     Linking,
     Modal,
@@ -23,6 +24,8 @@ import {
 } from 'react-native';
 
 export default function LibraryScreen() {
+    const { palette, spacing, borderRadius, typography, shadows, isDark } = useTheme();
+    const styles = getStyles(palette, spacing, borderRadius, typography, shadows, isDark);
     const router = useRouter();
     const { user } = useSession(); // Get User
     const { showConfirm } = useAlert();
@@ -133,6 +136,16 @@ export default function LibraryScreen() {
         }
     };
 
+    if (isLoading && !refreshing) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <ActivityIndicator size="large" color={palette.primary.main} />
+                </View>
+            </SafeAreaView>
+        );
+    }
+
     const onRefresh = () => {
         setRefreshing(true);
         fetchData();
@@ -177,19 +190,19 @@ export default function LibraryScreen() {
 
     const renderHeader = () => (
         <View>
-            <View style={[styles.headerTop, Layout.contentContainer]}>
+            <View style={styles.headerTop}>
                 {/* Empty left to center title or just spacer */}
                 <View style={{ width: 40 }} />
                 <Text style={styles.headerTitle}>Bibliotek</Text>
 
                 {/* Add Button */}
                 <TouchableOpacity onPress={() => setCreateModalVisible(true)} style={styles.addButton}>
-                    <Ionicons name="add" size={28} color={Palette.text.primary} />
+                    <Ionicons name="add" size={28} color={palette.text.primary} />
                 </TouchableOpacity>
             </View>
 
             {/* Tabs */}
-            <View style={[styles.tabsContainer, Layout.contentContainer]}>
+            <View style={styles.tabsContainer}>
                 <TouchableOpacity
                     style={[styles.tab, activeTab === 'workouts' && styles.tabActive]}
                     onPress={() => setActiveTab('workouts')}
@@ -218,7 +231,7 @@ export default function LibraryScreen() {
 
             {/* Filters (Only for Workouts) */}
             {activeTab === 'workouts' && (
-                <View style={[styles.filterContainer, Layout.contentContainer]}>
+                <View style={styles.filterContainer}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                         <TouchableOpacity
                             style={[styles.filterChip, activeFilter === null && styles.filterChipActive]}
@@ -245,7 +258,7 @@ export default function LibraryScreen() {
             )}
             {/* Sub-Filters */}
             {activeTab === 'workouts' && activeFilter === 'löpning' && (
-                <View style={[styles.filterContainer, Layout.contentContainer]}>
+                <View style={styles.filterContainer}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                         <TouchableOpacity
                             style={[styles.filterChip, subFilter === null && styles.filterChipActive]}
@@ -270,7 +283,7 @@ export default function LibraryScreen() {
 
             {/* Filters (Exercises) */}
             {activeTab === 'exercises' && (
-                <View style={[styles.filterContainer, Layout.contentContainer]}>
+                <View style={styles.filterContainer}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                         <TouchableOpacity
                             style={[styles.filterChip, activeMuscleGroup === null && styles.filterChipActive]}
@@ -300,7 +313,7 @@ export default function LibraryScreen() {
         if (isPublic) return null;
         return (
             <View style={styles.privateBadge}>
-                <Ionicons name="lock-closed" size={12} color="#666" />
+                <Ionicons name="lock-closed" size={12} color={palette.text.secondary} />
                 <Text style={styles.privateText}>Privat</Text>
             </View>
         );
@@ -335,10 +348,10 @@ export default function LibraryScreen() {
                 </View>
                 {owned ? (
                     <TouchableOpacity onPress={() => handleEdit(item, 'workout')} hitSlop={10}>
-                        <Ionicons name="pencil-outline" size={20} color={Palette.text.secondary} />
+                        <Ionicons name="pencil-outline" size={20} color={palette.text.secondary} />
                     </TouchableOpacity>
                 ) : (
-                    <Ionicons name="chevron-forward" size={20} color={Palette.text.disabled} />
+                    <Ionicons name="chevron-forward" size={20} color={palette.text.disabled} />
                 )}
             </TouchableOpacity>
         );
@@ -370,10 +383,10 @@ export default function LibraryScreen() {
                 </View>
                 {owned ? (
                     <TouchableOpacity onPress={() => handleEdit(item, 'program')} hitSlop={10}>
-                        <Ionicons name="pencil-outline" size={20} color={Palette.text.secondary} />
+                        <Ionicons name="pencil-outline" size={20} color={palette.text.secondary} />
                     </TouchableOpacity>
                 ) : (
-                    <Ionicons name="chevron-forward" size={20} color={Palette.text.disabled} />
+                    <Ionicons name="chevron-forward" size={20} color={palette.text.disabled} />
                 )}
             </TouchableOpacity>
         );
@@ -406,12 +419,12 @@ export default function LibraryScreen() {
                 </View>
                 {item.videoLink && (
                     <View style={{ marginLeft: 16 }}>
-                        <Ionicons name="play-circle" size={28} color={Palette.primary.main} />
+                        <Ionicons name="play-circle" size={28} color={palette.primary.main} />
                     </View>
                 )}
                 {owned && (
                     <TouchableOpacity onPress={() => handleEdit(item, 'exercise')} style={{ paddingLeft: 16 }} hitSlop={10}>
-                        <Ionicons name="pencil-outline" size={20} color={Palette.text.secondary} />
+                        <Ionicons name="pencil-outline" size={20} color={palette.text.secondary} />
                     </TouchableOpacity>
                 )}
             </TouchableOpacity>
@@ -471,8 +484,8 @@ export default function LibraryScreen() {
                 style={styles.itemCard}
                 onPress={() => router.push({ pathname: '/workout/[id]', params: { id: item.id! } })}
             >
-                <View style={[styles.activityIcon, { backgroundColor: isRunning ? '#E8F5E9' : '#EDE7F6' }]}>
-                    <Ionicons name={iconName as any} size={20} color={isRunning ? '#2E7D32' : '#512DA8'} />
+                <View style={[styles.activityIcon, { backgroundColor: isRunning ? (isDark ? '#1B4436' : '#E8F5E9') : (isDark ? '#311B92' : '#EDE7F6') }]}>
+                    <Ionicons name={iconName as any} size={20} color={isRunning ? (isDark ? '#81C784' : '#2E7D32') : (isDark ? '#B39DDB' : '#512DA8')} />
                 </View>
                 <View style={{ flex: 1, marginLeft: 12 }}>
                     <Text style={styles.itemTitle} numberOfLines={1}>{displayName}</Text>
@@ -481,7 +494,7 @@ export default function LibraryScreen() {
                     </Text>
                 </View>
                 <TouchableOpacity onPress={() => handleDeleteActivity(item.id!)} hitSlop={10}>
-                    <Ionicons name="trash-outline" size={20} color={Palette.text.disabled} />
+                    <Ionicons name="trash-outline" size={20} color={palette.text.disabled} />
                 </TouchableOpacity>
             </TouchableOpacity>
         );
@@ -531,22 +544,22 @@ export default function LibraryScreen() {
                         <Text style={styles.actionSheetTitle}>Skapa nytt</Text>
 
                         <TouchableOpacity style={styles.actionButton} onPress={() => handleCreate('workout')}>
-                            <Ionicons name="barbell-outline" size={24} color={Palette.text.primary} style={{ marginRight: 12 }} />
+                            <Ionicons name="barbell-outline" size={24} color={palette.text.primary} style={{ marginRight: 12 }} />
                             <Text style={styles.actionButtonText}>Träningspass</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.actionButton} onPress={() => handleCreate('program')}>
-                            <Ionicons name="calendar-outline" size={24} color={Palette.text.primary} style={{ marginRight: 12 }} />
+                            <Ionicons name="calendar-outline" size={24} color={palette.text.primary} style={{ marginRight: 12 }} />
                             <Text style={styles.actionButtonText}>Program</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.actionButton} onPress={() => handleCreate('exercise')}>
-                            <Ionicons name="body-outline" size={24} color={Palette.text.primary} style={{ marginRight: 12 }} />
+                            <Ionicons name="body-outline" size={24} color={palette.text.primary} style={{ marginRight: 12 }} />
                             <Text style={styles.actionButtonText}>Övning</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={[styles.actionButton, styles.cancelButton]} onPress={() => setCreateModalVisible(false)}>
-                            <Text style={[styles.actionButtonText, { color: Palette.status.error }]}>Avbryt</Text>
+                            <Text style={[styles.actionButtonText, { color: palette.status.error }]}>Avbryt</Text>
                         </TouchableOpacity>
                     </View>
                 </TouchableOpacity>
@@ -570,122 +583,133 @@ export default function LibraryScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (palette: any, spacing: any, borderRadius: any, typography: any, shadows: any, isDark: boolean) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F5F5F7',
+        backgroundColor: palette.background.default,
     },
     headerTop: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: Spacing.m,
-        paddingTop: Spacing.s,
-        paddingBottom: Spacing.s
+        paddingHorizontal: spacing.m,
+        paddingTop: spacing.s,
+        paddingBottom: spacing.s,
+        backgroundColor: palette.background.paper,
+        maxWidth: 800,
+        alignSelf: 'center',
+        width: '100%',
     },
     headerTitle: {
-        fontSize: Typography.size.l,
+        fontSize: typography.size.l,
         fontWeight: 'bold',
-        color: Palette.text.primary,
+        color: palette.text.primary,
     },
     addButton: {
         padding: 4,
     },
     tabsContainer: {
         flexDirection: 'row',
-        paddingHorizontal: Spacing.m,
-        marginBottom: Spacing.s,
+        paddingHorizontal: spacing.m,
+        marginBottom: spacing.s,
+        backgroundColor: palette.background.paper,
+        maxWidth: 800,
+        alignSelf: 'center',
+        width: '100%',
     },
     tab: {
-        marginRight: Spacing.m,
+        marginRight: spacing.m,
         paddingVertical: 8,
         borderBottomWidth: 2,
         borderBottomColor: 'transparent',
     },
     tabActive: {
-        borderBottomColor: Palette.primary.main,
+        borderBottomColor: palette.primary.main,
     },
     tabText: {
-        fontSize: Typography.size.m,
-        color: Palette.text.secondary,
+        fontSize: typography.size.m,
+        color: palette.text.secondary,
         fontWeight: '600',
     },
     tabTextActive: {
-        color: Palette.primary.main,
+        color: palette.primary.main,
     },
     filterContainer: {
-        paddingHorizontal: Spacing.m,
-        marginBottom: Spacing.m,
+        paddingHorizontal: spacing.m,
+        marginBottom: spacing.m,
+        maxWidth: 800,
+        alignSelf: 'center',
+        width: '100%',
     },
     filterChip: {
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 20,
-        backgroundColor: '#FFF',
+        backgroundColor: palette.background.paper,
         marginRight: 8,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
+        borderColor: palette.border.default,
     },
     filterChipActive: {
-        backgroundColor: Palette.primary.dark,
-        borderColor: Palette.primary.dark,
+        backgroundColor: palette.primary.dark,
+        borderColor: palette.primary.dark,
     },
     filterText: {
-        fontSize: Typography.size.s,
-        color: Palette.text.primary,
+        fontSize: typography.size.s,
+        color: palette.text.primary,
     },
     filterTextActive: {
         color: '#FFF',
         fontWeight: 'bold',
     },
     listContent: {
-        padding: Spacing.m,
+        padding: spacing.m,
+        maxWidth: 800,
+        alignSelf: 'center',
+        width: '100%',
     },
     itemCard: {
-        backgroundColor: '#FFF',
-        padding: Spacing.m,
-        borderRadius: BorderRadius.m,
-        marginBottom: Spacing.s,
+        backgroundColor: palette.background.paper,
+        padding: spacing.m,
+        borderRadius: borderRadius.m,
+        marginBottom: spacing.s,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        // Shadow
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
+        borderWidth: 1,
+        borderColor: palette.border.default,
+        ...shadows.small,
     },
     itemTitle: {
-        fontSize: Typography.size.m,
+        fontSize: typography.size.m,
         fontWeight: '600',
-        color: Palette.text.primary,
+        color: palette.text.primary,
     },
     itemSubtitle: {
-        fontSize: Typography.size.s,
-        color: Palette.text.secondary,
+        fontSize: typography.size.s,
+        color: palette.text.secondary,
         marginTop: 4,
     },
     muscleBadge: {
-        backgroundColor: '#F0F0F0',
+        backgroundColor: isDark ? palette.background.default : '#F0F0F0',
         paddingHorizontal: 8,
         paddingVertical: 2,
         borderRadius: 4,
     },
     muscleBadgeText: {
         fontSize: 10,
-        color: Palette.text.secondary,
+        color: palette.text.secondary,
         fontWeight: 'bold',
     },
     emptyText: {
         textAlign: 'center',
-        color: Palette.text.secondary,
+        color: palette.text.secondary,
         marginTop: 20,
     },
     privateBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#E0E0E0',
+        backgroundColor: isDark ? palette.background.default : '#E0E0E0',
         paddingHorizontal: 6,
         paddingVertical: 2,
         borderRadius: 4,
@@ -693,7 +717,7 @@ const styles = StyleSheet.create({
     },
     privateText: {
         fontSize: 10,
-        color: '#666',
+        color: palette.text.secondary,
         fontWeight: '600'
     },
     // Modal Styles
@@ -703,40 +727,40 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     actionSheet: {
-        backgroundColor: '#FFF',
-        borderTopLeftRadius: BorderRadius.l,
-        borderTopRightRadius: BorderRadius.l,
-        padding: Spacing.m,
-        paddingBottom: Spacing.xl, // Safe area
+        backgroundColor: palette.background.paper,
+        borderTopLeftRadius: borderRadius.l,
+        borderTopRightRadius: borderRadius.l,
+        padding: spacing.m,
+        paddingBottom: spacing.xl, // Safe area
     },
     actionSheetTitle: {
-        fontSize: Typography.size.m,
+        fontSize: typography.size.m,
         fontWeight: 'bold',
-        color: Palette.text.secondary,
-        marginBottom: Spacing.m,
+        color: palette.text.secondary,
+        marginBottom: spacing.m,
         textAlign: 'center'
     },
     actionButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: Spacing.m,
+        paddingVertical: spacing.m,
         borderBottomWidth: 1,
-        borderBottomColor: '#F0F0F0'
+        borderBottomColor: palette.border.default,
     },
     actionButtonText: {
-        fontSize: Typography.size.m,
-        color: Palette.text.primary,
+        fontSize: typography.size.m,
+        color: palette.text.primary,
         fontWeight: '500'
     },
     cancelButton: {
         borderBottomWidth: 0,
         justifyContent: 'center',
-        marginTop: Spacing.s
+        marginTop: spacing.s
     },
     followedBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: Palette.primary.main,
+        backgroundColor: palette.primary.main,
         paddingHorizontal: 8,
         paddingVertical: 2,
         borderRadius: 8,

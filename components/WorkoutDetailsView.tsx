@@ -1,5 +1,5 @@
-import StravaActivityPicker from '@/components/StravaActivityPicker';
-import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
+﻿import StravaActivityPicker from '@/components/StravaActivityPicker';
+import { useTheme } from '@/constants/DesignSystem';
 import { StravaActivity } from '@/services/stravaService';
 import { FontAwesome } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -30,6 +30,8 @@ export default function WorkoutDetailsView({
     showBack = true,
     isModal = false
 }: WorkoutDetailsViewProps) {
+    const { palette, spacing, borderRadius, typography, shadows, isDark } = useTheme();
+    const styles = getStyles(palette, spacing, borderRadius, typography, shadows);
     const router = useRouter();
     const { user } = useSession(); // Get user for auth and paths
     const { showAlert, showConfirm } = useAlert();
@@ -243,7 +245,7 @@ export default function WorkoutDetailsView({
     if (loading) {
         return (
             <View style={[styles.center, { flex: 1, minHeight: 300 }]}>
-                <ActivityIndicator size="large" color={Palette.primary.main} />
+                <ActivityIndicator size="large" color={palette.primary.main} />
             </View>
         );
     }
@@ -277,12 +279,12 @@ export default function WorkoutDetailsView({
                                             const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0);
                                             setScheduledDate(d);
                                         },
-                                        style: { border: 'none', background: 'transparent', padding: 8, fontSize: 14, color: Palette.text.primary, fontFamily: 'inherit', outline: 'none', width: 'fit-content' }
+                                        style: { border: 'none', background: 'transparent', padding: 8, fontSize: 14, color: palette.text.primary, fontFamily: 'inherit', outline: 'none', width: 'fit-content' }
                                     })}
                                 </View>
                             ) : (
                                 <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.datePickerButton}>
-                                    <FontAwesome name="calendar" size={14} color={Palette.primary.main} style={{ marginRight: 6 }} />
+                                    <FontAwesome name="calendar" size={14} color={palette.primary.main} style={{ marginRight: 6 }} />
                                     <Text style={styles.manageLabel}>{scheduledDate.toLocaleDateString()}</Text>
                                 </TouchableOpacity>
                             )}
@@ -294,7 +296,7 @@ export default function WorkoutDetailsView({
                                 mode="date"
                                 display={Platform.OS === 'ios' ? 'inline' : 'default'}
                                 onChange={onChangeDate}
-                                style={{ width: '100%', marginBottom: Spacing.s }}
+                                style={{ width: '100%', marginBottom: spacing.s }}
                             />
                         )}
 
@@ -322,12 +324,12 @@ export default function WorkoutDetailsView({
                                             const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0);
                                             setScheduledDate(d);
                                         },
-                                        style: { border: 'none', background: 'transparent', padding: 8, fontSize: 14, color: Palette.text.primary, fontFamily: 'inherit', outline: 'none', width: 'fit-content' }
+                                        style: { border: 'none', background: 'transparent', padding: 8, fontSize: 14, color: palette.text.primary, fontFamily: 'inherit', outline: 'none', width: 'fit-content' }
                                     })}
                                 </View>
                             ) : (
                                 <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.datePickerButton}>
-                                    <FontAwesome name="calendar" size={14} color={Palette.primary.main} style={{ marginRight: 6 }} />
+                                    <FontAwesome name="calendar" size={14} color={palette.primary.main} style={{ marginRight: 6 }} />
                                     <Text style={styles.manageLabel}>{scheduledDate.toLocaleDateString()}</Text>
                                 </TouchableOpacity>
                             )}
@@ -339,18 +341,18 @@ export default function WorkoutDetailsView({
                                 mode="date"
                                 display={Platform.OS === 'ios' ? 'inline' : 'default'}
                                 onChange={onChangeDate}
-                                style={{ width: '100%', marginBottom: Spacing.s }}
+                                style={{ width: '100%', marginBottom: spacing.s }}
                             />
                         )}
 
                         <TouchableOpacity style={styles.manageButtonSecondary} onPress={handleReschedule} disabled={scheduling}>
-                            {scheduling ? <ActivityIndicator color={Palette.text.primary} /> : <Text style={styles.manageButtonTextSecondary}>Spara nytt datum</Text>}
+                            {scheduling ? <ActivityIndicator color={palette.text.primary} /> : <Text style={styles.manageButtonTextSecondary}>Spara nytt datum</Text>}
                         </TouchableOpacity>
 
                         <View style={styles.manageDivider} />
 
                         {showLogButton ? (
-                            <View style={{ flexDirection: 'row', gap: Spacing.s }}>
+                            <View style={{ flexDirection: 'row', gap: spacing.s }}>
                                 <TouchableOpacity
                                     style={styles.manageButtonOutline}
                                     onPress={async () => {
@@ -383,7 +385,7 @@ export default function WorkoutDetailsView({
                                         });
                                     }}
                                 >
-                                    <FontAwesome name="pencil" size={16} color={Palette.text.primary} style={{ marginRight: 6 }} />
+                                    <FontAwesome name="pencil" size={16} color={palette.text.primary} style={{ marginRight: 6 }} />
                                     <Text style={styles.manageButtonTextSecondary}>Logga pass</Text>
                                 </TouchableOpacity>
 
@@ -397,9 +399,9 @@ export default function WorkoutDetailsView({
                                 </TouchableOpacity>
                             </View>
                         ) : isRunning ? (
-                            <View style={{ flexDirection: 'row', gap: Spacing.s }}>
+                            <View style={{ flexDirection: 'row', gap: spacing.s }}>
                                 <TouchableOpacity style={styles.manageButtonOutline} onPress={handleQuickComplete} disabled={completing}>
-                                    {completing ? <ActivityIndicator color={Palette.text.primary} /> : (
+                                    {completing ? <ActivityIndicator color={palette.text.primary} /> : (
                                         <Text style={styles.manageButtonTextSecondary}>Manuellt</Text>
                                     )}
                                 </TouchableOpacity>
@@ -435,7 +437,7 @@ export default function WorkoutDetailsView({
                 source={{ uri: isRunning ? 'https://images.unsplash.com/photo-1552674605-46d52677663d?q=80&w=2070&auto=format&fit=crop' : 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=2070&auto=format&fit=crop' }}
                 style={styles.headerImage}
             >
-                <View style={styles.headerOverlay}>
+                <View style={[styles.headerOverlay, { backgroundColor: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.3)' }]}>
                     <SafeAreaView>
                         {(showBack || isModal) && (
                             <TouchableOpacity onPress={onClose || (() => router.back())} style={styles.backButton}>
@@ -529,7 +531,7 @@ export default function WorkoutDetailsView({
                     /* --- RUNNING VIEW (Simple) --- */
                     <View>
                         <View style={styles.detailsContainer}>
-                            <View style={[styles.detailsHeader, { backgroundColor: Palette.primary.main }]}>
+                            <View style={[styles.detailsHeader, { backgroundColor: palette.primary.main }]}>
                                 <Text style={styles.detailsTitle}>Om Passet</Text>
                             </View>
                             <View style={styles.detailSection}>
@@ -557,7 +559,7 @@ export default function WorkoutDetailsView({
                         <View style={styles.detailSection}>
                             {(data as any)?.exercises && (data as any).exercises.length > 0 ? (
                                 (data as any).exercises.map((ex: any, idx: number) => (
-                                    <View key={idx} style={{ marginBottom: 12, borderBottomWidth: idx === (data as any).exercises.length - 1 ? 0 : 1, borderBottomColor: '#EEE', paddingBottom: 8 }}>
+                                    <View key={idx} style={{ marginBottom: 12, borderBottomWidth: idx === (data as any).exercises.length - 1 ? 0 : 1, borderBottomColor: palette.border.default, paddingBottom: 8 }}>
                                         <Text style={[styles.detailLabel, { fontSize: 16 }]}>{ex.name}</Text>
                                         <Text style={styles.detailValue}>{ex.sets?.length || 3} set</Text>
                                     </View>
@@ -598,10 +600,10 @@ export default function WorkoutDetailsView({
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (palette: any, spacing: any, borderRadius: any, typography: any, shadows: any) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: Palette.background.default,
+        backgroundColor: palette.background.default,
     },
     headerImage: {
         width: '100%',
@@ -609,12 +611,11 @@ const styles = StyleSheet.create({
     },
     headerOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.3)',
         justifyContent: 'space-between',
-        padding: Spacing.m,
+        padding: spacing.m,
     },
     backButton: {
-        marginTop: Spacing.s,
+        marginTop: spacing.s,
         alignSelf: 'flex-start',
         padding: 8,
         backgroundColor: 'rgba(0,0,0,0.2)',
@@ -630,60 +631,60 @@ const styles = StyleSheet.create({
     },
     tagText: {
         color: '#FFF',
-        fontSize: Typography.size.xs,
+        fontSize: typography.size.xs,
         fontWeight: 'bold',
     },
     headerContent: {
-        marginBottom: Spacing.l,
+        marginBottom: spacing.l,
     },
     editButton: {
         position: 'absolute',
         top: 60, // approximate safe area
-        right: Spacing.m,
+        right: spacing.m,
         padding: 8,
         backgroundColor: 'rgba(0,0,0,0.2)',
         borderRadius: 20,
     },
     headerDate: {
         color: '#E0E0E0',
-        fontSize: Typography.size.s,
+        fontSize: typography.size.s,
         fontWeight: '600',
         marginBottom: 4,
     },
     headerTitle: {
         color: '#FFF',
-        fontSize: Typography.size.xxl,
+        fontSize: typography.size.xxl,
         fontWeight: 'bold',
     },
     content: {
         marginTop: -20, // Overlap header
-        borderTopLeftRadius: BorderRadius.l,
-        borderTopRightRadius: BorderRadius.l,
-        backgroundColor: Palette.background.default,
-        padding: Spacing.m,
+        borderTopLeftRadius: borderRadius.l,
+        borderTopRightRadius: borderRadius.l,
+        backgroundColor: palette.background.default,
+        padding: spacing.m,
     },
     // BLUE SUMMARY CARD
     summaryCard: {
-        backgroundColor: '#5282CA', // Matching screenshot blue
-        borderRadius: BorderRadius.m,
-        padding: Spacing.m,
-        marginBottom: Spacing.l,
-        ...Shadows.medium,
+        backgroundColor: palette.primary.main,
+        borderRadius: borderRadius.m,
+        padding: spacing.m,
+        marginBottom: spacing.l,
+        ...shadows.medium,
     },
     summaryHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: Spacing.m,
+        marginBottom: spacing.m,
     },
     // Picker Header
     header: {
-        backgroundColor: '#FFF',
+        backgroundColor: palette.background.paper,
     },
     summaryTitle: {
         color: '#FFF',
         fontWeight: 'bold',
-        fontSize: Typography.size.m,
+        fontSize: typography.size.m,
     },
     statsRow: {
         flexDirection: 'row',
@@ -691,20 +692,20 @@ const styles = StyleSheet.create({
     },
     statLabel: {
         color: 'rgba(255,255,255,0.7)',
-        fontSize: Typography.size.xs,
+        fontSize: typography.size.xs,
         fontWeight: '600',
         marginBottom: 2,
     },
     statValue: {
         color: '#FFF',
-        fontSize: Typography.size.l,
+        fontSize: typography.size.l,
         fontWeight: 'bold',
     },
     commentContainer: {
-        marginTop: Spacing.m,
+        marginTop: spacing.m,
         borderTopWidth: 1,
         borderTopColor: 'rgba(255,255,255,0.2)',
-        paddingTop: Spacing.s,
+        paddingTop: spacing.s,
     },
     commentText: {
         color: '#FFF',
@@ -715,77 +716,77 @@ const styles = StyleSheet.create({
     actionContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: Spacing.l,
+        marginBottom: spacing.l,
     },
     actionButton: {
         flex: 1,
         backgroundColor: '#FFF',
-        paddingVertical: Spacing.s,
+        paddingVertical: spacing.s,
         marginHorizontal: 4,
-        borderRadius: BorderRadius.round,
+        borderRadius: borderRadius.round,
         alignItems: 'center',
-        ...Shadows.small,
+        ...shadows.small,
     },
     primaryAction: {
-        backgroundColor: '#FFF', // Keeping white background as per screenshot
+        backgroundColor: palette.background.paper,
         borderWidth: 2,
-        borderColor: Palette.text.primary, // Dark border to signify primary
+        borderColor: palette.text.primary,
     },
     actionText: {
         fontWeight: 'bold',
-        fontSize: Typography.size.s,
-        color: Palette.text.primary,
+        fontSize: typography.size.s,
+        color: palette.text.primary,
     },
 
     // DETAILS SECTION
     detailsContainer: {
-        backgroundColor: Palette.background.paper,
-        borderRadius: BorderRadius.m,
+        backgroundColor: palette.background.paper,
+        borderRadius: borderRadius.m,
         padding: 0, // Header is colored
         overflow: 'hidden',
-        ...Shadows.small,
+        ...shadows.small,
     },
     detailsHeader: {
-        backgroundColor: '#5282CA', // Blue header
-        padding: Spacing.s,
-        paddingHorizontal: Spacing.m,
+        backgroundColor: palette.primary.main, // Updated to use theme primary
+        padding: spacing.s,
+        paddingHorizontal: spacing.m,
     },
     detailsTitle: {
         color: '#FFF',
         fontWeight: 'bold',
-        fontSize: Typography.size.s,
+        fontSize: typography.size.s,
     },
     detailRow: {
         flexDirection: 'row',
-        padding: Spacing.m,
+        padding: spacing.m,
     },
     detailSection: {
-        padding: Spacing.m,
+        padding: spacing.m,
     },
     detailLabel: {
         fontWeight: 'bold',
-        fontSize: Typography.size.xs,
+        fontSize: typography.size.xs,
         marginBottom: 4,
-        color: Palette.text.primary,
+        color: palette.text.primary,
     },
     detailValue: {
-        fontSize: Typography.size.s,
-        color: Palette.text.secondary,
+        fontSize: typography.size.s,
+        color: palette.text.secondary,
     },
     detailSmall: {
-        fontSize: Typography.size.xs,
-        color: Palette.text.secondary,
+        fontSize: typography.size.xs,
+        color: palette.text.secondary,
         textAlign: 'right',
         marginTop: 4,
     },
     divider: {
         height: 1,
-        backgroundColor: Palette.border.default,
-        marginHorizontal: Spacing.m,
+        backgroundColor: palette.border.default,
+        marginHorizontal: spacing.m,
     },
     descriptionText: {
-        fontSize: Typography.size.s,
-        color: Palette.text.secondary,
+        fontSize: typography.size.s,
+        color: palette.text.secondary,
         lineHeight: 20,
     },
     center: {
@@ -793,73 +794,73 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     completeButton: {
-        backgroundColor: Palette.primary.main, // Green
-        paddingVertical: Spacing.m,
+        backgroundColor: palette.primary.main, // Green
+        paddingVertical: spacing.m,
         height: 60,
         justifyContent: 'center',
         borderWidth: 0, // Override default white border
-        ...Shadows.medium,
+        ...shadows.medium,
     },
     completeButtonText: {
         color: '#FFF',
-        fontSize: Typography.size.l,
+        fontSize: typography.size.l,
         fontWeight: 'bold',
     },
     datePickerButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: Palette.background.paper,
-        paddingHorizontal: Spacing.m,
-        paddingVertical: Spacing.s,
-        borderRadius: BorderRadius.s,
+        backgroundColor: palette.background.paper,
+        paddingHorizontal: spacing.m,
+        paddingVertical: spacing.s,
+        borderRadius: borderRadius.s,
         borderWidth: 1,
-        borderColor: Palette.border.default,
+        borderColor: palette.border.default,
     },
     datePickerText: {
-        fontSize: Typography.size.m,
-        color: Palette.text.primary,
+        fontSize: typography.size.m,
+        color: palette.text.primary,
         fontWeight: '600'
     },
     input: {
-        backgroundColor: Palette.background.paper,
+        backgroundColor: palette.background.paper,
         borderWidth: 1,
-        borderColor: Palette.border.default,
-        borderRadius: BorderRadius.s,
-        padding: Spacing.s,
-        fontSize: Typography.size.m,
+        borderColor: palette.border.default,
+        borderRadius: borderRadius.s,
+        padding: spacing.s,
+        fontSize: typography.size.m,
     },
     // MANAGE CARD
     manageCard: {
-        backgroundColor: Palette.background.paper,
-        borderRadius: BorderRadius.m,
-        padding: Spacing.m,
-        marginTop: Spacing.l,
-        marginBottom: Spacing.s,
+        backgroundColor: palette.background.paper,
+        borderRadius: borderRadius.m,
+        padding: spacing.m,
+        marginTop: spacing.l,
+        marginBottom: spacing.s,
         borderWidth: 1,
-        borderColor: Palette.border.default,
-        ...Shadows.small,
+        borderColor: palette.border.default,
+        ...shadows.small,
     },
     manageCardTitle: {
-        fontSize: Typography.size.m,
+        fontSize: typography.size.m,
         fontWeight: 'bold',
-        color: Palette.text.primary,
-        marginBottom: Spacing.m,
+        color: palette.text.primary,
+        marginBottom: spacing.m,
     },
     manageRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: Spacing.m,
+        marginBottom: spacing.m,
     },
     manageLabel: {
-        fontSize: Typography.size.s,
-        color: Palette.text.secondary,
+        fontSize: typography.size.s,
+        color: palette.text.secondary,
         fontWeight: '500',
     },
     manageButtonPrimary: {
-        backgroundColor: Palette.primary.main,
-        paddingVertical: Spacing.m,
-        borderRadius: BorderRadius.s,
+        backgroundColor: palette.primary.main,
+        paddingVertical: spacing.m,
+        borderRadius: borderRadius.s,
         alignItems: 'center',
         justifyContent: 'center',
         flexDirection: 'row',
@@ -868,44 +869,44 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#FFF',
         borderWidth: 1,
-        borderColor: Palette.border.default,
-        paddingVertical: Spacing.m,
-        borderRadius: BorderRadius.s,
+        borderColor: palette.border.default,
+        paddingVertical: spacing.m,
+        borderRadius: borderRadius.s,
         alignItems: 'center',
         justifyContent: 'center',
         flexDirection: 'row',
     },
     manageButtonTextPrimary: {
         color: '#FFF',
-        fontSize: Typography.size.m,
+        fontSize: typography.size.m,
         fontWeight: 'bold',
     },
     manageButtonSecondary: {
-        backgroundColor: Palette.background.default,
-        paddingVertical: Spacing.s,
-        borderRadius: BorderRadius.s,
+        backgroundColor: palette.background.default,
+        paddingVertical: spacing.s,
+        borderRadius: borderRadius.s,
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: Palette.border.default,
+        borderColor: palette.border.default,
     },
     manageButtonTextSecondary: {
-        color: Palette.text.primary,
-        fontSize: Typography.size.s,
+        color: palette.text.primary,
+        fontSize: typography.size.s,
         fontWeight: 'bold',
     },
     manageDivider: {
         height: 1,
-        backgroundColor: Palette.border.default,
-        marginVertical: Spacing.m,
+        backgroundColor: palette.border.default,
+        marginVertical: spacing.m,
     },
     deleteButtonContainer: {
-        marginTop: Spacing.xl,
-        marginBottom: Spacing.xxl,
+        marginTop: spacing.xl,
+        marginBottom: spacing.xxl,
         alignItems: 'center',
     },
     deleteText: {
         color: '#D32F2F',
-        fontSize: Typography.size.s,
+        fontSize: typography.size.s,
         fontWeight: '600',
     }
 });

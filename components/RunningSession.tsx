@@ -1,4 +1,4 @@
-import { BorderRadius, Palette, Spacing, Typography } from '@/constants/DesignSystem';
+import { useTheme } from '@/constants/DesignSystem';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -10,6 +10,9 @@ interface RunningSessionProps {
 }
 
 export default function RunningSession({ initialDistance, initialDuration, onSave }: RunningSessionProps) {
+    const { palette, spacing, borderRadius, typography, shadows, isDark } = useTheme();
+    const styles = getStyles(palette, spacing, borderRadius, typography, shadows, isDark);
+
     const [distance, setDistance] = useState(initialDistance?.toString() || '');
     const [minutes, setMinutes] = useState(initialDuration ? Math.floor(initialDuration / 60).toString() : '');
     const [seconds, setSeconds] = useState(initialDuration ? (initialDuration % 60).toString() : '');
@@ -54,7 +57,7 @@ export default function RunningSession({ initialDistance, initialDuration, onSav
                     onChangeText={(val) => setDistance(val.replace(',', '.'))}
                     keyboardType="decimal-pad"
                     placeholder="0.0"
-                    placeholderTextColor={Palette.text.disabled}
+                    placeholderTextColor={palette.text.disabled}
                 />
             </View>
 
@@ -68,7 +71,7 @@ export default function RunningSession({ initialDistance, initialDuration, onSav
                             onChangeText={setMinutes}
                             keyboardType="numeric"
                             placeholder="0"
-                            placeholderTextColor={Palette.text.disabled}
+                            placeholderTextColor={palette.text.disabled}
                         />
                         <Text style={styles.unit}>min</Text>
                     </View>
@@ -79,7 +82,7 @@ export default function RunningSession({ initialDistance, initialDuration, onSav
                             onChangeText={setSeconds}
                             keyboardType="numeric"
                             placeholder="0"
-                            placeholderTextColor={Palette.text.disabled}
+                            placeholderTextColor={palette.text.disabled}
                         />
                         <Text style={styles.unit}>sek</Text>
                     </View>
@@ -88,7 +91,7 @@ export default function RunningSession({ initialDistance, initialDuration, onSav
 
             <View style={styles.statsCard}>
                 <View style={styles.statItem}>
-                    <Ionicons name="speedometer-outline" size={24} color={Palette.primary.main} />
+                    <Ionicons name="speedometer-outline" size={24} color={palette.primary.main} />
                     <Text style={styles.statValue}>{pace}</Text>
                     <Text style={styles.statLabel}>min/km</Text>
                 </View>
@@ -102,34 +105,29 @@ export default function RunningSession({ initialDistance, initialDuration, onSav
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (palette: any, spacing: any, borderRadius: any, typography: any, shadows: any, isDark: boolean) => StyleSheet.create({
     container: {
-        padding: Spacing.m,
+        padding: spacing.m,
     },
     card: {
-        backgroundColor: '#FFF',
-        borderRadius: BorderRadius.m,
-        padding: Spacing.m,
-        marginBottom: Spacing.m,
-        // Shadow
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
+        backgroundColor: palette.background.paper,
+        borderRadius: borderRadius.m,
+        padding: spacing.m,
+        marginBottom: spacing.m,
+        ...shadows.small,
     },
     label: {
-        fontSize: Typography.size.m,
-        color: Palette.text.secondary,
-        marginBottom: Spacing.s,
+        fontSize: typography.size.m,
+        color: palette.text.secondary,
+        marginBottom: spacing.s,
     },
     input: {
         fontSize: 32,
         fontWeight: 'bold',
-        color: Palette.text.primary,
+        color: palette.text.primary,
         borderBottomWidth: 1,
-        borderBottomColor: Palette.border.default,
-        paddingVertical: Spacing.s,
+        borderBottomColor: palette.border.default,
+        paddingVertical: spacing.s,
     },
     timeRow: {
         flexDirection: 'row',
@@ -138,29 +136,29 @@ const styles = StyleSheet.create({
     timeInputContainer: {
         flexDirection: 'row',
         alignItems: 'baseline',
-        marginRight: Spacing.l,
+        marginRight: spacing.l,
     },
     timeInput: {
         fontSize: 32,
         fontWeight: 'bold',
-        color: Palette.text.primary,
+        color: palette.text.primary,
         borderBottomWidth: 1,
-        borderBottomColor: Palette.border.default,
+        borderBottomColor: palette.border.default,
         minWidth: 50,
         textAlign: 'center',
         marginRight: 4,
     },
     unit: {
-        fontSize: Typography.size.s,
-        color: Palette.text.secondary,
+        fontSize: typography.size.s,
+        color: palette.text.secondary,
     },
     statsCard: {
         flexDirection: 'row',
         justifyContent: 'center',
-        backgroundColor: '#E3F2FD',
-        borderRadius: BorderRadius.m,
-        padding: Spacing.m,
-        marginBottom: Spacing.l,
+        backgroundColor: isDark ? '#1a2733' : '#E3F2FD',
+        borderRadius: borderRadius.m,
+        padding: spacing.m,
+        marginBottom: spacing.l,
     },
     statItem: {
         alignItems: 'center',
@@ -168,24 +166,24 @@ const styles = StyleSheet.create({
     statValue: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: Palette.primary.main,
+        color: palette.primary.main,
         marginVertical: 4,
     },
     statLabel: {
-        fontSize: Typography.size.xs,
-        color: Palette.text.secondary,
+        fontSize: typography.size.xs,
+        color: palette.text.secondary,
     },
     saveButton: {
-        backgroundColor: Palette.primary.main,
-        borderRadius: BorderRadius.l,
-        padding: Spacing.m,
+        backgroundColor: palette.primary.main,
+        borderRadius: borderRadius.l,
+        padding: spacing.m,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
     },
     saveButtonText: {
         color: '#FFF',
-        fontSize: Typography.size.m,
+        fontSize: typography.size.m,
         fontWeight: 'bold',
     },
 });

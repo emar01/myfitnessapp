@@ -1,7 +1,7 @@
 import DayCard, { DayCardType } from '@/components/DayCard';
 import StravaActivityPicker from '@/components/StravaActivityPicker';
 import WorkoutTypeSelector from '@/components/WorkoutTypeSelector';
-import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
+import { useTheme } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
 import { mapStravaType, StravaActivity } from '@/services/stravaService';
@@ -14,6 +14,8 @@ import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, Touchabl
 
 // Basic Month Grid Implementation
 export default function CalendarScreen() {
+    const { palette, spacing, borderRadius, typography, shadows, isDark } = useTheme();
+    const styles = getStyles(palette, spacing, borderRadius, typography, shadows, isDark);
     const router = useRouter();
     const { user } = useSession();
     const [workouts, setWorkouts] = useState<any[]>([]);
@@ -161,7 +163,7 @@ export default function CalendarScreen() {
                         {dayWorkouts.slice(0, 3).map((w, i) => (
                             <View key={i} style={[
                                 styles.dot,
-                                { backgroundColor: isSelected ? '#FFF' : Palette.primary.main }
+                                { backgroundColor: isSelected ? '#FFF' : palette.primary.main }
                             ]} />
                         ))}
                     </View>
@@ -206,15 +208,15 @@ export default function CalendarScreen() {
                 <Text style={styles.headerTitle}>Kalender</Text>
             </View>
 
-            <ScrollView contentContainerStyle={{ padding: Spacing.m }}>
+            <ScrollView contentContainerStyle={{ padding: spacing.m }}>
                 {/* Month Navigation */}
                 <View style={styles.monthNav}>
                     <TouchableOpacity onPress={() => changeMonth(-1)} style={styles.navBtn}>
-                        <Ionicons name="chevron-back" size={24} color={Palette.text.primary} />
+                        <Ionicons name="chevron-back" size={24} color={palette.text.primary} />
                     </TouchableOpacity>
                     <Text style={styles.monthTitle}>{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</Text>
                     <TouchableOpacity onPress={() => changeMonth(1)} style={styles.navBtn}>
-                        <Ionicons name="chevron-forward" size={24} color={Palette.text.primary} />
+                        <Ionicons name="chevron-forward" size={24} color={palette.text.primary} />
                     </TouchableOpacity>
                 </View>
 
@@ -232,7 +234,7 @@ export default function CalendarScreen() {
 
                 {/* Agenda */}
                 <View style={styles.agendaContainer}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.m }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.m }}>
                         <Text style={styles.subTitle}>
                             {selectedDate.toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' })}
                         </Text>
@@ -243,7 +245,7 @@ export default function CalendarScreen() {
                     </View>
 
                     {selectedWorkouts.length > 0 ? (
-                        <View style={{ gap: Spacing.s }}>
+                        <View style={{ gap: spacing.s }}>
                             {selectedWorkouts.map((workout: Workout) => (
                                 <DayCard
                                     key={workout.id}
@@ -273,7 +275,7 @@ export default function CalendarScreen() {
                                 style={styles.addBtn}
                                 onPress={() => setWorkoutTypeModalVisible(true)}
                             >
-                                <Ionicons name="add" size={16} color={Palette.primary.main} />
+                                <Ionicons name="add" size={16} color={palette.primary.main} />
                                 <Text style={styles.addBtnText}>Lägg till pass</Text>
                             </TouchableOpacity>
                         </View>
@@ -311,8 +313,8 @@ export default function CalendarScreen() {
             />
 
             {isSavingStrava && (
-                <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.7)', justifyContent: 'center', alignItems: 'center' }]}>
-                    <ActivityIndicator size="large" color={Palette.primary.main} />
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)', justifyContent: 'center', alignItems: 'center' }]}>
+                    <ActivityIndicator size="large" color={palette.primary.main} />
                     <Text style={{ marginTop: 10, fontWeight: 'bold' }}>Sparar pass...</Text>
                 </View>
             )}
@@ -320,57 +322,57 @@ export default function CalendarScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (palette: any, spacing: any, borderRadius: any, typography: any, shadows: any, isDark: boolean) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: Palette.background.default,
+        backgroundColor: palette.background.default,
     },
     header: {
-        paddingHorizontal: Spacing.m,
-        paddingVertical: Spacing.s,
-        backgroundColor: Palette.background.paper,
+        paddingHorizontal: spacing.m,
+        paddingVertical: spacing.s,
+        backgroundColor: palette.background.paper,
         borderBottomWidth: 1,
-        borderBottomColor: Palette.border.default,
+        borderBottomColor: palette.border.default,
     },
     headerTitle: {
-        fontSize: Typography.size.l,
+        fontSize: typography.size.l,
         fontWeight: 'bold',
-        color: Palette.text.primary,
+        color: palette.text.primary,
     },
     monthNav: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: Spacing.l,
+        marginBottom: spacing.l,
     },
     navBtn: {
-        padding: Spacing.s,
-        backgroundColor: '#FFF',
-        borderRadius: BorderRadius.m,
-        ...Shadows.small,
+        padding: spacing.s,
+        backgroundColor: palette.background.paper,
+        borderRadius: borderRadius.m,
+        ...shadows.small,
     },
     monthTitle: {
-        fontSize: Typography.size.l,
+        fontSize: typography.size.l,
         fontWeight: '600',
-        color: Palette.text.primary,
+        color: palette.text.primary,
     },
     weekHeaderRow: {
         flexDirection: 'row',
-        marginBottom: Spacing.s,
+        marginBottom: spacing.s,
     },
     weekHeaderLabel: {
         flex: 1,
         textAlign: 'center',
         fontWeight: 'bold',
-        color: Palette.text.secondary,
+        color: palette.text.secondary,
         fontSize: 12,
         textTransform: 'uppercase',
     },
     calendarContainer: {
-        backgroundColor: '#FFF',
-        borderRadius: BorderRadius.l,
-        padding: Spacing.s,
-        ...Shadows.small,
+        backgroundColor: palette.background.paper,
+        borderRadius: borderRadius.l,
+        padding: spacing.s,
+        ...shadows.small,
     },
     calRow: {
         flexDirection: 'row',
@@ -381,24 +383,24 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'flex-start',
         borderTopWidth: 1,
-        borderTopColor: '#F5F5F7',
+        borderTopColor: palette.border.default,
         paddingTop: 8,
-        borderRadius: BorderRadius.m,
+        borderRadius: borderRadius.m,
     },
     calDayToday: {
-        backgroundColor: '#F0F9FF',
+        backgroundColor: isDark ? '#1A237E' : '#F0F9FF',
     },
     calDaySelected: {
-        backgroundColor: Palette.primary.main,
+        backgroundColor: palette.primary.main,
     },
     calDayText: {
         fontSize: 14,
         fontWeight: '600',
-        color: Palette.text.primary,
+        color: palette.text.primary,
         marginBottom: 4,
     },
     calDayTextToday: {
-        color: Palette.primary.main,
+        color: palette.primary.main,
         fontWeight: 'bold',
     },
     calDayTextSelected: {
@@ -415,13 +417,13 @@ const styles = StyleSheet.create({
         borderRadius: 2,
     },
     agendaContainer: {
-        marginTop: Spacing.xl,
+        marginTop: spacing.xl,
         paddingBottom: 40,
     },
     subTitle: {
-        fontSize: Typography.size.m,
+        fontSize: typography.size.m,
         fontWeight: 'bold',
-        color: Palette.text.primary,
+        color: palette.text.primary,
         textTransform: 'capitalize'
     },
     addIconBtn: {
@@ -430,7 +432,7 @@ const styles = StyleSheet.create({
     addWorkoutBtn: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: Palette.primary.main,
+        backgroundColor: palette.primary.main,
         paddingVertical: 8,
         paddingHorizontal: 16,
         borderRadius: 20,
@@ -443,27 +445,27 @@ const styles = StyleSheet.create({
     },
     emptyState: {
         alignItems: 'center',
-        padding: Spacing.l,
-        backgroundColor: '#FFF',
-        borderRadius: BorderRadius.l,
+        padding: spacing.l,
+        backgroundColor: palette.background.paper,
+        borderRadius: borderRadius.l,
         borderWidth: 1,
         borderStyle: 'dashed',
-        borderColor: Palette.border.default,
+        borderColor: palette.border.default,
     },
     emptyStateText: {
-        color: Palette.text.secondary,
-        marginBottom: Spacing.m,
+        color: palette.text.secondary,
+        marginBottom: spacing.m,
     },
     addBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: 8,
         paddingHorizontal: 16,
-        backgroundColor: '#F0F9FF',
+        backgroundColor: isDark ? palette.background.default : '#F0F9FF',
         borderRadius: 20,
     },
     addBtnText: {
-        color: Palette.primary.main,
+        color: palette.primary.main,
         fontWeight: 'bold',
         fontSize: 12,
         marginLeft: 4,

@@ -1,4 +1,4 @@
-import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
+import { useTheme } from '@/constants/DesignSystem';
 import { PROGRAM_DURATIONS, PROGRAM_TYPES, WORKOUT_CATEGORIES } from '@/constants/WorkoutTypes'; // Import constants
 import { useAlert } from '@/context/AlertContext';
 import { useSession } from '@/context/ctx';
@@ -24,6 +24,8 @@ import {
 } from 'react-native';
 
 export default function ProgramEditorScreen() {
+    const { palette, spacing, borderRadius, typography, shadows, isDark } = useTheme();
+    const styles = getStyles(palette, spacing, borderRadius, typography, shadows, isDark);
     const router = useRouter();
     const { id } = useLocalSearchParams(); // If id exists, we edit.
     const { user } = useSession();
@@ -207,7 +209,7 @@ export default function ProgramEditorScreen() {
         return (
             <SafeAreaView style={styles.container}>
                 <View style={styles.center}>
-                    <ActivityIndicator size="large" color={Palette.primary.main} />
+                    <ActivityIndicator size="large" color={palette.primary.main} />
                 </View>
             </SafeAreaView>
         );
@@ -218,11 +220,11 @@ export default function ProgramEditorScreen() {
             <SafeAreaView style={styles.container}>
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
-                        <Ionicons name="arrow-back" size={24} color={Palette.text.primary} />
+                        <Ionicons name="arrow-back" size={24} color={palette.text.primary} />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>{programId ? 'Edit Program' : 'New Program'}</Text>
                     <TouchableOpacity onPress={handleSave} disabled={isLoading}>
-                        {isLoading ? <ActivityIndicator color={Palette.primary.main} /> : <Text style={styles.saveText}>Save</Text>}
+                        {isLoading ? <ActivityIndicator color={palette.primary.main} /> : <Text style={styles.saveText}>Save</Text>}
                     </TouchableOpacity>
                 </View>
 
@@ -319,7 +321,7 @@ export default function ProgramEditorScreen() {
                         <View key={idx} style={styles.workoutRow}>
                             <Text style={styles.workoutName}>{idx + 1}. {getTemplateName(id)}</Text>
                             <TouchableOpacity onPress={() => removeTemplate(idx)}>
-                                <Ionicons name="trash-outline" size={20} color={Palette.status.error} />
+                                <Ionicons name="trash-outline" size={20} color={palette.status.error} />
                             </TouchableOpacity>
                         </View>
                     ))}
@@ -357,12 +359,12 @@ export default function ProgramEditorScreen() {
                                 renderItem={({ item }) => (
                                     <TouchableOpacity style={styles.selectorItem} onPress={() => addTemplate(item)}>
                                         <Text style={styles.selectorText}>{item.name}</Text>
-                                        <Ionicons name="add-circle-outline" size={24} color={Palette.primary.main} />
+                                        <Ionicons name="add-circle-outline" size={24} color={palette.primary.main} />
                                     </TouchableOpacity>
                                 )}
                                 ListEmptyComponent={
                                     <View style={{ padding: 20, alignItems: 'center' }}>
-                                        <Text style={{ textAlign: 'center', color: Palette.text.secondary }}>
+                                        <Text style={{ textAlign: 'center', color: palette.text.secondary }}>
                                             No workout templates found.
                                         </Text>
                                     </View>
@@ -377,18 +379,26 @@ export default function ProgramEditorScreen() {
     );
 }
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F5F5F7' },
+const getStyles = (palette: any, spacing: any, borderRadius: any, typography: any, shadows: any, isDark: boolean) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: palette.background.default },
     header: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        padding: Spacing.m, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#EEE'
+        padding: spacing.m, backgroundColor: palette.background.paper, borderBottomWidth: 1, borderBottomColor: palette.border.default
     },
-    headerTitle: { fontSize: Typography.size.l, fontWeight: 'bold', color: Palette.text.primary },
-    saveText: { fontSize: Typography.size.m, fontWeight: 'bold', color: Palette.primary.main },
+    headerTitle: { fontSize: typography.size.l, fontWeight: 'bold', color: palette.text.primary },
+    saveText: { fontSize: typography.size.m, fontWeight: 'bold', color: palette.primary.main },
     center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-    formContainer: { padding: Spacing.m },
-    label: { fontSize: Typography.size.s, fontWeight: '600', color: Palette.text.secondary, marginBottom: 8, marginTop: 16 },
-    input: { backgroundColor: '#FFF', padding: 12, borderRadius: BorderRadius.s, fontSize: Typography.size.m, borderWidth: 1, borderColor: '#E0E0E0' },
+    formContainer: { padding: spacing.m },
+    label: { fontSize: typography.size.s, fontWeight: '600', color: palette.text.secondary, marginBottom: 8, marginTop: 16 },
+    input: {
+        backgroundColor: palette.background.paper,
+        padding: 12,
+        borderRadius: borderRadius.s,
+        fontSize: typography.size.m,
+        borderWidth: 1,
+        borderColor: palette.border.default,
+        color: palette.text.primary,
+    },
 
     categoryRow: {
         flexDirection: 'row',
@@ -399,17 +409,17 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         paddingHorizontal: 16,
         borderRadius: 20,
-        backgroundColor: '#FFF',
+        backgroundColor: palette.background.paper,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
+        borderColor: palette.border.default,
     },
     categoryChipActive: {
-        backgroundColor: Palette.primary.main,
-        borderColor: Palette.primary.main,
+        backgroundColor: palette.primary.main,
+        borderColor: palette.primary.main,
     },
     categoryChipText: {
-        fontSize: Typography.size.s,
-        color: Palette.text.primary,
+        fontSize: typography.size.s,
+        color: palette.text.primary,
     },
     categoryChipTextActive: {
         color: '#FFF',
@@ -417,38 +427,38 @@ const styles = StyleSheet.create({
     },
 
     sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, marginBottom: 8 },
-    addAction: { color: Palette.primary.main, fontWeight: 'bold' },
+    addAction: { color: palette.primary.main, fontWeight: 'bold' },
     workoutRow: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-        backgroundColor: '#FFF', padding: 12, borderRadius: 8, marginBottom: 8, ...Shadows.small
+        backgroundColor: palette.background.paper, padding: 12, borderRadius: 8, marginBottom: 8, ...shadows.small
     },
-    workoutName: { fontSize: Typography.size.m, color: Palette.text.primary },
-    emptyText: { color: Palette.text.disabled, fontStyle: 'italic', marginTop: 8 },
+    workoutName: { fontSize: typography.size.m, color: palette.text.primary },
+    emptyText: { color: palette.text.disabled, fontStyle: 'italic', marginTop: 8 },
 
     // Modal
-    modalContainer: { flex: 1, backgroundColor: '#F5F5F7' },
+    modalContainer: { flex: 1, backgroundColor: palette.background.default },
     modalHeader: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-        padding: Spacing.m, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#EEE'
+        padding: spacing.m, backgroundColor: palette.background.paper, borderBottomWidth: 1, borderBottomColor: palette.border.default
     },
-    modalTitle: { fontSize: Typography.size.l, fontWeight: 'bold' },
-    modalAction: { fontSize: Typography.size.m, color: Palette.primary.main },
+    modalTitle: { fontSize: typography.size.l, fontWeight: 'bold', color: palette.text.primary },
+    modalAction: { fontSize: typography.size.m, color: palette.primary.main },
     selectorItem: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-        padding: 16, borderBottomWidth: 1, borderBottomColor: '#EEE', backgroundColor: '#FFF'
+        padding: 16, borderBottomWidth: 1, borderBottomColor: palette.border.default, backgroundColor: palette.background.paper
     },
-    selectorText: { fontSize: Typography.size.m },
+    selectorText: { fontSize: typography.size.m, color: palette.text.primary },
     deleteButton: {
-        backgroundColor: '#FF5252',
-        padding: Spacing.m,
-        borderRadius: BorderRadius.round,
+        backgroundColor: palette.status.error,
+        padding: spacing.m,
+        borderRadius: borderRadius.round,
         alignItems: 'center',
-        marginTop: Spacing.xl,
-        marginBottom: Spacing.xl,
+        marginTop: spacing.xl,
+        marginBottom: spacing.xl,
     },
     deleteButtonText: {
         color: '#FFF',
-        fontSize: Typography.size.m,
+        fontSize: typography.size.m,
         fontWeight: 'bold',
     },
 });

@@ -1,10 +1,12 @@
-import { BorderRadius, Palette, Spacing } from '@/constants/DesignSystem';
+import { useTheme } from '@/constants/DesignSystem';
 import { Ionicons } from '@expo/vector-icons';
 import { usePathname, useRouter } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function DesktopSidebar() {
+    const { palette, spacing, borderRadius, typography, shadows, isDark } = useTheme();
+    const styles = getStyles(palette, spacing, borderRadius, typography, shadows, isDark);
     const router = useRouter();
     const pathname = usePathname();
 
@@ -25,7 +27,7 @@ export default function DesktopSidebar() {
                 <Ionicons
                     name={icon}
                     size={20}
-                    color={active ? Palette.primary.main : Palette.text.secondary}
+                    color={active ? palette.primary.main : palette.text.secondary}
                     style={{ marginRight: 8 }}
                 />
                 <Text style={active ? styles.navTextActive : styles.navText}>{label}</Text>
@@ -48,47 +50,47 @@ export default function DesktopSidebar() {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (palette: any, spacing: any, borderRadius: any, typography: any, shadows: any, isDark: boolean) => StyleSheet.create({
     sidebar: {
         width: 250,
-        backgroundColor: '#FFF',
+        backgroundColor: palette.background.paper,
         borderRightWidth: 1,
-        borderRightColor: Palette.border.default,
-        padding: Spacing.l,
+        borderRightColor: palette.border.default,
+        padding: spacing.l,
         height: '100%',
     },
     logoText: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: Palette.primary.main,
-        marginBottom: Spacing.xl,
+        color: palette.primary.main,
+        marginBottom: spacing.xl,
     },
     navLinks: {},
     navItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: Spacing.m,
-        paddingHorizontal: Spacing.m,
-        borderRadius: BorderRadius.m,
-        marginBottom: Spacing.s,
+        paddingVertical: spacing.m,
+        paddingHorizontal: spacing.m,
+        borderRadius: borderRadius.m,
+        marginBottom: spacing.s,
     },
     navItemActive: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: Spacing.m,
-        paddingHorizontal: Spacing.m,
-        borderRadius: BorderRadius.m,
-        marginBottom: Spacing.s,
-        backgroundColor: '#F0F9FF', // Light blue tint
+        paddingVertical: spacing.m,
+        paddingHorizontal: spacing.m,
+        borderRadius: borderRadius.m,
+        marginBottom: spacing.s,
+        backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#F0F9FF', // Subtle tint for dark, light blue for light
     },
     navText: {
         fontSize: 16,
-        color: Palette.text.secondary,
+        color: palette.text.secondary,
         fontWeight: '500',
     },
     navTextActive: {
         fontSize: 16,
-        color: Palette.primary.main,
+        color: palette.primary.main,
         fontWeight: 'bold',
     },
 });

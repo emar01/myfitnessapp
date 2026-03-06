@@ -1,5 +1,5 @@
 
-export const Palette = {
+const BaseColors = {
     primary: {
         main: '#1B4436', // Forest Green
         light: '#2C5E4E',
@@ -12,6 +12,10 @@ export const Palette = {
         dark: '#B0563E',
         contrastText: '#FFFFFF',
     },
+};
+
+export const LightPalette = {
+    ...BaseColors,
     background: {
         default: '#F8F9FA', // Off-white/Light Grey
         paper: '#FFFFFF',
@@ -33,7 +37,57 @@ export const Palette = {
         default: '#EEEEEE',
         focus: '#1B4436',
     },
+    workouts: {
+        distans: '#1B4436',
+        langpass: '#2196F3',
+        intervall: '#F44336',
+        crossfit: '#FF9800',
+        styrka: '#9C27B0',
+        rorligheten: '#009688',
+    },
 };
+
+export const DarkPalette = {
+    ...BaseColors,
+    primary: {
+        ...BaseColors.primary,
+        main: '#4CAF8E', // Lighter green for dark mode accessibility
+        light: '#6DBA9B',
+        dark: '#1B4436',
+    },
+    background: {
+        default: '#121212', // Material Dark Background
+        paper: '#1E1E1E', // Elevated surfaces
+        input: '#2C2C2C',
+    },
+    text: {
+        primary: '#F0F0F0',
+        secondary: '#AAAAAA',
+        disabled: '#555555',
+        inverse: '#1A1A1A',
+    },
+    status: {
+        success: '#81C784',
+        warning: '#FFD54F',
+        error: '#E57373',
+        info: '#64B5F6',
+    },
+    border: {
+        default: '#333333',
+        focus: '#4CAF8E',
+    },
+    workouts: {
+        distans: '#4CAF8E',
+        langpass: '#64B5F6',
+        intervall: '#E57373',
+        crossfit: '#FFB74D',
+        styrka: '#BA68C8',
+        rorligheten: '#4DB6AC',
+    },
+};
+
+// Default export for backward compatibility (will resolve to Light)
+export const Palette = LightPalette;
 
 export const Spacing = {
     xs: 4,
@@ -123,3 +177,21 @@ export const Shadows = {
         },
     }),
 };
+
+import { useColorScheme } from 'react-native';
+
+export function useTheme() {
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
+    const palette = isDark ? DarkPalette : LightPalette;
+
+    return {
+        palette,
+        isDark,
+        spacing: Spacing,
+        borderRadius: BorderRadius,
+        layout: Layout,
+        typography: Typography,
+        shadows: Shadows,
+    };
+}

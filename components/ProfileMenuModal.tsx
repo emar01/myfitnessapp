@@ -1,4 +1,4 @@
-import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
+﻿import { useTheme } from '@/constants/DesignSystem';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
@@ -12,6 +12,8 @@ interface ProfileMenuModalProps {
 }
 
 export default function ProfileMenuModal({ visible, onClose, onProfile, onLogout, userEmail }: ProfileMenuModalProps) {
+    const { palette, spacing, borderRadius, typography, shadows, isDark } = useTheme();
+    const styles = getStyles(palette, spacing, borderRadius, typography, shadows, isDark);
     return (
         <Modal
             visible={visible}
@@ -30,19 +32,19 @@ export default function ProfileMenuModal({ visible, onClose, onProfile, onLogout
 
                             <TouchableOpacity style={styles.menuItem} onPress={onProfile}>
                                 <View style={styles.iconContainer}>
-                                    <Ionicons name="person" size={20} color={Palette.primary.main} />
+                                    <Ionicons name="person" size={20} color={palette.primary.main} />
                                 </View>
                                 <Text style={styles.menuText}>Min Profil</Text>
-                                <Ionicons name="chevron-forward" size={16} color={Palette.text.disabled} />
+                                <Ionicons name="chevron-forward" size={16} color={palette.text.disabled} />
                             </TouchableOpacity>
 
                             <View style={styles.divider} />
 
                             <TouchableOpacity style={styles.menuItem} onPress={onLogout}>
                                 <View style={styles.iconContainer}>
-                                    <Ionicons name="log-out" size={20} color={Palette.status.error} />
+                                    <Ionicons name="log-out" size={20} color={palette.status.error} />
                                 </View>
-                                <Text style={[styles.menuText, { color: Palette.status.error }]}>Logga ut</Text>
+                                <Text style={[styles.menuText, { color: palette.status.error }]}>Logga ut</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
@@ -56,44 +58,44 @@ export default function ProfileMenuModal({ visible, onClose, onProfile, onLogout
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (palette: any, spacing: any, borderRadius: any, typography: any, shadows: any, isDark: boolean) => StyleSheet.create({
     overlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
         justifyContent: 'center',
         alignItems: 'center',
-        padding: Spacing.l,
+        padding: spacing.l,
     },
     modalContent: {
         width: '100%',
         maxWidth: 320,
-        backgroundColor: '#FFF',
-        borderRadius: BorderRadius.l,
-        padding: Spacing.m,
-        ...Shadows.medium,
+        backgroundColor: palette.background.paper,
+        borderRadius: borderRadius.l,
+        padding: spacing.m,
+        ...shadows.medium,
     },
     header: {
         alignItems: 'center',
-        marginBottom: Spacing.m,
-        paddingBottom: Spacing.s,
+        marginBottom: spacing.m,
+        paddingBottom: spacing.s,
         borderBottomWidth: 1,
-        borderBottomColor: '#EEE',
+        borderBottomColor: palette.border.default,
     },
     headerTitle: {
-        fontSize: Typography.size.m,
+        fontSize: typography.size.m,
         fontWeight: 'bold',
-        color: Palette.text.primary,
+        color: palette.text.primary,
         marginBottom: 4,
     },
     userEmail: {
-        fontSize: Typography.size.s,
-        color: Palette.text.secondary,
+        fontSize: typography.size.s,
+        color: palette.text.secondary,
     },
     menuItem: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: 12,
-        paddingHorizontal: Spacing.s,
+        paddingHorizontal: spacing.s,
     },
     iconContainer: {
         width: 32,
@@ -101,53 +103,53 @@ const styles = StyleSheet.create({
         marginRight: 12,
     },
     menuText: {
-        fontSize: Typography.size.m,
-        color: Palette.text.primary,
+        fontSize: typography.size.m,
+        color: palette.text.primary,
         flex: 1,
     },
     divider: {
         height: 1,
-        backgroundColor: '#EEE',
+        backgroundColor: palette.border.default,
         marginVertical: 4,
     },
     cancelButton: {
-        marginTop: Spacing.m,
+        marginTop: spacing.m,
         paddingVertical: 12,
         alignItems: 'center',
-        backgroundColor: '#F5F5F7',
-        borderRadius: BorderRadius.m,
+        backgroundColor: isDark ? '#2C2C2C' : '#F5F5F7',
+        borderRadius: borderRadius.m,
     },
     cancelText: {
-        color: Palette.text.primary,
+        color: palette.text.primary,
         fontWeight: '600',
     },
     confirmText: {
-        fontSize: Typography.size.m,
-        color: Palette.text.primary,
-        marginBottom: Spacing.m,
+        fontSize: typography.size.m,
+        color: palette.text.primary,
+        marginBottom: spacing.m,
         textAlign: 'center',
     },
     confirmRow: {
         flexDirection: 'row',
-        gap: Spacing.m,
+        gap: spacing.m,
         justifyContent: 'center',
     },
     cancelButtonAuth: {
         flex: 1,
         paddingVertical: 12,
         alignItems: 'center',
-        backgroundColor: '#F5F5F7',
-        borderRadius: BorderRadius.m,
+        backgroundColor: isDark ? '#2C2C2C' : '#F5F5F7',
+        borderRadius: borderRadius.m,
     },
     logoutButtonAuth: {
         flex: 1,
         paddingVertical: 12,
         alignItems: 'center',
-        backgroundColor: '#FCECEC',
-        borderRadius: BorderRadius.m,
+        backgroundColor: isDark ? '#3D1B1B' : '#FCECEC',
+        borderRadius: borderRadius.m,
     },
     logoutText: {
-        color: Palette.status.error,
+        color: palette.status.error,
         fontWeight: 'bold',
     },
 });

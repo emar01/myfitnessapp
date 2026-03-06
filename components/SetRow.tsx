@@ -1,4 +1,4 @@
-import { BorderRadius, Palette, Spacing, Typography } from '@/constants/DesignSystem';
+﻿import { useTheme } from '@/constants/DesignSystem';
 import { WorkoutSet } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -13,6 +13,8 @@ interface SetRowProps {
 }
 
 export default function SetRow({ set, index, setIndexWithinType, onUpdate, onDelete, isPr }: SetRowProps) {
+    const { palette, spacing, borderRadius, typography, isDark } = useTheme();
+    const styles = getStyles(palette, spacing, borderRadius, typography, isDark);
     const isWarmup = set.type === 'warmup';
     const isCompleted = set.isCompleted;
 
@@ -36,7 +38,7 @@ export default function SetRow({ set, index, setIndexWithinType, onUpdate, onDel
                 {isPr ? (
                     <Ionicons name="trophy" size={14} color="#FFF" />
                 ) : isWarmup ? (
-                    <Ionicons name="body" size={14} color={isCompleted ? '#FFF' : Palette.accent.main} />
+                    <Ionicons name="body" size={14} color={isCompleted ? '#FFF' : palette.accent.main} />
                 ) : (
                     <Text style={[styles.setNumberText, isCompleted && { color: '#FFF' }]}>
                         {setIndexWithinType}
@@ -57,7 +59,7 @@ export default function SetRow({ set, index, setIndexWithinType, onUpdate, onDel
                     <Text style={styles.unitText}>kg</Text>
                 </View>
 
-                <View style={[styles.inputWrapper, { marginLeft: Spacing.xl }]}>
+                <View style={[styles.inputWrapper, { marginLeft: spacing.xl }]}>
                     <TextInput
                         style={styles.input}
                         keyboardType="numeric"
@@ -71,21 +73,21 @@ export default function SetRow({ set, index, setIndexWithinType, onUpdate, onDel
 
             {/* Menu Action (Three Dots) */}
             <TouchableOpacity style={styles.menuButton} onPress={onDelete}>
-                <Ionicons name="trash-outline" size={16} color={Palette.text.disabled} />
+                <Ionicons name="trash-outline" size={16} color={palette.text.disabled} />
             </TouchableOpacity>
 
         </View>
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (palette: any, spacing: any, borderRadius: any, typography: any, isDark: boolean) => StyleSheet.create({
     row: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: 12, // Increased padding for touch targets
-        backgroundColor: '#FFF',
+        backgroundColor: palette.background.paper,
         borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: '#F0F0F0',
+        borderBottomColor: palette.border.default,
     },
     setIndicator: {
         width: 36,
@@ -93,61 +95,61 @@ const styles = StyleSheet.create({
         borderRadius: 18,
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: Spacing.m,
+        marginRight: spacing.m,
         borderWidth: 1,
-        borderColor: Palette.border.default,
-        backgroundColor: '#FFF',
+        borderColor: palette.border.default,
+        backgroundColor: palette.background.paper,
     },
     setIndicatorCompleted: {
         backgroundColor: '#4CD964', // Success Green
         borderColor: '#4CD964',
     },
     setIndicatorPr: {
-        backgroundColor: Palette.accent.main, // Gold/Yellow
-        borderColor: Palette.accent.main,
+        backgroundColor: palette.accent.main, // Gold/Yellow
+        borderColor: palette.accent.main,
     },
     setIndicatorWarmupIncomplete: {
         // Special style for warmup incomplete?
-        borderColor: Palette.border.default,
+        borderColor: palette.border.default,
     },
     setNumberText: {
-        fontSize: Typography.size.s,
+        fontSize: typography.size.s,
         fontWeight: 'bold',
-        color: Palette.text.primary,
+        color: palette.text.primary,
     },
 
     inputsContainer: {
         flex: 1,
         flexDirection: 'row',
         justifyContent: 'center',
-        paddingRight: Spacing.xl,
+        paddingRight: spacing.xl,
     },
     inputWrapper: {
         flexDirection: 'row',
         alignItems: 'center',
         width: 80,
         justifyContent: 'flex-end',
-        backgroundColor: '#F5F5F7',
-        borderRadius: BorderRadius.s,
+        backgroundColor: palette.background.input,
+        borderRadius: borderRadius.s,
         paddingHorizontal: 8,
         height: 36,
     },
     input: {
         flex: 1,
-        fontSize: Typography.size.m,
+        fontSize: typography.size.m,
         fontWeight: 'bold',
-        color: Palette.text.primary,
+        color: palette.text.primary,
         textAlign: 'right',
         minWidth: 30,
         paddingVertical: 0,
     },
     unitText: {
-        fontSize: Typography.size.xs,
-        color: Palette.text.disabled,
+        fontSize: typography.size.xs,
+        color: palette.text.disabled,
         marginLeft: 4,
         marginBottom: 2,
     },
     menuButton: {
-        padding: Spacing.s,
+        padding: spacing.s,
     },
 });

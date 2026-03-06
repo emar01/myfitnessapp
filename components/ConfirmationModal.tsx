@@ -1,4 +1,4 @@
-import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
+﻿import { useTheme } from '@/constants/DesignSystem';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
@@ -26,6 +26,8 @@ export default function ConfirmationModal({
     isDestructive = true,
     singleButton = false,
 }: ConfirmationModalProps) {
+    const { palette, spacing, borderRadius, typography, shadows, isDark } = useTheme();
+    const styles = getStyles(palette, spacing, borderRadius, typography, shadows, isDark);
     return (
         <Modal
             visible={visible}
@@ -42,7 +44,7 @@ export default function ConfirmationModal({
                                     <Ionicons
                                         name={isDestructive ? "trash-outline" : "alert-circle-outline"}
                                         size={24}
-                                        color={isDestructive ? Palette.status.error : Palette.primary.main}
+                                        color={isDestructive ? palette.status.error : palette.primary.main}
                                     />
                                 </View>
                                 <Text style={styles.headerTitle}>{title}</Text>
@@ -76,85 +78,85 @@ export default function ConfirmationModal({
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (palette: any, spacing: any, borderRadius: any, typography: any, shadows: any, isDark: boolean) => StyleSheet.create({
     overlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
         justifyContent: 'center',
         alignItems: 'center',
-        padding: Spacing.l,
+        padding: spacing.l,
         zIndex: 1000, // Ensure it's above other modals
     },
     modalContent: {
         width: '100%',
         maxWidth: 340,
-        backgroundColor: '#FFF',
-        borderRadius: BorderRadius.l,
-        padding: Spacing.l,
-        ...Shadows.medium,
+        backgroundColor: palette.background.paper,
+        borderRadius: borderRadius.l,
+        padding: spacing.l,
+        ...shadows.medium,
     },
     header: {
         alignItems: 'center',
-        marginBottom: Spacing.m,
+        marginBottom: spacing.m,
     },
     iconContainer: {
         width: 48,
         height: 48,
         borderRadius: 24,
-        backgroundColor: '#F5F5F7',
+        backgroundColor: isDark ? '#2C2C2C' : '#F5F5F7',
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: Spacing.m,
+        marginBottom: spacing.m,
     },
     destructiveIconBackground: {
-        backgroundColor: '#FCECEC',
+        backgroundColor: isDark ? '#3D1B1B' : '#FCECEC',
     },
     headerTitle: {
-        fontSize: Typography.size.m,
+        fontSize: typography.size.m,
         fontWeight: 'bold',
-        color: Palette.text.primary,
+        color: palette.text.primary,
         textAlign: 'center',
     },
     messageText: {
-        fontSize: Typography.size.s,
-        color: Palette.text.secondary,
+        fontSize: typography.size.s,
+        color: palette.text.secondary,
         textAlign: 'center',
-        marginBottom: Spacing.l,
+        marginBottom: spacing.l,
         lineHeight: 20,
     },
     buttonRow: {
         flexDirection: 'row',
-        gap: Spacing.m,
+        gap: spacing.m,
     },
     cancelButton: {
         flex: 1,
         paddingVertical: 12,
         alignItems: 'center',
-        backgroundColor: '#F5F5F7',
-        borderRadius: BorderRadius.m,
+        backgroundColor: isDark ? '#2C2C2C' : '#F5F5F7',
+        borderRadius: borderRadius.m,
     },
     cancelText: {
-        color: Palette.text.primary,
+        color: palette.text.primary,
         fontWeight: '600',
-        fontSize: Typography.size.s,
+        fontSize: typography.size.s,
     },
     confirmButton: {
         flex: 1,
         paddingVertical: 12,
         alignItems: 'center',
-        backgroundColor: Palette.primary.main,
-        borderRadius: BorderRadius.m,
+        backgroundColor: palette.primary.main,
+        borderRadius: borderRadius.m,
     },
     destructiveButton: {
-        backgroundColor: Palette.status.error,
+        backgroundColor: palette.status.error,
     },
     singleConfirmButton: {
-        backgroundColor: Palette.primary.main,
+        backgroundColor: palette.primary.main,
     },
     confirmText: {
         color: '#FFF',
         fontWeight: 'bold',
-        fontSize: Typography.size.s,
+        fontSize: typography.size.s,
     },
     singleConfirmText: {
         color: '#FFF',

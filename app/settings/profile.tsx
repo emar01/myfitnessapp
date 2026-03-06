@@ -1,4 +1,4 @@
-import { BorderRadius, Palette, Spacing, Typography } from '@/constants/DesignSystem';
+import { useTheme } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
 
 import { db } from '@/lib/firebaseConfig';
@@ -16,6 +16,8 @@ import { useAuthRequest } from 'expo-auth-session';
 interface Memory { id: string; content: string; }
 
 export default function ProfileScreen() {
+    const { palette, spacing, borderRadius, typography, shadows, isDark } = useTheme();
+    const styles = getStyles(palette, spacing, borderRadius, typography, shadows, isDark);
     const router = useRouter();
     const { user } = useSession();
     const { showAlert, showConfirm } = useAlert();
@@ -137,8 +139,8 @@ export default function ProfileScreen() {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={{ position: 'absolute', left: Spacing.m, zIndex: 10 }}>
-                    <Ionicons name="arrow-back" size={24} color={Palette.text.primary} />
+                <TouchableOpacity onPress={() => router.back()} style={{ position: 'absolute', left: spacing.m, zIndex: 10 }}>
+                    <Ionicons name="arrow-back" size={24} color={palette.text.primary} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Min Profil</Text>
             </View>
@@ -148,7 +150,7 @@ export default function ProfileScreen() {
                 {/* User Info Card */}
                 <View style={styles.card}>
                     <View style={styles.avatar}>
-                        <FontAwesome name="user" size={32} color={Palette.primary.main} />
+                        <FontAwesome name="user" size={32} color={palette.primary.main} />
                     </View>
                     <View>
                         <Text style={styles.userName}>{user.displayName || 'Användare'}</Text>
@@ -192,7 +194,7 @@ export default function ProfileScreen() {
                         </View>
                     </View>
                     <View style={[styles.row, { borderBottomWidth: 0, marginTop: 8 }]}>
-                        <Text style={{ marginRight: 8, color: Palette.text.secondary }}>Kön:</Text>
+                        <Text style={{ marginRight: 8, color: palette.text.secondary }}>Kön:</Text>
                         {['Man', 'Kvinna', 'Annat'].map((gender) => (
                             <TouchableOpacity
                                 key={gender}
@@ -218,7 +220,7 @@ export default function ProfileScreen() {
                         </View>
                     </View>
                     <TouchableOpacity
-                        style={[styles.smallButton, stravaConnected && { backgroundColor: Palette.status.success }]}
+                        style={[styles.smallButton, stravaConnected && { backgroundColor: palette.status.success }]}
                         onPress={() => {
                             if (!stravaConnected) promptAsync();
                         }}
@@ -236,10 +238,10 @@ export default function ProfileScreen() {
                 {/* Navigation to Stats */}
                 <TouchableOpacity style={styles.navButton} onPress={() => router.push('/settings/stats')}>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Ionicons name="trophy" size={20} color={Palette.accent.main} style={{ marginRight: 12 }} />
+                        <Ionicons name="trophy" size={20} color={palette.accent.main} style={{ marginRight: 12 }} />
                         <Text style={styles.navButtonText}>Se mina Personbästa (PR)</Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={20} color={Palette.text.disabled} />
+                    <Ionicons name="chevron-forward" size={20} color={palette.text.disabled} />
                 </TouchableOpacity>
 
                 {/* AI Configuration Section */}
@@ -254,12 +256,12 @@ export default function ProfileScreen() {
                             </Text>
                         </View>
                         {isUpdating ? (
-                            <ActivityIndicator size="small" color={Palette.primary.main} />
+                            <ActivityIndicator size="small" color={palette.primary.main} />
                         ) : (
                             <Switch
                                 value={isAiEnabled}
                                 onValueChange={toggleAi}
-                                trackColor={{ false: Palette.text.disabled, true: Palette.primary.main }}
+                                trackColor={{ false: palette.text.disabled, true: palette.primary.main }}
                             />
                         )}
                     </View>
@@ -289,13 +291,13 @@ export default function ProfileScreen() {
                     </Text>
 
                     {memories.length === 0 ? (
-                        <Text style={{ fontStyle: 'italic', color: Palette.text.disabled }}>Inget sparat ännu.</Text>
+                        <Text style={{ fontStyle: 'italic', color: palette.text.disabled }}>Inget sparat ännu.</Text>
                     ) : (
                         memories.map(mem => (
                             <View key={mem.id} style={styles.memoryItem}>
                                 <Text style={styles.memoryText}>{mem.content}</Text>
                                 <TouchableOpacity onPress={() => deleteMemory(mem.id)}>
-                                    <Ionicons name="trash-outline" size={20} color={Palette.status.error} />
+                                    <Ionicons name="trash-outline" size={20} color={palette.status.error} />
                                 </TouchableOpacity>
                             </View>
                         ))
@@ -303,7 +305,7 @@ export default function ProfileScreen() {
                 </View>
 
                 <View style={styles.infoBox}>
-                    <Ionicons name="information-circle" size={20} color={Palette.status.info} style={{ marginRight: 8 }} />
+                    <Ionicons name="information-circle" size={20} color={palette.status.info} style={{ marginRight: 8 }} />
                     <Text style={styles.infoText}>
                         Kostnaden baseras på Gemini 1.5 Flash USD-pris (omräknat ca 10.8 SEK/USD).
                     </Text>
@@ -314,130 +316,130 @@ export default function ProfileScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (palette: any, spacing: any, borderRadius: any, typography: any, shadows: any, isDark: boolean) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F5F5F7',
+        backgroundColor: palette.background.default,
     },
     header: {
-        padding: Spacing.m,
-        backgroundColor: '#FFF',
+        padding: spacing.m,
+        backgroundColor: palette.background.paper,
         borderBottomWidth: 1,
-        borderBottomColor: '#EEE',
+        borderBottomColor: palette.border.default,
         alignItems: 'center',
     },
     headerTitle: {
-        fontSize: Typography.size.l,
+        fontSize: typography.size.l,
         fontWeight: 'bold',
-        color: Palette.text.primary,
+        color: palette.text.primary,
     },
     content: {
-        padding: Spacing.m,
+        padding: spacing.m,
+        maxWidth: 800,
+        alignSelf: 'center',
+        width: '100%',
     },
     card: {
-        backgroundColor: '#FFF',
-        borderRadius: BorderRadius.m,
-        padding: Spacing.m,
-        marginBottom: Spacing.l,
+        backgroundColor: palette.background.paper,
+        borderRadius: borderRadius.m,
+        padding: spacing.m,
+        marginBottom: spacing.l,
         flexDirection: 'row',
         alignItems: 'center',
-        // Shadow
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
+        borderWidth: 1,
+        borderColor: palette.border.default,
+        ...shadows.small,
     },
     avatar: {
         width: 60, height: 60,
         borderRadius: 30,
-        backgroundColor: Palette.background.default,
+        backgroundColor: palette.background.default,
         alignItems: 'center', justifyContent: 'center',
-        marginRight: Spacing.m,
+        marginRight: spacing.m,
     },
     userName: {
-        fontSize: Typography.size.m,
+        fontSize: typography.size.m,
         fontWeight: 'bold',
-        color: Palette.text.primary,
+        color: palette.text.primary,
     },
     userEmail: {
-        fontSize: Typography.size.s,
-        color: Palette.text.secondary,
+        fontSize: typography.size.s,
+        color: palette.text.secondary,
     },
     sectionTitle: {
-        fontSize: Typography.size.s,
+        fontSize: typography.size.s,
         fontWeight: '600',
-        color: Palette.text.secondary,
-        marginBottom: Spacing.s,
+        color: palette.text.secondary,
+        marginBottom: spacing.s,
         textTransform: 'uppercase',
-        marginLeft: Spacing.s,
+        marginLeft: spacing.s,
     },
     row: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: Spacing.s,
+        paddingVertical: spacing.s,
         borderBottomWidth: 1,
-        borderBottomColor: '#F0F0F0',
+        borderBottomColor: palette.border.default,
         width: '100%',
-        flexWrap: 'wrap', // Allow description to wrap if needed, though structure separates it
+        flexWrap: 'wrap',
     },
     label: {
-        fontSize: Typography.size.m,
+        fontSize: typography.size.m,
         fontWeight: '500',
-        color: Palette.text.primary,
+        color: palette.text.primary,
     },
     description: {
-        fontSize: Typography.size.xs,
-        color: Palette.text.secondary,
+        fontSize: typography.size.xs,
+        color: palette.text.secondary,
         marginTop: 2,
         maxWidth: '90%',
     },
     costBox: {
-        backgroundColor: Palette.background.default,
-        padding: Spacing.m,
-        borderRadius: BorderRadius.m,
+        backgroundColor: palette.background.default,
+        padding: spacing.m,
+        borderRadius: borderRadius.m,
         width: '100%',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: Palette.border.default,
+        borderColor: palette.border.default,
     },
     costLabel: {
-        fontSize: Typography.size.xs,
-        color: Palette.text.secondary,
+        fontSize: typography.size.xs,
+        color: palette.text.secondary,
         fontWeight: 'bold',
         marginBottom: 4,
         letterSpacing: 1,
     },
     costText: {
-        fontSize: 24, // Larger font
+        fontSize: 24,
         fontWeight: 'bold',
-        color: Palette.primary.main,
+        color: palette.primary.main,
         fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     },
     infoBox: {
         flexDirection: 'row',
-        padding: Spacing.m,
-        backgroundColor: '#E3F2FD',
-        borderRadius: BorderRadius.s,
+        padding: spacing.m,
+        backgroundColor: isDark ? '#1A237E' : '#E3F2FD',
+        borderRadius: borderRadius.s,
         alignItems: 'center',
     },
     infoText: {
-        fontSize: Typography.size.s,
-        color: Palette.status.info,
+        fontSize: typography.size.s,
+        color: isDark ? '#BBDEFB' : palette.status.info,
         flex: 1,
     },
     memoryItem: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: Spacing.s,
+        paddingVertical: spacing.s,
         borderBottomWidth: 1,
-        borderBottomColor: '#F0F0F0'
+        borderBottomColor: palette.border.default,
     },
     memoryText: {
         fontSize: 14,
-        color: Palette.text.primary,
+        color: palette.text.primary,
         flex: 1,
         marginRight: 8
     },
@@ -447,15 +449,15 @@ const styles = StyleSheet.create({
     },
     statLabel: {
         fontSize: 12,
-        color: Palette.text.secondary,
+        color: palette.text.secondary,
         marginBottom: 4,
     },
     statInput: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: Palette.text.primary,
+        color: palette.text.primary,
         borderBottomWidth: 1,
-        borderBottomColor: Palette.border.default,
+        borderBottomColor: palette.border.default,
         minWidth: 40,
         textAlign: 'center',
     },
@@ -463,15 +465,15 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 16,
-        backgroundColor: '#F5F5F7',
+        backgroundColor: palette.background.default,
         marginRight: 8,
     },
     genderButtonActive: {
-        backgroundColor: Palette.primary.main,
+        backgroundColor: palette.primary.main,
     },
     genderText: {
         fontSize: 12,
-        color: Palette.text.secondary,
+        color: palette.text.secondary,
     },
 
     genderTextActive: {
@@ -479,24 +481,21 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
     navButton: {
-        backgroundColor: '#FFF',
-        borderRadius: BorderRadius.m,
-        padding: Spacing.m,
-        marginBottom: Spacing.l,
+        backgroundColor: palette.background.paper,
+        borderRadius: borderRadius.m,
+        padding: spacing.m,
+        marginBottom: spacing.l,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        // Shadow
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
+        borderWidth: 1,
+        borderColor: palette.border.default,
+        ...shadows.small,
     },
     navButtonText: {
-        fontSize: Typography.size.m,
+        fontSize: typography.size.m,
         fontWeight: '500',
-        color: Palette.text.primary,
+        color: palette.text.primary,
     },
     smallButton: {
         backgroundColor: '#FC4C02',

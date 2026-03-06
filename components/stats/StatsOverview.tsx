@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { BorderRadius, Palette, Shadows, Spacing, Typography } from '../../constants/DesignSystem';
+import { useTheme } from '../../constants/DesignSystem';
 
 interface StatsOverviewProps {
     totalWorkouts: number;
@@ -16,6 +16,8 @@ export default function StatsOverview({
     totalDuration,
     averagePace
 }: StatsOverviewProps) {
+    const { palette, spacing, borderRadius, typography, shadows } = useTheme();
+    const styles = getStyles(palette, spacing, borderRadius, typography, shadows);
 
     const formatDuration = (seconds: number) => {
         const hours = Math.floor(seconds / 3600);
@@ -37,34 +39,38 @@ export default function StatsOverview({
                     label="Pass"
                     value={totalWorkouts.toString()}
                     icon="fitness"
-                    color={Palette.primary.main}
+                    color={palette.primary.main}
+                    styles={styles}
                 />
                 <StatCard
                     label="Distans"
                     value={`${totalDistance} km`}
                     icon="trail-sign"
-                    color={Palette.accent.main}
+                    color={palette.accent.main}
+                    styles={styles}
                 />
                 <StatCard
                     label="Tid"
                     value={formatDuration(totalDuration)}
                     icon="time"
-                    color="#2196F3"
+                    color={palette.primary.light || "#2196F3"}
+                    styles={styles}
                 />
                 <StatCard
                     label="Tempo"
                     value={`${formatPace(averagePace)}/km`}
                     icon="speedometer"
-                    color="#4CAF50"
+                    color={palette.status.success || "#4CAF50"}
+                    styles={styles}
                 />
             </View>
         </View>
     );
 }
 
-function StatCard({ label, value, icon, color }: { label: string, value: string, icon: any, color: string }) {
+function StatCard({ label, value, icon, color, styles }: { label: string, value: string, icon: any, color: string, styles: any }) {
     return (
-        <View style={[styles.card, Shadows.small]}>
+        <View style={styles.card}>
             <View style={[styles.iconContainer, { backgroundColor: color + '15' }]}>
                 <Ionicons name={icon} size={20} color={color} />
             </View>
@@ -74,38 +80,39 @@ function StatCard({ label, value, icon, color }: { label: string, value: string,
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (palette: any, spacing: any, borderRadius: any, typography: any, shadows: any) => StyleSheet.create({
     container: {
-        paddingVertical: Spacing.m,
+        paddingVertical: spacing.m,
     },
     grid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'space-between',
-        gap: Spacing.m,
+        gap: spacing.m,
     },
     card: {
-        backgroundColor: Palette.background.paper,
-        borderRadius: BorderRadius.m,
-        padding: Spacing.m,
+        backgroundColor: palette.background.paper,
+        borderRadius: borderRadius.m,
+        padding: spacing.m,
         width: '47%',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: Palette.border.default,
+        borderColor: palette.border.default,
+        ...shadows.small,
     },
     iconContainer: {
-        padding: Spacing.s,
-        borderRadius: BorderRadius.round,
-        marginBottom: Spacing.s,
+        padding: spacing.s,
+        borderRadius: borderRadius.round,
+        marginBottom: spacing.s,
     },
     value: {
-        fontSize: Typography.size.l,
-        fontWeight: Typography.weight.bold as any,
-        color: Palette.text.primary,
+        fontSize: typography.size.l,
+        fontWeight: typography.weight.bold as any,
+        color: palette.text.primary,
     },
     label: {
-        fontSize: Typography.size.s,
-        color: Palette.text.secondary,
+        fontSize: typography.size.s,
+        color: palette.text.secondary,
         marginTop: 2,
     },
 });

@@ -1,5 +1,5 @@
 import { MarkdownDisplay } from '@/components/MarkdownDisplay';
-import { BorderRadius, Palette, Spacing, Typography } from '@/constants/DesignSystem';
+import { useTheme } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
 import { generateAtlasResponse, parseWorkoutImage } from '@/services/aiService';
@@ -40,6 +40,9 @@ const QUICK_ACTIONS = [
 ];
 
 export default function CoachScreen() {
+    const { palette, spacing, borderRadius, typography, shadows, isDark } = useTheme();
+    const styles = getStyles(palette, spacing, borderRadius, typography, shadows, isDark);
+    const mStyles = markdownStyles(palette, typography, spacing);
     const { user } = useSession();
     const router = useRouter();
     const [messages, setMessages] = useState<Message[]>([]);
@@ -297,7 +300,7 @@ export default function CoachScreen() {
                     </Text>
                 ) : (
                     <View style={{ flex: 1 }}>
-                        <MarkdownDisplay style={markdownStyles}>
+                        <MarkdownDisplay style={mStyles}>
                             {item.text}
                         </MarkdownDisplay>
                     </View>
@@ -312,7 +315,7 @@ export default function CoachScreen() {
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>Atlas Coach</Text>
                 <TouchableOpacity style={styles.historyIcon}>
-                    <FontAwesome name="history" size={20} color={Palette.text.primary} />
+                    <FontAwesome name="history" size={20} color={palette.text.primary} />
                 </TouchableOpacity>
             </View>
 
@@ -323,7 +326,7 @@ export default function CoachScreen() {
                     showsHorizontalScrollIndicator={false}
                     data={QUICK_ACTIONS}
                     keyExtractor={item => item}
-                    contentContainerStyle={{ paddingHorizontal: Spacing.m }}
+                    contentContainerStyle={{ paddingHorizontal: spacing.m }}
                     renderItem={({ item }) => (
                         <TouchableOpacity
                             style={styles.chip}
@@ -352,7 +355,7 @@ export default function CoachScreen() {
             >
                 {isParsingImage && (
                     <View style={styles.parsingOverlay}>
-                        <ActivityIndicator size="small" color={Palette.primary.main} />
+                        <ActivityIndicator size="small" color={palette.primary.main} />
                         <Text style={styles.parsingText}>Atlas tolkar passet...</Text>
                     </View>
                 )}
@@ -362,14 +365,14 @@ export default function CoachScreen() {
                         onPress={handlePickImage}
                         disabled={isLoading || isParsingImage}
                     >
-                        <Ionicons name="camera" size={24} color={Palette.text.secondary} />
+                        <Ionicons name="camera" size={24} color={palette.text.secondary} />
                     </TouchableOpacity>
                     <TextInput
                         style={styles.input}
                         placeholder="Fråga Atlas..."
                         value={inputText}
                         onChangeText={setInputText}
-                        placeholderTextColor={Palette.text.disabled}
+                        placeholderTextColor={palette.text.disabled}
                     />
                     <TouchableOpacity
                         style={[styles.sendButton, (!inputText && !isLoading) && styles.sendButtonDisabled]}
@@ -388,169 +391,164 @@ export default function CoachScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (palette: any, spacing: any, borderRadius: any, typography: any, shadows: any, isDark: boolean) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: Palette.background.default,
+        backgroundColor: palette.background.default,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        paddingVertical: Spacing.m,
-        backgroundColor: Palette.background.paper,
+        paddingVertical: spacing.m,
+        backgroundColor: palette.background.paper,
         borderBottomWidth: 1,
-        borderBottomColor: Palette.border.default,
+        borderBottomColor: palette.border.default,
         position: 'relative',
     },
     headerTitle: {
-        fontSize: Typography.size.l,
+        fontSize: typography.size.l,
         fontWeight: 'bold',
-        color: Palette.text.primary,
+        color: palette.text.primary,
     },
     historyIcon: {
         position: 'absolute',
-        right: Spacing.m,
-        padding: Spacing.s,
+        right: spacing.m,
+        padding: spacing.s,
     },
 
     // Quick Actions
     quickActionsContainer: {
-        paddingVertical: Spacing.m,
-        backgroundColor: Palette.background.default,
+        paddingVertical: spacing.m,
+        backgroundColor: palette.background.default,
     },
     chip: {
-        backgroundColor: Palette.background.paper,
-        paddingHorizontal: Spacing.m,
-        paddingVertical: Spacing.s,
-        borderRadius: BorderRadius.round,
-        marginRight: Spacing.s,
+        backgroundColor: palette.background.paper,
+        paddingHorizontal: spacing.m,
+        paddingVertical: spacing.s,
+        borderRadius: borderRadius.round,
+        marginRight: spacing.s,
         borderWidth: 1,
-        borderColor: Palette.primary.main,
+        borderColor: palette.primary.main,
     },
     chipText: {
-        color: Palette.primary.main,
-        fontSize: Typography.size.s,
+        color: palette.primary.main,
+        fontSize: typography.size.s,
         fontWeight: '600',
     },
 
     // Chat
     chatContainer: {
-        paddingHorizontal: Spacing.m,
-        paddingBottom: Spacing.m,
+        paddingHorizontal: spacing.m,
+        paddingBottom: spacing.m,
     },
     messageBubble: {
         maxWidth: '80%',
-        padding: Spacing.m,
-        borderRadius: BorderRadius.l,
-        marginBottom: Spacing.s,
+        padding: spacing.m,
+        borderRadius: borderRadius.l,
+        marginBottom: spacing.s,
         flexDirection: 'row',
     },
     userBubble: {
         alignSelf: 'flex-end',
-        backgroundColor: Palette.primary.main,
+        backgroundColor: palette.primary.main,
         borderBottomRightRadius: 2,
     },
     atlasBubble: {
         alignSelf: 'flex-start',
-        backgroundColor: Palette.background.paper,
+        backgroundColor: palette.background.paper,
         borderBottomLeftRadius: 2,
-        // Shadows
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
+        ...shadows.small,
     },
     messageText: {
-        fontSize: Typography.size.m,
+        fontSize: typography.size.m,
         lineHeight: 22,
     },
     userText: {
-        color: 'white',
+        color: '#FFF',
     },
     atlasText: {
-        color: Palette.text.primary,
+        color: palette.text.primary,
     },
     avatarContainer: {
         width: 24, height: 24, borderRadius: 12,
-        backgroundColor: Palette.accent.main,
+        backgroundColor: palette.accent.main,
         alignItems: 'center', justifyContent: 'center',
-        marginRight: Spacing.s,
+        marginRight: spacing.s,
         marginTop: 0,
     },
 
     // Input
     inputContainer: {
         flexDirection: 'row',
-        padding: Spacing.m,
-        backgroundColor: Palette.background.paper,
+        padding: spacing.m,
+        backgroundColor: palette.background.paper,
         borderTopWidth: 1,
-        borderTopColor: Palette.border.default,
+        borderTopColor: palette.border.default,
         alignItems: 'center',
     },
     attachButton: {
-        padding: Spacing.s,
-        marginRight: Spacing.xs,
+        padding: spacing.s,
+        marginRight: spacing.xs,
     },
     input: {
         flex: 1,
-        backgroundColor: Palette.background.default,
-        borderRadius: BorderRadius.round,
-        paddingHorizontal: Spacing.m,
+        backgroundColor: palette.background.default,
+        borderRadius: borderRadius.round,
+        paddingHorizontal: spacing.m,
         paddingVertical: 10, // Fixed height feel
-        fontSize: Typography.size.m,
-        color: Palette.text.primary,
-        marginRight: Spacing.s,
+        fontSize: typography.size.m,
+        color: palette.text.primary,
+        marginRight: spacing.s,
     },
     sendButton: {
         width: 44, height: 44, borderRadius: 22,
-        backgroundColor: Palette.primary.main,
+        backgroundColor: palette.primary.main,
         alignItems: 'center', justifyContent: 'center',
     },
     sendButtonDisabled: {
-        backgroundColor: Palette.text.disabled,
+        backgroundColor: palette.text.disabled,
     },
     parsingOverlay: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: Spacing.s,
-        backgroundColor: '#F0F9FF',
+        padding: spacing.s,
+        backgroundColor: isDark ? '#1A237E' : '#F0F9FF',
         borderTopWidth: 1,
-        borderTopColor: Palette.border.default,
+        borderTopColor: palette.border.default,
     },
     parsingText: {
-        marginLeft: Spacing.s,
-        color: Palette.primary.main,
-        fontSize: Typography.size.s,
+        marginLeft: spacing.s,
+        color: palette.primary.main,
+        fontSize: typography.size.s,
         fontWeight: 'bold',
     }
 });
 
-const markdownStyles = StyleSheet.create({
+const markdownStyles = (palette: any, typography: any, spacing: any) => StyleSheet.create({
     body: {
-        fontSize: Typography.size.m,
-        color: Palette.text.primary,
+        fontSize: typography.size.m,
+        color: palette.text.primary,
         lineHeight: 22,
     },
     heading1: {
-        fontSize: Typography.size.l,
+        fontSize: typography.size.l,
         fontWeight: 'bold',
         marginTop: 10,
         marginBottom: 5,
-        color: Palette.primary.main,
+        color: palette.primary.main,
     },
     heading2: {
-        fontSize: Typography.size.m,
+        fontSize: typography.size.m,
         fontWeight: 'bold',
         marginTop: 10,
         marginBottom: 5,
-        color: Palette.text.primary,
+        color: palette.text.primary,
     },
     strong: {
         fontWeight: 'bold',
-        color: Palette.text.primary,
+        color: palette.text.primary,
     },
     em: {
         fontStyle: 'italic',
@@ -571,12 +569,12 @@ const markdownStyles = StyleSheet.create({
         marginBottom: 8,
     },
     link: {
-        color: Palette.primary.main,
+        color: palette.primary.main,
         textDecorationLine: 'underline',
     },
     blockquote: {
-        backgroundColor: Palette.background.default,
-        borderLeftColor: Palette.accent.main,
+        backgroundColor: palette.background.default,
+        borderLeftColor: palette.accent.main,
         borderLeftWidth: 4,
         paddingHorizontal: 8,
         paddingVertical: 4,

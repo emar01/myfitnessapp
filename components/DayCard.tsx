@@ -1,4 +1,4 @@
-import { BorderRadius, Palette, Spacing, Typography } from '@/constants/DesignSystem';
+﻿import { useTheme } from '@/constants/DesignSystem';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -7,7 +7,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 export type DayCardType =
     | 'distans' | 'långpass' | 'intervall'
     | 'crossfit' | 'styrka' | 'rörlighet'
-    | 'rest' | 'övrigt';
+    | 'rest' | 'öövrigt';
 
 export type DayCardStatus = 'completed' | 'pending' | 'skipped';
 
@@ -41,25 +41,23 @@ export default function DayCard({
     onToggleComplete,
     showDragHandle,
 }: DayCardProps) {
+    const { palette, spacing, borderRadius, typography, isDark } = useTheme();
+    const styles = getStyles(palette, spacing, borderRadius, typography, isDark);
 
     const isRest = type === 'rest';
 
     // Highlight color based on workout type
-    const getAccentColor = () => {
+        const getAccentColor = () => {
         switch (type) {
-            // Running
-            case 'distans': return Palette.primary.main;
-            case 'långpass': return '#2196F3';
-            case 'intervall': return '#F44336';
-
-            // Strength
-            case 'crossfit': return '#FF9800';
-            case 'styrka': return '#9C27B0'; // Purple
-            case 'rörlighet': return '#009688'; // Teal
-
-            case 'rest': return Palette.text.disabled;
-            case 'övrigt': return Palette.text.secondary;
-            default: return Palette.text.disabled;
+            case 'distans': return palette.workouts.distans;
+            case 'l�ngpass': return palette.workouts.langpass;
+            case 'intervall': return palette.workouts.intervall;
+            case 'crossfit': return palette.workouts.crossfit;
+            case 'styrka': return palette.workouts.styrka;
+            case 'r�rlighet': return palette.workouts.rorligheten;
+            case 'rest': return palette.text.disabled;
+            case '�övrigt': return palette.text.secondary;
+            default: return palette.text.disabled;
         }
     };
 
@@ -69,7 +67,7 @@ export default function DayCard({
         <View style={styles.container}>
             {type === 'rest' ? (
                 <View style={styles.restCard}>
-                    <Ionicons name="leaf-outline" size={16} color={Palette.text.secondary} style={{ marginRight: 8 }} />
+                    <Ionicons name="leaf-outline" size={16} color={palette.text.secondary} style={{ marginRight: 8 }} />
                     <Text style={styles.restText}>Vilodag</Text>
                 </View>
             ) : (
@@ -97,7 +95,7 @@ export default function DayCard({
                                                 <Ionicons
                                                     name="checkmark-circle"
                                                     size={22}
-                                                    color={Palette.primary.main}
+                                                    color={palette.primary.main}
                                                     style={{ marginLeft: 6 }}
                                                 />
                                             </TouchableOpacity>
@@ -122,7 +120,7 @@ export default function DayCard({
                             delayLongPress={100} // Faster response
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                         >
-                            <Ionicons name="reorder-two-outline" size={24} color={Palette.text.disabled} />
+                            <Ionicons name="reorder-two-outline" size={24} color={palette.text.disabled} />
                         </TouchableOpacity>
                     ) : (
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -132,7 +130,7 @@ export default function DayCard({
                                     onPress={onMenuPress}
                                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                                 >
-                                    <Ionicons name="ellipsis-vertical" size={20} color={Palette.text.secondary} />
+                                    <Ionicons name="ellipsis-vertical" size={20} color={palette.text.secondary} />
                                 </TouchableOpacity>
                             )}
                         </View>
@@ -143,17 +141,17 @@ export default function DayCard({
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (palette: any, spacing: any, borderRadius: any, typography: any, isDark: boolean) => StyleSheet.create({
     container: {
-        marginBottom: Spacing.s,
+        marginBottom: spacing.s,
     },
     // Main Card
     cardContainer: {
-        backgroundColor: Palette.background.paper,
-        borderRadius: BorderRadius.m,
-        // ...Shadows.small, // Removed shadow for cleaner Google-style flat look with border
+        backgroundColor: palette.background.paper,
+        borderRadius: borderRadius.m,
+        // ...shadows.small, // Removed shadow for cleaner Google-style flat look with border
         borderWidth: 1,
-        borderColor: Palette.border.default,
+        borderColor: palette.border.default,
         flexDirection: 'row', // Main Flex Layout
         alignItems: 'stretch', // Stretch vertically to match height
         overflow: 'hidden',
@@ -172,8 +170,8 @@ const styles = StyleSheet.create({
     },
     contentContainer: {
         flex: 1, // Takes all available space
-        paddingVertical: Spacing.m, // More airy padding
-        paddingHorizontal: Spacing.m,
+        paddingVertical: spacing.m, // More airy padding
+        paddingHorizontal: spacing.m,
         justifyContent: 'center',
     },
     // Right Action Area
@@ -186,19 +184,19 @@ const styles = StyleSheet.create({
 
     // Typography
     title: {
-        fontSize: Typography.size.m, // Slightly larger for better read
+        fontSize: typography.size.m, // Slightly larger for better read
         fontWeight: 'bold', // Stronger title
-        color: Palette.text.primary,
+        color: palette.text.primary,
         marginBottom: 4,
     },
     subtitle: {
-        fontSize: Typography.size.s,
-        color: Palette.text.secondary,
+        fontSize: typography.size.s,
+        color: palette.text.secondary,
         marginBottom: 4,
     },
     chipContainer: {
         alignSelf: 'flex-start',
-        backgroundColor: '#F5F5F5',
+        backgroundColor: isDark ? '#2C2C2C' : '#F5F5F5',
         borderRadius: 4,
         paddingHorizontal: 6,
         paddingVertical: 2,
@@ -213,28 +211,28 @@ const styles = StyleSheet.create({
 
     // Rest Day
     restCard: {
-        backgroundColor: '#F9FAFB', // Very subtle grey
-        borderRadius: BorderRadius.m,
-        padding: Spacing.s,
+        backgroundColor: isDark ? '#1E1E1E' : '#F9FAFB',
+        borderRadius: borderRadius.m,
+        padding: spacing.s,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         height: 48,
         borderWidth: 1,
-        borderColor: '#EEE', // Subtle border
-        borderStyle: 'dashed', // Dashed border for Rest
+        borderColor: isDark ? '#333' : '#EEE',
+        borderStyle: 'dashed',
     },
     restText: {
-        color: Palette.text.secondary,
+        color: palette.text.secondary,
         fontStyle: 'italic',
-        fontSize: Typography.size.s,
+        fontSize: typography.size.s,
         fontWeight: '500',
     },
 
     // Status Styles
     completedBorder: {
         borderWidth: 1,
-        borderColor: Palette.primary.main,
-        backgroundColor: '#F0FFF4', // Slight green tint
+        borderColor: palette.primary.main,
+        backgroundColor: isDark ? '#0F2C21' : '#F0FFF4',
     },
 });

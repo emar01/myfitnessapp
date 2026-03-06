@@ -1,12 +1,14 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { BorderRadius, Palette, Spacing, Typography } from '../../constants/DesignSystem';
+import { useTheme } from '../../constants/DesignSystem';
 
 interface ActivityChartProps {
     data: { date: string, count: number, dayName: string }[];
 }
 
 export default function ActivityChart({ data }: ActivityChartProps) {
+    const { palette, spacing, borderRadius, typography, shadows } = useTheme();
+    const styles = getStyles(palette, spacing, borderRadius, typography, shadows);
     const maxCount = Math.max(...data.map(d => d.count), 1);
 
     return (
@@ -24,7 +26,7 @@ export default function ActivityChart({ data }: ActivityChartProps) {
                                         styles.bar,
                                         {
                                             height: `${heightPercent}%`,
-                                            backgroundColor: item.count > 0 ? Palette.primary.main : Palette.border.default
+                                            backgroundColor: item.count > 0 ? palette.primary.main : palette.border.default
                                         }
                                     ]}
                                 />
@@ -38,27 +40,27 @@ export default function ActivityChart({ data }: ActivityChartProps) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (palette: any, spacing: any, borderRadius: any, typography: any, shadows: any) => StyleSheet.create({
     container: {
-        marginTop: Spacing.xl,
-        padding: Spacing.m,
-        backgroundColor: Palette.background.paper,
-        borderRadius: BorderRadius.l,
+        marginTop: spacing.xl,
+        padding: spacing.m,
+        backgroundColor: palette.background.paper,
+        borderRadius: borderRadius.l,
         borderWidth: 1,
-        borderColor: Palette.border.default,
+        borderColor: palette.border.default,
     },
     title: {
-        fontSize: Typography.size.l,
-        fontWeight: Typography.weight.bold as any,
-        color: Palette.text.primary,
-        marginBottom: Spacing.xl,
+        fontSize: typography.size.l,
+        fontWeight: typography.weight.bold as any,
+        color: palette.text.primary,
+        marginBottom: spacing.xl,
     },
     chart: {
         flexDirection: 'row',
         height: 150,
         alignItems: 'flex-end',
         justifyContent: 'space-between',
-        paddingHorizontal: Spacing.s,
+        paddingHorizontal: spacing.s,
     },
     barContainer: {
         alignItems: 'center',
@@ -67,19 +69,19 @@ const styles = StyleSheet.create({
     barWrapper: {
         height: '100%',
         width: 20,
-        backgroundColor: Palette.background.input,
+        backgroundColor: palette.background.input || palette.background.default,
         borderRadius: 10,
         justifyContent: 'flex-end',
         overflow: 'hidden',
-        marginBottom: Spacing.s,
+        marginBottom: spacing.s,
     },
     bar: {
         width: '100%',
         borderRadius: 10,
     },
     dayLabel: {
-        fontSize: Typography.size.xs,
-        color: Palette.text.secondary,
+        fontSize: typography.size.xs,
+        color: palette.text.secondary,
         textTransform: 'capitalize',
     },
 });

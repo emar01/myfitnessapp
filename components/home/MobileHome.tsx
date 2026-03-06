@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+﻿import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 // NOTE: DraggableFlatList kept imported to avoid breaking other potential uses, but no longer used in schedule list
 
@@ -10,7 +10,7 @@ import ProfileMenuModal from '@/components/ProfileMenuModal';
 import StravaActivityPicker from '@/components/StravaActivityPicker';
 import StravaSyncModal from '@/components/StravaSyncModal';
 import WorkoutTypeSelector from '@/components/WorkoutTypeSelector';
-import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
+import { useTheme } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
 import { ListItem, useHomeData } from '@/hooks/useHomeData';
 import { mapStravaType } from '@/services/stravaService';
@@ -22,6 +22,8 @@ import { useFocusEffect, useRouter } from 'expo-router';
 // ... (keep helper imports if any were missed, but I think I got them)
 
 export default function MobileHome() {
+    const { palette, spacing, borderRadius, typography, shadows, isDark } = useTheme();
+    const styles = getStyles(palette, spacing, borderRadius, typography, shadows, isDark);
     const { user, signOut, isLoading: sessionLoading } = useSession();
     const router = useRouter();
 
@@ -71,8 +73,8 @@ export default function MobileHome() {
                 onPress={() => setWorkoutTypeModalVisible(true)}
                 style={{ flexDirection: 'row', alignItems: 'center' }}
             >
-                <Ionicons name="add" size={20} color={Palette.text.secondary} />
-                <Text style={{ fontSize: Typography.size.s, color: Palette.text.secondary, marginLeft: 4 }}>Lägg till pass</Text>
+                <Ionicons name="add" size={20} color={palette.text.secondary} />
+                <Text style={{ fontSize: typography.size.s, color: palette.text.secondary, marginLeft: 4 }}>Lägg till pass</Text>
             </TouchableOpacity>
         </View>
     );
@@ -81,12 +83,12 @@ export default function MobileHome() {
         if (!activePrograms || activePrograms.length === 0) return null;
 
         return (
-            <View style={{ marginBottom: Spacing.m }}>
-                <Text style={[styles.sectionTitle, { paddingHorizontal: Spacing.m, marginTop: 0 }]}>Mina Aktiva Program</Text>
+            <View style={{ marginBottom: spacing.m }}>
+                <Text style={[styles.sectionTitle, { paddingHorizontal: spacing.m, marginTop: 0 }]}>Mina Aktiva Program</Text>
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingHorizontal: Spacing.m, gap: Spacing.s }}
+                    contentContainerStyle={{ paddingHorizontal: spacing.m, gap: spacing.s }}
                 >
                     {activePrograms.map((prog) => (
                         <TouchableOpacity
@@ -95,7 +97,7 @@ export default function MobileHome() {
                             onPress={() => router.push({ pathname: '/program/[id]', params: { id: prog.programId } })}
                         >
                             <View style={styles.activeProgramIcon}>
-                                <Ionicons name="fitness-outline" size={24} color={Palette.primary.main} />
+                                <Ionicons name="fitness-outline" size={24} color={palette.primary.main} />
                             </View>
                             <View style={{ flex: 1, marginLeft: 12 }}>
                                 <Text style={styles.activeProgramTitle} numberOfLines={1}>{prog.title}</Text>
@@ -103,7 +105,7 @@ export default function MobileHome() {
                                     Startat: {prog.startedAt ? new Date(prog.startedAt.seconds * 1000).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' }) : 'Okänt'}
                                 </Text>
                             </View>
-                            <Ionicons name="chevron-forward" size={16} color={Palette.text.disabled} />
+                            <Ionicons name="chevron-forward" size={16} color={palette.text.disabled} />
                         </TouchableOpacity>
                     ))}
                 </ScrollView>
@@ -191,12 +193,12 @@ export default function MobileHome() {
         if (recentWorkouts.length === 0) return null;
 
         return (
-            <View style={{ marginBottom: Spacing.m }}>
-                <Text style={[styles.sectionTitle, { paddingHorizontal: Spacing.m, marginTop: 0 }]}>Senaste Aktiviteter</Text>
+            <View style={{ marginBottom: spacing.m }}>
+                <Text style={[styles.sectionTitle, { paddingHorizontal: spacing.m, marginTop: 0 }]}>Senaste Aktiviteter</Text>
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingHorizontal: Spacing.m, gap: Spacing.s }}
+                    contentContainerStyle={{ paddingHorizontal: spacing.m, gap: spacing.s }}
                 >
                     {recentWorkouts.map((w: any) => {
                         const isRunning = w.category === 'löpning';
@@ -212,7 +214,7 @@ export default function MobileHome() {
                                     onPress={() => router.push({ pathname: '/workout/[id]', params: { id: w.id! } })}
                                 >
                                     <View style={styles.recentActivityIcon}>
-                                        <Ionicons name={iconName as any} size={20} color={Palette.text.secondary} />
+                                        <Ionicons name={iconName as any} size={20} color={palette.text.secondary} />
                                     </View>
                                     <View style={{ flex: 1, marginLeft: 8 }}>
                                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -221,7 +223,7 @@ export default function MobileHome() {
                                                 onPress={() => handleToggleComplete(w.id!, w.status)}
                                                 style={{ marginLeft: 6 }}
                                             >
-                                                <Ionicons name="checkmark-circle" size={18} color={Palette.primary.main} />
+                                                <Ionicons name="checkmark-circle" size={18} color={palette.primary.main} />
                                             </TouchableOpacity>
                                         </View>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -249,8 +251,8 @@ export default function MobileHome() {
         if (!weeklyStats) return null;
 
         return (
-            <View style={{ marginBottom: Spacing.m }}>
-                <Text style={[styles.sectionTitle, { paddingHorizontal: Spacing.m, marginTop: 0 }]}>Min progress</Text>
+            <View style={{ marginBottom: spacing.m }}>
+                <Text style={[styles.sectionTitle, { paddingHorizontal: spacing.m, marginTop: 0 }]}>Min progress</Text>
                 <View style={styles.statsRow}>
                     <View style={styles.statCard}>
                         <Text style={styles.statValue}>
@@ -357,20 +359,20 @@ export default function MobileHome() {
                 {/* Main App Header */}
                 <View style={styles.mainHeader}>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Image source={require('@/assets/images/icon.png')} style={{ width: 32, height: 32, borderRadius: 8, marginRight: Spacing.s }} />
+                        <Image source={require('@/assets/images/icon.png')} style={{ width: 32, height: 32, borderRadius: 8, marginRight: spacing.s }} />
                         <Text style={styles.mainHeaderTitle}>MyFitness</Text>
                     </View>
                     <TouchableOpacity
                         onPress={() => setProfileMenuVisible(true)}
                         style={styles.mainHeaderProfile}
                     >
-                        <Ionicons name="person-circle" size={32} color={Palette.primary.main} />
+                        <Ionicons name="person-circle" size={32} color={palette.primary.main} />
                     </TouchableOpacity>
                 </View>
 
                 {loading ? (
                     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                        <ActivityIndicator size="large" color={Palette.primary.main} />
+                        <ActivityIndicator size="large" color={palette.primary.main} />
                     </View>
                 ) : (
                     <FlatList
@@ -412,8 +414,8 @@ export default function MobileHome() {
                 onSelect={handleStravaSelect}
             />
             {isSavingStrava && (
-                <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.7)', justifyContent: 'center', alignItems: 'center' }]}>
-                    <ActivityIndicator size="large" color={Palette.primary.main} />
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)', justifyContent: 'center', alignItems: 'center' }]}>
+                    <ActivityIndicator size="large" color={palette.primary.main} />
                     <Text style={{ marginTop: 10, fontWeight: 'bold' }}>Sparar pass...</Text>
                 </View>
             )}
@@ -440,90 +442,91 @@ export default function MobileHome() {
     );
 }
 
+
 // function getScaleWeekNumber removed
 
 
-const styles = StyleSheet.create({
+const getStyles = (palette: any, spacing: any, borderRadius: any, typography: any, shadows: any, isDark: boolean) => StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: Palette.background.default,
+        backgroundColor: palette.background.default,
     },
     mainHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: Spacing.m,
-        paddingVertical: Spacing.s,
-        backgroundColor: Palette.background.paper,
+        paddingHorizontal: spacing.m,
+        paddingVertical: spacing.s,
+        backgroundColor: palette.background.paper,
         borderBottomWidth: 1,
-        borderBottomColor: Palette.border.default,
+        borderBottomColor: palette.border.default,
     },
     mainHeaderTitle: {
-        fontSize: Typography.size.l,
+        fontSize: typography.size.l,
         fontWeight: 'bold',
-        color: Palette.primary.main,
+        color: palette.primary.main,
     },
     mainHeaderProfile: {
-        padding: Spacing.s,
+        padding: spacing.s,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: Spacing.m,
-        paddingVertical: Spacing.m,
-        backgroundColor: Palette.background.paper,
+        paddingHorizontal: spacing.m,
+        paddingVertical: spacing.m,
+        backgroundColor: palette.background.paper,
         borderBottomWidth: 1,
-        borderBottomColor: Palette.border.default,
+        borderBottomColor: palette.border.default,
     },
     headerTitle: {
-        fontSize: Typography.size.m,
+        fontSize: typography.size.m,
         fontWeight: 'bold',
-        color: Palette.text.primary,
+        color: palette.text.primary,
     },
     headerSubtitle: {
         fontSize: 10,
-        color: Palette.text.secondary,
+        color: palette.text.secondary,
         textTransform: 'uppercase',
         letterSpacing: 1,
     },
     profileIcon: {
-        padding: Spacing.s,
+        padding: spacing.s,
     },
     sectionTitle: {
-        fontSize: Typography.size.l,
+        fontSize: typography.size.l,
         fontWeight: 'bold',
-        marginBottom: Spacing.m,
-        marginTop: Spacing.s,
-        color: Palette.text.primary,
+        marginBottom: spacing.m,
+        marginTop: spacing.s,
+        color: palette.text.primary,
     },
 
     // Daily Card
     dailyCard: {
-        backgroundColor: Palette.primary.main,
-        borderRadius: BorderRadius.l,
-        padding: Spacing.l,
+        backgroundColor: palette.primary.main,
+        borderRadius: borderRadius.l,
+        padding: spacing.l,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: Spacing.l,
-        ...Shadows.medium,
+        marginBottom: spacing.l,
+        ...shadows.medium,
     },
     dailyContent: { flex: 1 },
     dailyLabel: {
         color: 'rgba(255,255,255,0.7)',
-        fontSize: Typography.size.xs,
+        fontSize: typography.size.xs,
         fontWeight: 'bold',
         marginBottom: 4,
         textTransform: 'uppercase',
     },
     dailyTitle: {
         color: '#FFF',
-        fontSize: Typography.size.l,
+        fontSize: typography.size.l,
         fontWeight: 'bold',
         marginBottom: 4,
     },
-    dailySubtitle: { color: '#FFF', fontSize: Typography.size.s },
+    dailySubtitle: { color: '#FFF', fontSize: typography.size.s },
     dailyIcon: {
         width: 48, height: 48, borderRadius: 24,
         backgroundColor: 'rgba(255,255,255,0.2)',
@@ -532,21 +535,21 @@ const styles = StyleSheet.create({
 
     // List Items
     dayHeader: {
-        paddingHorizontal: Spacing.m,
-        paddingTop: Spacing.m,
-        paddingBottom: Spacing.xs,
+        paddingHorizontal: spacing.m,
+        paddingTop: spacing.m,
+        paddingBottom: spacing.xs,
         marginTop: 0,
     },
     dayHeaderText: {
-        fontSize: Typography.size.s,
-        color: Palette.text.primary,
+        fontSize: typography.size.s,
+        color: palette.text.primary,
         fontWeight: 'normal',
     },
     dayDateText: {
         display: 'none', // Hide specific date label if only DayName is desired like "Måndag"
     },
     itemContainer: {
-        paddingHorizontal: Spacing.m,
+        paddingHorizontal: spacing.m,
     },
 
     // New Header Styles
@@ -554,15 +557,15 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: Spacing.m,
-        paddingVertical: Spacing.m,
+        paddingHorizontal: spacing.m,
+        paddingVertical: spacing.m,
     },
     weekRangeText: {
-        fontSize: Typography.size.xs,
-        color: Palette.text.secondary,
+        fontSize: typography.size.xs,
+        color: palette.text.secondary,
     },
     weekBadgeContainer: {
-        backgroundColor: '#C5A898', // Brownish/Beige color from image
+        backgroundColor: isDark ? palette.primary.main : '#C5A898',
         borderRadius: 16,
         paddingHorizontal: 8,
         paddingVertical: 4,
@@ -572,101 +575,101 @@ const styles = StyleSheet.create({
     },
     weekBadgeText: {
         color: '#FFF',
-        fontSize: Typography.size.s,
+        fontSize: typography.size.s,
         fontWeight: 'bold',
     },
 
     // --- Recent Activities Styles ---
     recentActivityCard: {
-        width: 180, // Slightly smaller for better fit on small mobile screens
+        width: 180,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFF',
-        padding: Spacing.s, // Smaller padding
-        borderRadius: BorderRadius.m,
+        backgroundColor: palette.background.paper,
+        padding: spacing.s,
+        borderRadius: borderRadius.m,
         borderWidth: 1,
-        borderColor: Palette.border.default,
-        ...Shadows.small,
+        borderColor: palette.border.default,
+        ...shadows.small,
     },
     recentActivityIcon: {
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: Palette.background.default,
+        backgroundColor: palette.background.default,
         alignItems: 'center',
         justifyContent: 'center',
     },
     recentActivityTitle: {
-        fontSize: Typography.size.m,
+        fontSize: typography.size.m,
         fontWeight: '600',
-        color: Palette.text.primary,
+        color: palette.text.primary,
         marginBottom: 2,
     },
     recentActivitySubtitle: {
-        fontSize: Typography.size.xs,
-        color: Palette.text.secondary,
+        fontSize: typography.size.xs,
+        color: palette.text.secondary,
     },
     recentActivityStat: {
-        fontSize: Typography.size.xs,
+        fontSize: typography.size.xs,
         fontWeight: '500',
-        color: Palette.primary.main,
+        color: palette.primary.main,
     },
 
     activeProgramCard: {
-        backgroundColor: '#FFF',
-        borderRadius: BorderRadius.m,
-        padding: Spacing.s, // Consistent with Activities
+        backgroundColor: palette.background.paper,
+        borderRadius: borderRadius.m,
+        padding: spacing.s,
         flexDirection: 'row',
         alignItems: 'center',
-        width: 200, // Reduced from 250
-        ...Shadows.small,
+        width: 200,
+        ...shadows.small,
         borderWidth: 1,
-        borderColor: Palette.border.default,
+        borderColor: palette.border.default,
     },
     activeProgramIcon: {
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: Palette.background.default,
+        backgroundColor: palette.background.default,
         alignItems: 'center',
         justifyContent: 'center',
     },
     activeProgramTitle: {
-        fontSize: Typography.size.m,
+        fontSize: typography.size.m,
         fontWeight: 'bold',
-        color: Palette.text.primary,
+        color: palette.text.primary,
         marginBottom: 2,
     },
     activeProgramSubtitle: {
-        fontSize: Typography.size.xs,
-        color: Palette.text.secondary,
+        fontSize: typography.size.xs,
+        color: palette.text.secondary,
     },
     statsRow: {
         flexDirection: 'row',
-        paddingHorizontal: Spacing.m,
-        gap: Spacing.m,
-        marginBottom: Spacing.m,
+        paddingHorizontal: spacing.m,
+        gap: spacing.m,
+        marginBottom: spacing.m,
     },
     statCard: {
         flex: 1,
-        backgroundColor: '#FFF',
-        borderRadius: BorderRadius.m,
-        padding: Spacing.m,
+        backgroundColor: palette.background.paper,
+        borderRadius: borderRadius.m,
+        padding: spacing.m,
         alignItems: 'flex-start',
         justifyContent: 'center',
         borderWidth: 1,
-        borderColor: Palette.border.default,
-        ...Shadows.small,
+        borderColor: palette.border.default,
+        ...shadows.small,
     },
     statValue: {
         fontSize: 24,
         fontWeight: '800',
-        color: Palette.primary.main,
+        color: palette.primary.main,
         marginBottom: 4
     },
     statLabel: {
         fontSize: 10,
-        color: Palette.text.secondary,
+        color: palette.text.secondary,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
         fontWeight: '600'

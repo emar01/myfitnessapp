@@ -1,4 +1,4 @@
-import { Palette, Spacing, Typography } from '@/constants/DesignSystem';
+import { useTheme } from '@/constants/DesignSystem';
 import { useAlert } from '@/context/AlertContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -8,6 +8,8 @@ import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } fr
 import { useSession } from '@/context/ctx';
 
 export default function SettingsScreen() {
+    const { palette, spacing, borderRadius, typography, shadows, isDark } = useTheme();
+    const styles = getStyles(palette, spacing, borderRadius, typography, shadows, isDark);
     const router = useRouter();
     const { signOut } = useSession();
     const { showConfirm } = useAlert();
@@ -68,53 +70,53 @@ export default function SettingsScreen() {
                                 >
                                     <View style={styles.rowLeft}>
                                         <View style={styles.iconContainer}>
-                                            <Ionicons name={item.icon as any} size={20} color={Palette.primary.main} />
+                                            <Ionicons name={item.icon as any} size={20} color={palette.primary.main} />
                                         </View>
                                         <Text style={styles.rowLabel}>{item.label}</Text>
                                     </View>
-                                    <Ionicons name="chevron-forward" size={20} color={Palette.text.disabled} />
+                                    <Ionicons name="chevron-forward" size={20} color={palette.text.disabled} />
                                 </TouchableOpacity>
                             ))}
                         </View>
                     </View>
                 ))}
             </ScrollView>
-        </SafeAreaView>
+        </SafeAreaView >
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (palette: any, spacing: any, borderRadius: any, typography: any, shadows: any, isDark: boolean) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F5F5F7',
+        backgroundColor: palette.background.default,
     },
     header: {
-        padding: Spacing.m,
-        backgroundColor: '#FFF',
+        padding: spacing.m,
+        backgroundColor: palette.background.paper,
         borderBottomWidth: 1,
-        borderBottomColor: '#EEE',
+        borderBottomColor: palette.border.default,
     },
     headerTitle: {
-        fontSize: Typography.size.l,
+        fontSize: typography.size.l,
         fontWeight: 'bold',
-        color: Palette.text.primary,
+        color: palette.text.primary,
     },
     content: {
-        padding: Spacing.m,
+        padding: spacing.m,
     },
     section: {
-        marginBottom: Spacing.l,
+        marginBottom: spacing.l,
     },
     sectionTitle: {
-        fontSize: Typography.size.s,
+        fontSize: typography.size.s,
         fontWeight: '600',
-        color: Palette.text.secondary,
-        marginBottom: Spacing.s,
-        marginLeft: Spacing.s,
+        color: palette.text.secondary,
+        marginBottom: spacing.s,
+        marginLeft: spacing.s,
         textTransform: 'uppercase',
     },
     sectionBox: {
-        backgroundColor: '#FFF',
+        backgroundColor: palette.background.paper,
         borderRadius: 12,
         overflow: 'hidden',
     },
@@ -123,9 +125,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingVertical: 16,
-        paddingHorizontal: Spacing.m,
+        paddingHorizontal: spacing.m,
         borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: '#EEE',
+        borderBottomColor: palette.border.default,
     },
     rowLast: {
         borderBottomWidth: 0,
@@ -140,7 +142,7 @@ const styles = StyleSheet.create({
         marginRight: 12,
     },
     rowLabel: {
-        fontSize: Typography.size.m,
-        color: Palette.text.primary,
+        fontSize: typography.size.m,
+        color: palette.text.primary,
     },
 });

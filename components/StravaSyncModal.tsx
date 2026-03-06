@@ -1,4 +1,4 @@
-import { BorderRadius, Palette, Spacing, Typography } from '@/constants/DesignSystem';
+﻿import { useTheme } from '@/constants/DesignSystem';
 import { db } from '@/lib/firebaseConfig';
 import { StravaActivity, exchangeToken, getStravaActivities, getStravaAuthRequestConfig } from '@/services/stravaService';
 import { Workout } from '@/types';
@@ -18,6 +18,8 @@ interface StravaSyncModalProps {
 }
 
 export default function StravaSyncModal({ visible, onClose, userId }: StravaSyncModalProps) {
+    const { palette, spacing, borderRadius, typography, isDark } = useTheme();
+    const styles = getStyles(palette, spacing, borderRadius, typography, isDark);
     const [activities, setActivities] = useState<StravaActivity[]>([]);
     const [plannedWorkouts, setPlannedWorkouts] = useState<Workout[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -129,7 +131,7 @@ export default function StravaSyncModal({ visible, onClose, userId }: StravaSync
                 <View style={styles.header}>
                     <Text style={styles.title}>Synka från Strava</Text>
                     <TouchableOpacity onPress={onClose}>
-                        <Ionicons name="close" size={24} color={Palette.text.primary} />
+                        <Ionicons name="close" size={24} color={palette.text.primary} />
                     </TouchableOpacity>
                 </View>
 
@@ -139,7 +141,7 @@ export default function StravaSyncModal({ visible, onClose, userId }: StravaSync
                         <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' }}>
                             Koppla ditt Strava-konto
                         </Text>
-                        <Text style={{ textAlign: 'center', color: Palette.text.secondary, marginBottom: 30 }}>
+                        <Text style={{ textAlign: 'center', color: palette.text.secondary, marginBottom: 30 }}>
                             För att synka dina pass behöver du godkänna åtkomst till Strava.
                         </Text>
                         <TouchableOpacity
@@ -156,7 +158,7 @@ export default function StravaSyncModal({ visible, onClose, userId }: StravaSync
                     <FlatList
                         data={activities}
                         keyExtractor={item => item.id.toString()}
-                        contentContainerStyle={{ padding: Spacing.m }}
+                        contentContainerStyle={{ padding: spacing.m }}
                         renderItem={({ item }) => (
                             <View style={styles.activityCard}>
                                 <View>
@@ -169,7 +171,7 @@ export default function StravaSyncModal({ visible, onClose, userId }: StravaSync
 
                                 {plannedWorkouts.length > 0 ? (
                                     <View style={{ marginTop: 8 }}>
-                                        <Text style={{ fontSize: 12, color: Palette.text.secondary, marginBottom: 4 }}>Koppla till:</Text>
+                                        <Text style={{ fontSize: 12, color: palette.text.secondary, marginBottom: 4 }}>Koppla till:</Text>
                                         {plannedWorkouts.map(w => (
                                             <TouchableOpacity
                                                 key={w.id}
@@ -187,7 +189,7 @@ export default function StravaSyncModal({ visible, onClose, userId }: StravaSync
                                 )}
                             </View>
                         )}
-                        ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20, color: Palette.text.secondary }}>Inga aktiviteter hittades.</Text>}
+                        ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20, color: palette.text.secondary }}>Inga aktiviteter hittades.</Text>}
                     />
                 )}
             </View>
@@ -195,29 +197,29 @@ export default function StravaSyncModal({ visible, onClose, userId }: StravaSync
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (palette: any, spacing: any, borderRadius: any, typography: any, isDark: boolean) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F5F5F7',
+        backgroundColor: palette.background.default,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        padding: Spacing.m,
-        backgroundColor: '#FFF',
+        padding: spacing.m,
+        backgroundColor: palette.background.paper,
         borderBottomWidth: 1,
         borderBottomColor: '#EEE',
     },
     title: {
-        fontSize: Typography.size.l,
+        fontSize: typography.size.l,
         fontWeight: 'bold',
-        color: Palette.text.primary,
+        color: palette.text.primary,
     },
     activityCard: {
-        backgroundColor: '#FFF',
-        borderRadius: BorderRadius.m,
-        padding: Spacing.m,
-        marginBottom: Spacing.m,
+        backgroundColor: palette.background.paper,
+        borderRadius: borderRadius.m,
+        padding: spacing.m,
+        marginBottom: spacing.m,
         // Shadow
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
@@ -226,36 +228,36 @@ const styles = StyleSheet.create({
         elevation: 1,
     },
     activityName: {
-        fontSize: Typography.size.m,
+        fontSize: typography.size.m,
         fontWeight: 'bold',
-        color: Palette.text.primary,
+        color: palette.text.primary,
     },
     activityStats: {
-        fontSize: Typography.size.s,
-        color: Palette.text.secondary,
+        fontSize: typography.size.s,
+        color: palette.text.secondary,
         marginTop: 4,
     },
     activityDate: {
         fontSize: 10,
-        color: Palette.text.disabled,
+        color: palette.text.disabled,
         marginTop: 2,
     },
     linkButton: {
-        backgroundColor: '#E3F2FD',
+        backgroundColor: isDark ? '#1E3A5F' : '#E3F2FD',
         paddingVertical: 6,
         paddingHorizontal: 12,
         borderRadius: 4,
         marginBottom: 4,
     },
     linkButtonText: {
-        color: Palette.primary.main,
+        color: palette.primary.main,
         fontSize: 12,
         fontWeight: '600',
     },
     createButton: {
-        backgroundColor: Palette.primary.main,
+        backgroundColor: palette.primary.main,
         paddingVertical: 8,
-        borderRadius: BorderRadius.s,
+        borderRadius: borderRadius.s,
         alignItems: 'center',
         marginTop: 8,
     },

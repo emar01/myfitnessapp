@@ -1,4 +1,4 @@
-import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
+﻿import { useTheme } from '@/constants/DesignSystem';
 import { useAlert } from '@/context/AlertContext';
 import { useSession } from '@/context/ctx';
 import { getStravaActivities, StravaActivity } from '@/services/stravaService';
@@ -15,6 +15,8 @@ interface StravaActivityPickerProps {
 const STRAVA_ORANGE = '#FC4C02';
 
 export default function StravaActivityPicker({ visible, onClose, onSelect }: StravaActivityPickerProps) {
+    const { palette, spacing, borderRadius, typography, shadows, isDark } = useTheme();
+    const styles = getStyles(palette, spacing, borderRadius, typography, shadows, isDark);
     const { user } = useSession();
     const { showAlert } = useAlert();
     const [loading, setLoading] = useState(false);
@@ -82,7 +84,7 @@ export default function StravaActivityPicker({ visible, onClose, onSelect }: Str
                         <Text style={styles.title}>Hämta från Strava</Text>
                     </View>
                     <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                        <FontAwesome name="close" size={24} color={Palette.text.primary} />
+                        <FontAwesome name="close" size={24} color={palette.text.primary} />
                     </TouchableOpacity>
                 </View>
 
@@ -174,7 +176,7 @@ export default function StravaActivityPicker({ visible, onClose, onSelect }: Str
 
                                 <View style={styles.secondaryStatsRow}>
                                     <View style={styles.secondaryStatItem}>
-                                        <Ionicons name="speedometer-outline" size={20} color={Palette.text.secondary} />
+                                        <Ionicons name="speedometer-outline" size={20} color={palette.text.secondary} />
                                         <View>
                                             <Text style={styles.secondaryStatLabel}>Tempo</Text>
                                             <Text style={styles.secondaryStatValue}>
@@ -183,7 +185,7 @@ export default function StravaActivityPicker({ visible, onClose, onSelect }: Str
                                         </View>
                                     </View>
                                     <View style={styles.secondaryStatItem}>
-                                        <Ionicons name="trending-up" size={20} color={Palette.text.secondary} />
+                                        <Ionicons name="trending-up" size={20} color={palette.text.secondary} />
                                         <View>
                                             <Text style={styles.secondaryStatLabel}>Höjdvinst</Text>
                                             <Text style={styles.secondaryStatValue}>
@@ -203,7 +205,7 @@ export default function StravaActivityPicker({ visible, onClose, onSelect }: Str
                             </ScrollView>
                         ) : (
                             <View style={styles.placeholderContainer}>
-                                <Ionicons name="arrow-up" size={40} color={Palette.text.disabled} />
+                                <Ionicons name="arrow-up" size={40} color={palette.text.disabled} />
                                 <Text style={styles.placeholderText}>Välj ett pass från listan ovan för att se detaljer</Text>
                             </View>
                         )}
@@ -214,70 +216,70 @@ export default function StravaActivityPicker({ visible, onClose, onSelect }: Str
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (palette: any, spacing: any, borderRadius: any, typography: any, shadows: any, isDark: boolean) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: Palette.background.default,
+        backgroundColor: palette.background.default,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: Spacing.m,
-        backgroundColor: Palette.background.paper,
+        padding: spacing.m,
+        backgroundColor: palette.background.paper,
         borderBottomWidth: 1,
-        borderBottomColor: Palette.border.default,
+        borderBottomColor: palette.border.default,
     },
     headerTitleContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: Spacing.s,
+        gap: spacing.s,
     },
     title: {
-        fontSize: Typography.size.l,
+        fontSize: typography.size.l,
         fontWeight: 'bold',
-        color: Palette.text.primary,
+        color: palette.text.primary,
     },
     closeButton: {
-        padding: Spacing.xs,
+        padding: spacing.xs,
     },
     center: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        padding: Spacing.xl,
+        padding: spacing.xl,
     },
     loadingText: {
-        marginTop: Spacing.m,
-        color: Palette.text.secondary,
-        fontSize: Typography.size.m,
+        marginTop: spacing.m,
+        color: palette.text.secondary,
+        fontSize: typography.size.m,
     },
     listContainer: {
         maxHeight: '100%',
-        backgroundColor: Palette.background.paper,
+        backgroundColor: palette.background.paper,
     },
     listContainerCompact: {
         maxHeight: 120,
         borderBottomWidth: 1,
-        borderBottomColor: Palette.border.default,
+        borderBottomColor: palette.border.default,
     },
     listContent: {
-        padding: Spacing.m,
+        padding: spacing.m,
     },
     activityCard: {
-        backgroundColor: Palette.background.paper,
-        borderRadius: BorderRadius.m,
-        padding: Spacing.m,
-        marginBottom: Spacing.s,
-        ...Shadows.small,
+        backgroundColor: palette.background.paper,
+        borderRadius: borderRadius.m,
+        padding: spacing.m,
+        marginBottom: spacing.s,
+        ...shadows.small,
         borderWidth: 1,
-        borderColor: Palette.border.default,
+        borderColor: palette.border.default,
     },
     activityCardCompact: {
         width: 150,
-        marginRight: Spacing.s,
+        marginRight: spacing.s,
         marginBottom: 0,
-        padding: Spacing.s,
+        padding: spacing.s,
     },
     activityCardSelected: {
         backgroundColor: STRAVA_ORANGE,
@@ -290,17 +292,17 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     activityName: {
-        fontSize: Typography.size.m,
+        fontSize: typography.size.m,
         fontWeight: 'bold',
-        color: Palette.text.primary,
+        color: palette.text.primary,
         flex: 1,
     },
     textWhite: {
         color: '#FFF',
     },
     activityDate: {
-        fontSize: Typography.size.xs,
-        color: Palette.text.disabled,
+        fontSize: typography.size.xs,
+        color: palette.text.disabled,
     },
     activityStatsRow: {
         flexDirection: 'row',
@@ -308,116 +310,116 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     compactStat: {
-        fontSize: Typography.size.s,
-        color: Palette.text.secondary,
+        fontSize: typography.size.s,
+        color: palette.text.secondary,
     },
     detailsContainer: {
         flex: 1,
     },
     detailsContent: {
-        padding: Spacing.l,
+        padding: spacing.l,
     },
     detailsTitle: {
-        fontSize: Typography.size.xl,
+        fontSize: typography.size.xl,
         fontWeight: 'bold',
-        color: Palette.text.primary,
-        marginBottom: Spacing.xs,
+        color: palette.text.primary,
+        marginBottom: spacing.xs,
     },
     detailsDate: {
-        fontSize: Typography.size.m,
-        color: Palette.text.secondary,
-        marginBottom: Spacing.xl,
+        fontSize: typography.size.m,
+        color: palette.text.secondary,
+        marginBottom: spacing.xl,
         textTransform: 'capitalize',
     },
     mainStatsGrid: {
         flexDirection: 'row',
-        gap: Spacing.m,
-        marginBottom: Spacing.xl,
+        gap: spacing.m,
+        marginBottom: spacing.xl,
     },
     mainStatBox: {
         flex: 1,
-        backgroundColor: Palette.background.paper,
-        borderRadius: BorderRadius.l,
-        padding: Spacing.l,
+        backgroundColor: palette.background.paper,
+        borderRadius: borderRadius.l,
+        padding: spacing.l,
         alignItems: 'center',
-        ...Shadows.medium,
+        ...shadows.medium,
     },
     mainStatLabel: {
         fontSize: 10,
         fontWeight: 'bold',
-        color: Palette.text.disabled,
+        color: palette.text.disabled,
         letterSpacing: 1,
-        marginBottom: Spacing.xs,
+        marginBottom: spacing.xs,
     },
     mainStatValue: {
-        fontSize: Typography.size.xxl,
+        fontSize: typography.size.xxl,
         fontWeight: '900',
-        color: Palette.text.primary,
+        color: palette.text.primary,
     },
     mainStatUnit: {
-        fontSize: Typography.size.s,
-        color: Palette.text.secondary,
+        fontSize: typography.size.s,
+        color: palette.text.secondary,
         fontWeight: 'bold',
     },
     secondaryStatsRow: {
         flexDirection: 'row',
         justifyContent: 'space-around',
-        backgroundColor: Palette.background.paper,
-        borderRadius: BorderRadius.m,
-        padding: Spacing.m,
-        marginBottom: Spacing.xxl,
+        backgroundColor: palette.background.paper,
+        borderRadius: borderRadius.m,
+        padding: spacing.m,
+        marginBottom: spacing.xxl,
         borderWidth: 1,
-        borderColor: Palette.border.default,
+        borderColor: palette.border.default,
     },
     secondaryStatItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: Spacing.s,
+        gap: spacing.s,
     },
     secondaryStatLabel: {
         fontSize: 10,
-        color: Palette.text.disabled,
+        color: palette.text.disabled,
         textTransform: 'uppercase',
     },
     secondaryStatValue: {
-        fontSize: Typography.size.m,
+        fontSize: typography.size.m,
         fontWeight: 'bold',
-        color: Palette.text.primary,
+        color: palette.text.primary,
     },
     saveButton: {
         backgroundColor: STRAVA_ORANGE,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: Spacing.l,
-        borderRadius: BorderRadius.round,
-        gap: Spacing.s,
-        ...Shadows.large,
+        padding: spacing.l,
+        borderRadius: borderRadius.round,
+        gap: spacing.s,
+        ...shadows.large,
     },
     saveButtonText: {
         color: '#FFF',
-        fontSize: Typography.size.l,
+        fontSize: typography.size.l,
         fontWeight: 'bold',
     },
     placeholderContainer: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        padding: Spacing.xxl,
+        padding: spacing.xxl,
         opacity: 0.5,
     },
     placeholderText: {
-        color: Palette.text.secondary,
+        color: palette.text.secondary,
         textAlign: 'center',
-        marginTop: Spacing.m,
+        marginTop: spacing.m,
         maxWidth: 250,
     },
     emptyState: {
-        padding: Spacing.xxl,
+        padding: spacing.xxl,
         alignItems: 'center',
     },
     emptyText: {
-        color: Palette.text.secondary,
+        color: palette.text.secondary,
         textAlign: 'center',
     },
 });

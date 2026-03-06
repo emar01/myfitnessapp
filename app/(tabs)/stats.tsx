@@ -2,7 +2,7 @@ import ActivityChart from '@/components/stats/ActivityChart';
 import CategoryBreakdown from '@/components/stats/CategoryBreakdown';
 import StatsOverview from '@/components/stats/StatsOverview';
 import { Text, View } from '@/components/Themed';
-import { Layout, Palette, Spacing } from '@/constants/DesignSystem';
+import { useTheme } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
 import { statisticsService } from '@/services/statisticsService';
 import { workoutService } from '@/services/workoutService';
@@ -11,6 +11,8 @@ import React, { useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet } from 'react-native';
 
 export default function StatsScreen() {
+  const { palette, spacing, borderRadius, typography, shadows, isDark, layout } = useTheme();
+  const styles = getStyles(palette, spacing, borderRadius, typography, shadows, layout);
   const { user } = useSession();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,7 +58,7 @@ export default function StatsScreen() {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Palette.primary.main} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.primary.main} />
         }
       >
         <StatsOverview
@@ -70,35 +72,35 @@ export default function StatsScreen() {
 
         <CategoryBreakdown breakdown={stats.breakdown} />
 
-        <View style={{ height: Spacing.xl }} />
+        <View style={{ height: spacing.xl }} />
       </ScrollView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (palette: any, spacing: any, borderRadius: any, typography: any, shadows: any, layout: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Palette.background.default,
+    backgroundColor: palette.background.default,
   },
   header: {
     paddingTop: 60,
-    paddingHorizontal: Spacing.m,
-    paddingBottom: Spacing.m,
-    backgroundColor: Palette.background.paper,
+    paddingHorizontal: spacing.m,
+    paddingBottom: spacing.m,
+    backgroundColor: palette.background.paper,
     borderBottomWidth: 1,
-    borderBottomColor: Palette.border.default,
+    borderBottomColor: palette.border.default,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: Palette.primary.main,
+    color: palette.primary.main,
   },
   scrollView: {
     flex: 1,
   },
   contentContainer: {
-    ...Layout.contentContainer,
-    padding: Spacing.m,
+    ...layout.contentContainer,
+    padding: spacing.m,
   },
 });

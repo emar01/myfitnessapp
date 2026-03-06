@@ -14,3 +14,6 @@ Dessa principer gäller för all AI-assisterad utveckling i det här projektet o
 
 3. **Anpassade Meddelanderutor (Custom Modals/Alerts)**
    Använd alltid projektets egna, anpassade komponenter för meddelanderutor och dialoger (exempelvis `ConfirmationModal` som används på startsidan) istället för systemets inbyggda standarddialoger (som `Alert.alert` i React Native eller `window.confirm` på webben). Detta för att säkerställa en konsekvent design och användarupplevelse över hela applikationen oavsett plattform.
+
+4. **Dark Mode Support**
+   All gränssnittsutveckling ska stödja både ljust och mörkt läge (Dark Mode). UI-element ska använda temabaserade färger från `DesignSystem.ts` och dynamiskt anpassa sig efter användarens systeminställningar eller appens inställningar. Kontrast och läsbarhet måste bibehållas i båda lägena.

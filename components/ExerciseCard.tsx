@@ -1,4 +1,4 @@
-import { BorderRadius, Palette, Shadows, Spacing, Typography } from '@/constants/DesignSystem';
+﻿import { useTheme } from '@/constants/DesignSystem';
 import { WorkoutExercise, WorkoutSet } from '@/types';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -14,6 +14,8 @@ interface ExerciseCardProps {
 }
 
 export default function ExerciseCard({ exercise, onUpdate, onRemove, onPlayVideo, currentPr }: ExerciseCardProps) {
+    const { palette, spacing, borderRadius, typography, shadows, isDark } = useTheme();
+    const styles = getStyles(palette, spacing, borderRadius, typography, shadows, isDark);
     // Determine if any set is a "Potential PR"
     const isPrSet = (weight: number) => {
         return currentPr ? weight > currentPr : false;
@@ -53,11 +55,11 @@ export default function ExerciseCard({ exercise, onUpdate, onRemove, onPlayVideo
                 </View>
                 <View style={styles.headerActions}>
                     <TouchableOpacity onPress={() => onPlayVideo && exercise.videoLink ? onPlayVideo(exercise.videoLink) : alert('No video available')}>
-                        <Ionicons name="play-circle-outline" size={24} color={Palette.primary.main} style={{ marginRight: Spacing.s }} />
+                        <Ionicons name="play-circle-outline" size={24} color={palette.primary.main} style={{ marginRight: spacing.s }} />
                     </TouchableOpacity>
 
                     <TouchableOpacity onPress={onRemove}>
-                        <FontAwesome name="ellipsis-v" size={20} color={Palette.text.secondary} />
+                        <FontAwesome name="ellipsis-v" size={20} color={palette.text.secondary} />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -66,7 +68,7 @@ export default function ExerciseCard({ exercise, onUpdate, onRemove, onPlayVideo
             {warmupSets.length > 0 && (
                 <View style={styles.section}>
                     <TouchableOpacity style={styles.sectionHeader} onPress={() => addSet('warmup')}>
-                        <Ionicons name="add" size={16} color={Palette.accent.main} />
+                        <Ionicons name="add" size={16} color={palette.accent.main} />
                         <Text style={styles.sectionTitle}>Warm-up</Text>
                     </TouchableOpacity>
 
@@ -103,7 +105,7 @@ export default function ExerciseCard({ exercise, onUpdate, onRemove, onPlayVideo
                 ))}
 
                 <TouchableOpacity style={styles.footerAddButton} onPress={() => addSet('normal')}>
-                    <Ionicons name="add" size={18} color={Palette.primary.main} />
+                    <Ionicons name="add" size={18} color={palette.primary.main} />
                     <Text style={styles.footerAddText}>Lägg till set</Text>
                 </TouchableOpacity>
             </View>
@@ -112,59 +114,59 @@ export default function ExerciseCard({ exercise, onUpdate, onRemove, onPlayVideo
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (palette: any, spacing: any, borderRadius: any, typography: any, shadows: any, isDark: boolean) => StyleSheet.create({
     card: {
-        backgroundColor: '#FFF',
-        borderRadius: BorderRadius.l,
-        padding: Spacing.m,
-        marginBottom: Spacing.m,
-        ...Shadows.small,
+        backgroundColor: palette.background.paper,
+        borderRadius: borderRadius.l,
+        padding: spacing.m,
+        marginBottom: spacing.m,
+        ...shadows.small,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: Spacing.s,
-        paddingBottom: Spacing.s,
+        marginBottom: spacing.s,
+        paddingBottom: spacing.s,
         borderBottomWidth: 1,
-        borderBottomColor: '#F0F0F0',
+        borderBottomColor: palette.border.default,
     },
     headerActions: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     title: {
-        fontSize: Typography.size.m,
+        fontSize: typography.size.m,
         fontWeight: 'bold',
-        color: Palette.text.primary,
+        color: palette.text.primary,
     },
     section: {
-        marginBottom: Spacing.s,
+        marginBottom: spacing.s,
     },
     sectionHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: Spacing.s,
-        marginTop: Spacing.s,
+        marginBottom: spacing.s,
+        marginTop: spacing.s,
     },
     sectionTitle: {
-        fontSize: Typography.size.s,
-        color: Palette.text.secondary, // Light gray/reddish tint?
+        fontSize: typography.size.s,
+        color: palette.text.secondary, // Light gray/reddish tint?
         marginLeft: 4,
     },
     footerAddButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: Spacing.s,
-        marginTop: Spacing.xs,
-        backgroundColor: Palette.background.default,
-        borderRadius: BorderRadius.m,
+        paddingVertical: spacing.s,
+        marginTop: spacing.xs,
+        backgroundColor: palette.background.default,
+        borderRadius: borderRadius.m,
     },
     footerAddText: {
-        color: Palette.primary.main,
+        color: palette.primary.main,
         fontWeight: 'bold',
-        fontSize: Typography.size.s,
-        marginLeft: Spacing.xs,
+        fontSize: typography.size.s,
+        marginLeft: spacing.xs,
     }
 });

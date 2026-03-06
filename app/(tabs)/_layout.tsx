@@ -1,5 +1,4 @@
-import { useColorScheme } from '@/components/useColorScheme';
-import { Palette } from '@/constants/DesignSystem';
+import { useTheme } from '@/constants/DesignSystem';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Tabs } from 'expo-router';
 import React from 'react';
@@ -16,7 +15,8 @@ import DesktopSidebar from '@/components/DesktopSidebar';
 import { useWindowDimensions, View } from 'react-native';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const { palette, isDark } = useTheme();
+  const colorScheme = isDark ? 'dark' : 'light';
   const { width } = useWindowDimensions();
   const [isMounted, setIsMounted] = React.useState(false);
 
@@ -35,8 +35,8 @@ export default function TabLayout() {
         <View style={{ flex: 1 }}>
           <Tabs
             screenOptions={{
-              tabBarActiveTintColor: Palette.primary.main,
-              tabBarInactiveTintColor: Palette.text.disabled,
+              tabBarActiveTintColor: palette.primary.main,
+              tabBarInactiveTintColor: palette.text.disabled,
               headerShown: false,
               tabBarStyle: { display: 'none' }, // Always hide bottom tabs on desktop
             }}>
@@ -56,12 +56,13 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Palette.primary.main,
-        tabBarInactiveTintColor: Palette.text.disabled,
+        tabBarActiveTintColor: palette.primary.main,
+        tabBarInactiveTintColor: palette.text.disabled,
         headerShown: false,
         tabBarStyle: {
           paddingBottom: 5,
           height: 60,
+          backgroundColor: palette.background.paper,
         },
         tabBarLabelStyle: {
           fontSize: 10,
