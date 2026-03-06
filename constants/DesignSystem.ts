@@ -178,11 +178,10 @@ export const Shadows = {
     }),
 };
 
-import { useColorScheme } from 'react-native';
+import { useThemeContext } from '@/context/ThemeContext';
 
 export function useTheme() {
-    const colorScheme = useColorScheme();
-    const isDark = colorScheme === 'dark';
+    const { isDark } = useThemeContext();
     const palette = isDark ? DarkPalette : LightPalette;
 
     return {

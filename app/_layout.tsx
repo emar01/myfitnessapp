@@ -5,7 +5,6 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 
-import { useColorScheme } from '@/components/useColorScheme';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -46,6 +45,7 @@ export default function RootLayout() {
 }
 
 import { SessionProvider, useSession } from '@/context/ctx';
+import { AppThemeProvider, useThemeContext } from '@/context/ThemeContext';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -56,11 +56,13 @@ function RootLayoutNav() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <AlertProvider>
-          <SessionProvider>
-            <ProtectedLayout />
-          </SessionProvider>
-        </AlertProvider>
+        <AppThemeProvider>
+          <AlertProvider>
+            <SessionProvider>
+              <ProtectedLayout />
+            </SessionProvider>
+          </AlertProvider>
+        </AppThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
@@ -70,7 +72,7 @@ function ProtectedLayout() {
   const { user, isLoading } = useSession();
   const segments = useSegments();
   const router = useRouter();
-  const colorScheme = useColorScheme();
+  const { isDark } = useThemeContext();
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -96,7 +98,7 @@ function ProtectedLayout() {
   if (!isMounted) return null;
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />

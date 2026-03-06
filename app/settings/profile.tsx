@@ -1,5 +1,6 @@
 import { useTheme } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
+import { useThemeContext } from '@/context/ThemeContext';
 
 import { db } from '@/lib/firebaseConfig';
 import { UserProfile } from '@/types';
@@ -20,6 +21,7 @@ export default function ProfileScreen() {
     const styles = getStyles(palette, spacing, borderRadius, typography, shadows, isDark);
     const router = useRouter();
     const { user } = useSession();
+    const { themePreference, setThemePreference } = useThemeContext();
     const { showAlert, showConfirm } = useAlert();
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [memories, setMemories] = useState<Memory[]>([]);
@@ -243,6 +245,37 @@ export default function ProfileScreen() {
                     </View>
                     <Ionicons name="chevron-forward" size={20} color={palette.text.disabled} />
                 </TouchableOpacity>
+
+                {/* Theme Configuration */}
+                <Text style={styles.sectionTitle}>Utseende</Text>
+                <View style={[styles.card, { flexDirection: 'column', alignItems: 'stretch' }]}>
+                    <View style={styles.row}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.label}>Tema</Text>
+                            <Text style={styles.description}>Välj om appen ska vara ljus, mörk eller följa systemet.</Text>
+                        </View>
+                    </View>
+                    <View style={[styles.row, { borderBottomWidth: 0, justifyContent: 'flex-start', gap: 8 }]}>
+                        {(['light', 'dark', 'system'] as const).map((pref) => (
+                            <TouchableOpacity
+                                key={pref}
+                                style={[
+                                    styles.genderButton,
+                                    themePreference === pref && styles.genderButtonActive,
+                                    { paddingHorizontal: 16 }
+                                ]}
+                                onPress={() => setThemePreference(pref)}
+                            >
+                                <Text style={[
+                                    styles.genderText,
+                                    themePreference === pref && styles.genderTextActive
+                                ]}>
+                                    {pref === 'light' ? 'Ljus' : pref === 'dark' ? 'Mörk' : 'System'}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
 
                 {/* AI Configuration Section */}
                 <Text style={styles.sectionTitle}>Atlas AI Config</Text>
