@@ -5,7 +5,7 @@ import { useTheme } from '@/constants/DesignSystem';
 import { useAlert } from '@/context/AlertContext';
 import { useSession } from '@/context/ctx';
 import { db } from '@/lib/firebaseConfig';
-import { checkAndPrs as checkAndSavePrs, getUserPrs } from '@/services/prService';
+import { checkAndSavePrs, getUserPrs } from '@/services/prService';
 import { Exercise, PersonalRecord, Workout, WorkoutExercise } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -55,7 +55,14 @@ export default function WorkoutLoggerScreen() {
         name: (params.workoutName as string) || 'New Workout',
         date: new Date(),
         status: 'In Progress',
-        exercises: params.initialExercises ? JSON.parse(params.initialExercises as string) : [],
+        exercises: (() => {
+            try {
+                return params.initialExercises ? JSON.parse(params.initialExercises as string) : [];
+            } catch (e) {
+                console.error("Failed to parse initialExercises", e);
+                return [];
+            }
+        })(),
         category: (params.category as string) as any || 'styrketräning',
         programId: params.programId as string,
         workoutTemplateId: params.workoutTemplateId as string

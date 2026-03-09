@@ -254,6 +254,7 @@ export default function CoachScreen() {
                 const sanitizedExercises = parsedData.exercises.map((ex: any) => ({
                     ...ex,
                     sets: (ex.sets || []).map((s: any) => ({
+                        id: require('uuid').v4(),
                         reps: s.reps ?? 0,
                         weight: s.weight ?? 0,
                         type: s.type || 'normal',
