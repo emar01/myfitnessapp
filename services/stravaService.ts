@@ -118,6 +118,7 @@ export interface StravaActivity {
     total_elevation_gain: number;
     type: string;
     start_date: string;
+    start_date_local: string;
     calories?: number;
     kilojoules?: number;
     map: {
@@ -152,6 +153,12 @@ export const mapStravaType = (stravaType: string): { category: WorkoutCategory, 
         case 'hike':
             return { category: 'löpning', subcategory: 'distans' };
 
+        // Cycling
+        case 'ride':
+        case 'virtualride':
+        case 'ebikeride':
+            return { category: 'cykling' };
+
         // Strength
         case 'weighttraining':
             return { category: 'styrketräning', subcategory: 'styrka' };
@@ -167,10 +174,7 @@ export const mapStravaType = (stravaType: string): { category: WorkoutCategory, 
         case 'rehab':
             return { category: 'rehab' };
 
-        // Other common types to map to 'övrigt' instead of defaulting to 'rest' in UI
-        case 'ride':
-        case 'virtualride':
-        case 'ebikeride':
+        // Other common types
         case 'swim':
         case 'rowing':
         case 'stairstepper':

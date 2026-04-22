@@ -28,6 +28,7 @@ export default function NutritionScreen() {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [foodLogs, setFoodLogs] = useState<FoodLogEntry[]>([]);
     const [burnedCalories, setBurnedCalories] = useState(0);
+    const [todayActivities, setTodayActivities] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     const [modalVisible, setModalVisible] = useState(false);
@@ -85,12 +86,11 @@ export default function NutritionScreen() {
             // Fetch workouts for today to calculate burned calories
             // Since we don't have a direct "getWorkoutsByDate", we fetch all and filter or assume workoutService.getUserWorkouts
             const workouts = await workoutService.getUserWorkouts(user.uid);
+            const targetKey = formatDateKey(currentDate);
             const todayWorkouts = workouts.filter(w => {
                 if (w.status !== 'Completed') return false;
-                const date = (w.date as any)?.toDate ? (w.date as any).toDate() : new Date(w.date as any);
-                return date.getDate() === currentDate.getDate() &&
-                       date.getMonth() === currentDate.getMonth() &&
-                       date.getFullYear() === currentDate.getFullYear();
+                const d = (w.date as any)?.toDate ? (w.date as any).toDate() : new Date(w.date as any);
+                return formatDateKey(d) === targetKey;
             });
 
             // Calculate burned calories using Strava and local workouts
@@ -105,24 +105,48 @@ export default function NutritionScreen() {
             }
 
             const todayStrava = stravaActivities.filter(a => {
-                const date = new Date(a.start_date);
-                return date.getDate() === currentDate.getDate() &&
-                       date.getMonth() === currentDate.getMonth() &&
-                       date.getFullYear() === currentDate.getFullYear();
+                // start_date_local is usually "YYYY-MM-DDTHH:MM:SS"
+                // We just need the first 10 chars
+                return a.start_date_local.startsWith(targetKey);
             });
 
+            const activitiesList: any[] = [];
             const stravaIdsUsed = new Set<string>();
 
             // 1. Add calories from Strava
             todayStrava.forEach(a => {
                 stravaIdsUsed.add(a.id.toString());
-                if (a.calories) {
-                    burned += a.calories;
-                } else if (a.kilojoules) {
-                    burned += a.kilojoules * 0.239006;
+                let aCalories = 0;
+                const movingMinutes = a.moving_time / 60;
+                
+                if (a.calories && a.calories > 1) {
+                    // Use Strava's calories if explicitly provided and > 1
+                    aCalories = a.calories;
                 } else {
-                    burned += (a.moving_time / 60) * 10; // Fallback
+                    // Calorie data missing or 0, estimate based on time/type or kJ
+                    let multiplier = 8; // Default
+                    const type = a.type.toLowerCase();
+                    if (type.includes('run')) multiplier = 12;
+                    if (type.includes('ride') || type.includes('cycle')) multiplier = 14; 
+                    if (type.includes('walk')) multiplier = 4;
+                    
+                    const estimatedFromTime = movingMinutes * multiplier;
+                    const kJ = a.kilojoules || 0;
+                    
+                    // We take the MAX of Work(kJ) and time-based estimation
+                    // In cycling, 1 kJ is approx 1 kcal. 
+                    // If Strava says 771 kJ for 2 hours, it's very low, so 128min * 14kcal/min = 1792 will win.
+                    aCalories = Math.max(kJ, estimatedFromTime);
                 }
+                
+                burned += aCalories;
+                activitiesList.push({
+                    id: a.id.toString(),
+                    name: a.name,
+                    calories: Math.round(aCalories),
+                    type: 'strava',
+                    debug: `Tid: ${Math.round(movingMinutes)}m, kJ: ${Math.round(a.kilojoules || 0)}, c: ${Math.round(a.calories || 0)}, type: ${a.type}`
+                });
             });
 
             // 2. Add calories from local workouts that are NOT from Strava
@@ -137,14 +161,24 @@ export default function NutritionScreen() {
                 if (w.category === 'styrketräning') multiplier = 6; 
                 if (w.category === 'rörlighet') multiplier = 4;
 
+                let wCalories = 0;
                 if (w.duration) {
-                    burned += (w.duration / 60) * multiplier;
+                    wCalories = (w.duration / 60) * multiplier;
                 } else {
-                    burned += 300;
+                    wCalories = 300;
                 }
+                
+                burned += wCalories;
+                activitiesList.push({
+                    id: w.id || Math.random().toString(),
+                    name: w.name || w.workoutTitle || 'Träningspass',
+                    calories: Math.round(wCalories),
+                    type: 'local'
+                });
             });
 
             setBurnedCalories(Math.round(burned));
+            setTodayActivities([...activitiesList]);
 
             // Calculate totals and save daily summary
             const eaten = logs.reduce((sum, log) => sum + log.calories, 0);
@@ -333,6 +367,7 @@ export default function NutritionScreen() {
                     burned={burnedCalories}
                     macros={macros}
                     macroGoals={macroGoals}
+                    activities={todayActivities}
                 />
 
                 <MealSection

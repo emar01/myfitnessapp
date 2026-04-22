@@ -19,9 +19,10 @@ interface NutritionOverviewProps {
         fat: number;
         fiber: number;
     };
+    activities?: { id: string; name: string; calories: number; type: 'strava' | 'local' }[];
 }
 
-export default function NutritionOverview({ dailyGoal, eaten, burned, macros, macroGoals }: NutritionOverviewProps) {
+export default function NutritionOverview({ dailyGoal, eaten, burned, macros, macroGoals, activities }: NutritionOverviewProps) {
     const { palette, spacing, borderRadius } = useTheme();
 
     const remaining = dailyGoal - eaten + burned;
@@ -76,6 +77,39 @@ export default function NutritionOverview({ dailyGoal, eaten, burned, macros, ma
                     <Text style={[styles.remainingValue, { color: palette.text.primary }]}>{Math.round(remaining)}</Text>
                     <Text style={[styles.remainingLabel, { color: palette.text.secondary }]}>Kcal kvar</Text>
                 </View>
+            </View>
+
+            {/* Activities List */}
+            <View style={{ marginTop: spacing.m, borderTopWidth: 1, borderTopColor: palette.border.default, paddingTop: spacing.s }}>
+                <Text style={{ fontSize: 13, fontWeight: 'bold', color: palette.status.warning, marginBottom: 4, textTransform: 'uppercase' }}>
+                    Genomförda aktiviteter ({activities?.length || 0})
+                </Text>
+                {activities && activities.length > 0 ? activities.map((activity, idx) => (
+                    <View key={`${activity.id}-${idx}`} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 10 }}>
+                            <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: activity.type === 'strava' ? '#FC4C0220' : palette.primary.main + '20', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+                                <FontAwesome 
+                                    name={activity.type === 'strava' ? 'strava' : 'heartbeat'} 
+                                    size={12} 
+                                    color={activity.type === 'strava' ? '#FC4C02' : palette.primary.main} 
+                                />
+                            </View>
+                            <Text style={{ color: palette.text.primary, fontSize: 14, fontWeight: '500' }}>{activity.name}</Text>
+                            {activity.debug && (
+                                <Text style={{ color: palette.text.secondary, fontSize: 10, marginLeft: 8 }}>
+                                    ({activity.debug})
+                                </Text>
+                            )}
+                        </View>
+                        <Text style={{ color: palette.status.warning, fontWeight: '700', fontSize: 14 }}>
+                            +{activity.calories} kcal
+                        </Text>
+                    </View>
+                )) : (
+                    <Text style={{ color: palette.text.secondary, fontSize: 12, fontStyle: 'italic' }}>
+                        Inga detaljerade aktiviteter hittades ({burned} kcal totalt)
+                    </Text>
+                )}
             </View>
 
             {/* Bottom row: Macros */}
