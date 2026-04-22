@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, PanResponder, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, PanResponder, Platform } from 'react-native';
 import { useTheme } from '@/constants/DesignSystem';
+import { useAlert } from '@/context/AlertContext';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { FoodLogEntry } from '@/types';
 
@@ -142,27 +143,22 @@ function SwipeableEntry({
 
 export default function MealSection({ title, icon, entries, targetCalories, onAddPress, onEntryPress, onDeleteEntry }: MealSectionProps) {
     const { palette, spacing, borderRadius } = useTheme();
+    const { showConfirm } = useAlert();
 
     const totalCalories = entries.reduce((sum, entry) => sum + entry.calories, 0);
     const progress = Math.min(totalCalories / targetCalories, 1) || 0;
     const progressColor = totalCalories > targetCalories ? palette.status.error : palette.primary.main;
 
-    const handleDelete = (entry: FoodLogEntry) => {
-        if (Platform.OS === 'web') {
-            // @ts-ignore
-            if (window.confirm(`Ta bort "${entry.foodName}"?`)) {
-                onDeleteEntry?.(entry);
-            }
-            return;
-        }
-        Alert.alert(
+    const handleDelete = async (entry: FoodLogEntry) => {
+        const confirmed = await showConfirm(
             'Ta bort',
             `Vill du ta bort "${entry.foodName}"?`,
-            [
-                { text: 'Avbryt', style: 'cancel' },
-                { text: 'Ta bort', style: 'destructive', onPress: () => onDeleteEntry?.(entry) },
-            ]
+            { isDestructive: true, confirmText: 'Ta bort' }
         );
+
+        if (confirmed) {
+            onDeleteEntry?.(entry);
+        }
     };
 
     return (

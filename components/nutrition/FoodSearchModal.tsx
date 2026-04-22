@@ -7,6 +7,7 @@ import { FoodItem, MealType } from '@/types';
 import { parseFoodImage, estimateFoodNutrition } from '@/services/aiService';
 import { nutritionService } from '@/services/nutritionService';
 import { useSession } from '@/context/ctx';
+import { useAlert } from '@/context/AlertContext';
 
 interface FoodSearchModalProps {
     visible: boolean;
@@ -19,7 +20,9 @@ interface FoodSearchModalProps {
 export default function FoodSearchModal({ visible, mealType, onClose, onAddFood, searchFoods }: FoodSearchModalProps) {
     const { palette, spacing, borderRadius } = useTheme();
     const { user } = useSession();
-    const [activeTab, setActiveTab] = useState<'search' | 'photo'>('search');
+    const { showAlert } = useAlert();
+    const [activeTab, setActiveTab] = useState<'search' | 'photo' | 'create'>('search');
+    const [editingFood, setEditingFood] = useState<Partial<FoodItem> | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<FoodItem[]>([]);
     const [suggestions, setSuggestions] = useState<FoodItem[]>([]);
@@ -61,7 +64,7 @@ export default function FoodSearchModal({ visible, mealType, onClose, onAddFood,
     const handleTakePhoto = async () => {
         const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
         if (permissionResult.granted === false) {
-            alert("Du måste ge tillgång till kameran för att använda denna funktion.");
+            showAlert("Behörighet saknas", "Du måste ge tillgång till kameran för att använda denna funktion.");
             return;
         }
         const result = await ImagePicker.launchCameraAsync({ base64: true, quality: 0.5 });
@@ -87,7 +90,7 @@ export default function FoodSearchModal({ visible, mealType, onClose, onAddFood,
                 };
                 onAddFood(newFood, 1);
             } else {
-                alert("Kunde inte tolka bilden. Försök igen.");
+                showAlert("Ett fel uppstod", "Kunde inte tolka bilden. Försök igen.");
             }
         } catch (error) {
             console.error("AI parse failed", error);
@@ -101,36 +104,61 @@ export default function FoodSearchModal({ visible, mealType, onClose, onAddFood,
         
         setIsLoading(true);
         try {
-            // 1. AI estimates nutrition
             const aiData = await estimateFoodNutrition(searchQuery);
             
-            if (aiData) {
-                // 2. Create FoodItem
-                const newFood: Omit<FoodItem, 'id'> = {
-                    name: searchQuery.trim(),
-                    calories: aiData.calories || 0,
-                    protein: aiData.protein || 0,
-                    carbs: aiData.carbs || 0,
-                    fat: aiData.fat || 0,
-                    fiber: aiData.fiber || 0,
-                    servingSize: aiData.servingSize || 1,
-                    servingUnit: aiData.servingUnit || 'portion',
-                    isPublic: true,
-                    createdBy: user.uid,
-                    categories: [mealType]
-                };
-                
-                // 3. Save to database
-                const newId = await nutritionService.createFoodItem(newFood);
-                
-                // 4. Log it immediately
-                onAddFood({ ...newFood, id: newId }, 1);
-            } else {
-                alert("Kunde inte uppskatta näringsvärden. Försök vara mer specifik.");
+            const newFood: Partial<FoodItem> = {
+                name: searchQuery.trim(),
+                calories: aiData?.calories || 0,
+                protein: aiData?.protein || 0,
+                carbs: aiData?.carbs || 0,
+                fat: aiData?.fat || 0,
+                fiber: aiData?.fiber || 0,
+                servingSize: aiData?.servingSize || 100,
+                servingUnit: aiData?.servingUnit || 'g',
+                categories: [mealType]
+            };
+            
+            setEditingFood(newFood);
+            setActiveTab('create');
+
+            if (!aiData) {
+                showAlert("Manuell justering", "AI kunde inte säkert tolka matvaran, du får fylla i fälten manuellt nedan.");
             }
         } catch (e) {
-            console.error("Kunde inte skapa matvara", e);
-            alert("Ett fel uppstod när matvaran skulle skapas.");
+            console.error("Kunde inte ai-skapa", e);
+            showAlert("Fel", "Ett fel uppstod.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const saveManualFood = async () => {
+        if (!editingFood?.name || !user) return;
+        
+        setIsLoading(true);
+        try {
+            const foodToSave: Omit<FoodItem, 'id'> = {
+                name: editingFood.name,
+                calories: editingFood.calories || 0,
+                protein: editingFood.protein || 0,
+                carbs: editingFood.carbs || 0,
+                fat: editingFood.fat || 0,
+                fiber: editingFood.fiber || 0,
+                servingSize: editingFood.servingSize || 100,
+                servingUnit: editingFood.servingUnit || 'g',
+                isPublic: true,
+                createdBy: user.uid,
+                categories: editingFood.categories || (mealType ? [mealType] : [])
+            };
+            
+            const newId = await nutritionService.createFoodItem(foodToSave);
+            onAddFood({ ...foodToSave, id: newId }, 1);
+            
+            setActiveTab('search');
+            setEditingFood(null);
+            setSearchQuery('');
+        } catch (error) {
+            showAlert("Fel", 'Kunde inte spara matvaran.');
         } finally {
             setIsLoading(false);
         }
@@ -182,6 +210,14 @@ export default function FoodSearchModal({ visible, mealType, onClose, onAddFood,
                         </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
+                        style={[styles.tab, activeTab === 'create' && { borderBottomColor: palette.primary.main, borderBottomWidth: 2 }]}
+                        onPress={() => setActiveTab('create')}
+                    >
+                        <Text style={[styles.tabText, { color: activeTab === 'create' ? palette.primary.main : palette.text.secondary }]}>
+                            Skapa
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
                         style={[styles.tab, activeTab === 'photo' && { borderBottomColor: palette.primary.main, borderBottomWidth: 2 }]}
                         onPress={() => setActiveTab('photo')}
                     >
@@ -193,7 +229,59 @@ export default function FoodSearchModal({ visible, mealType, onClose, onAddFood,
 
                 {/* Content */}
                 <View style={styles.content}>
-                    {activeTab === 'search' ? (
+                    {activeTab === 'create' ? (
+                        <View style={{ flex: 1, paddingHorizontal: 4 }}>
+                            <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 16 }}>Skapa ny matvara</Text>
+                            
+                            <Text style={styles.inputLabel}>Namn</Text>
+                            <TextInput 
+                                style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary }]} 
+                                value={editingFood?.name || ''} 
+                                onChangeText={t => setEditingFood(prev => prev ? { ...prev, name: t } : { name: t, calories: 0, servingSize: 100, servingUnit: 'g' })} 
+                            />
+
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                                <View style={{ flex: 1, marginRight: 8 }}>
+                                    <Text style={styles.inputLabel}>Kalorier (kcal)</Text>
+                                    <TextInput style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary }]} keyboardType="numeric" value={editingFood?.calories?.toString()} onChangeText={t => setEditingFood(prev => prev ? { ...prev, calories: parseFloat(t) || 0 } : null)} />
+                                </View>
+                                <View style={{ flex: 1, marginLeft: 8 }}>
+                                    <Text style={styles.inputLabel}>Protein (g)</Text>
+                                    <TextInput style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary }]} keyboardType="numeric" value={editingFood?.protein?.toString()} onChangeText={t => setEditingFood(prev => prev ? { ...prev, protein: parseFloat(t) || 0 } : null)} />
+                                </View>
+                            </View>
+
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                                <View style={{ flex: 1, marginRight: 8 }}>
+                                    <Text style={styles.inputLabel}>Kolhydrater (g)</Text>
+                                    <TextInput style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary }]} keyboardType="numeric" value={editingFood?.carbs?.toString()} onChangeText={t => setEditingFood(prev => prev ? { ...prev, carbs: parseFloat(t) || 0 } : null)} />
+                                </View>
+                                <View style={{ flex: 1, marginLeft: 8 }}>
+                                    <Text style={styles.inputLabel}>Fett (g)</Text>
+                                    <TextInput style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary }]} keyboardType="numeric" value={editingFood?.fat?.toString()} onChangeText={t => setEditingFood(prev => prev ? { ...prev, fat: parseFloat(t) || 0 } : null)} />
+                                </View>
+                            </View>
+
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                                <View style={{ flex: 1, marginRight: 8 }}>
+                                    <Text style={styles.inputLabel}>Enhet (t.ex. g, portion)</Text>
+                                    <TextInput style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary }]} value={editingFood?.servingUnit || ''} onChangeText={t => setEditingFood(prev => prev ? { ...prev, servingUnit: t } : null)} />
+                                </View>
+                                <View style={{ flex: 1, marginLeft: 8 }}>
+                                    <Text style={styles.inputLabel}>Storlek på enhet (t.ex. 100)</Text>
+                                    <TextInput style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary }]} keyboardType="numeric" value={editingFood?.servingSize?.toString()} onChangeText={t => setEditingFood(prev => prev ? { ...prev, servingSize: parseFloat(t) || 1 } : null)} />
+                                </View>
+                            </View>
+
+                            <TouchableOpacity 
+                                style={[styles.photoButton, { backgroundColor: palette.primary.main, borderRadius: borderRadius.l, marginTop: 24, justifyContent: 'center' }]} 
+                                onPress={saveManualFood}
+                            >
+                                {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.photoButtonText}>Spara till Alla</Text>}
+                            </TouchableOpacity>
+
+                        </View>
+                    ) : activeTab === 'search' ? (
                         <>
                             {/* Search bar */}
                             <View style={[styles.searchBar, { backgroundColor: palette.background.paper, borderRadius: borderRadius.m, borderColor: palette.border.default, borderWidth: 1 }]}>
@@ -327,4 +415,6 @@ const styles = StyleSheet.create({
     photoButtonText: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginLeft: 12 },
     createButton: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 12, marginTop: 24, marginBottom: 20 },
     createButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+    inputLabel: { fontSize: 13, fontWeight: '600', marginBottom: 4, marginTop: 12, color: '#555' },
+    createInput: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, backgroundColor: '#fff' },
 });

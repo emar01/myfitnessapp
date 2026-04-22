@@ -83,7 +83,6 @@ export default function WorkoutLoggerScreen() {
     // Modal State
     const [searchQuery, setSearchQuery] = useState('');
     const [modalTab, setModalTab] = useState<'MostUsed' | 'All'>('All');
-    const [copySets, setCopySets] = useState(true);
 
     // Video Modal State
     const [videoModalVisible, setVideoModalVisible] = useState(false);
@@ -567,13 +566,6 @@ export default function WorkoutLoggerScreen() {
                         </View>
                     </View>
 
-                    {/* Checkbox Row */}
-                    <TouchableOpacity style={styles.checkboxRow} onPress={() => setCopySets(!copySets)}>
-                        <View style={[styles.checkbox, copySets && styles.checkboxActive]}>
-                            {copySets && <Ionicons name="checkmark" size={12} color="#FFF" />}
-                        </View>
-                        <Text style={styles.checkboxText}>Copy sets from last workout</Text>
-                    </TouchableOpacity>
 
                     {/* List */}
                     {isLoading ? <ActivityIndicator size="large" style={{ marginTop: 20 }} /> : (

@@ -4,11 +4,13 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useTheme } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
+import { useAlert } from '@/context/AlertContext';
 import NutritionOverview from '@/components/nutrition/NutritionOverview';
 import MealSection from '@/components/nutrition/MealSection';
 import FoodSearchModal from '@/components/nutrition/FoodSearchModal';
 import { FoodLogEntry, FoodItem, MealType } from '@/types';
 import { nutritionService } from '@/services/nutritionService';
+import { formatDateKey } from '@/utils/dateUtils';
 import { workoutService } from '@/services/workoutService';
 import { getStravaActivities } from '@/services/stravaService';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -19,6 +21,7 @@ import { UserProfile } from '@/types';
 export default function NutritionScreen() {
     const { palette, spacing } = useTheme();
     const { user } = useSession();
+    const { showAlert, showConfirm } = useAlert();
     const router = useRouter();
 
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -198,17 +201,26 @@ export default function NutritionScreen() {
             setModalVisible(false);
             loadData(); // Refresh list
         } catch (error) {
-            alert("Kunde inte lägga till maten.");
+            showAlert("Fel", "Kunde inte lägga till maten.");
         }
     };
 
     const handleDeleteEntry = async (entry: FoodLogEntry) => {
         if (!user || !entry.id) return;
+
+        const confirmed = await showConfirm(
+            "Ta bort logg",
+            `Vill du ta bort ${entry.foodName}?`,
+            { isDestructive: true, confirmText: 'Ta bort' }
+        );
+
+        if (!confirmed) return;
+
         try {
             await nutritionService.deleteFoodLog(user.uid, entry.id);
             loadData();
         } catch (error) {
-            alert('Kunde inte ta bort matvaran.');
+            showAlert("Fel", 'Kunde inte ta bort matvaran.');
         }
     };
 

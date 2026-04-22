@@ -120,7 +120,7 @@ export default function ProfileScreen() {
             }, { merge: true });
         } catch (error) {
             console.error("Failed to update AI setting", error);
-            alert("Kunde inte ändra inställningen just nu.");
+            showAlert("Fel", "Kunde inte ändra inställningen just nu.");
         } finally {
             setIsUpdating(false);
         }

@@ -1,6 +1,7 @@
 import { db } from '@/lib/firebaseConfig';
 import { FoodItem, FoodLogEntry, MealType } from '@/types';
 import { addDoc, collection, deleteDoc, doc, getDocs, getDoc, increment, query, setDoc, updateDoc, where } from 'firebase/firestore';
+import { formatDateKey } from '@/utils/dateUtils';
 
 export interface DailyNutritionSummary {
     date: string; // YYYY-MM-DD
@@ -80,7 +81,7 @@ export const nutritionService = {
      */
     saveDailySummary: async (userId: string, targetDate: Date, summary: Omit<DailyNutritionSummary, 'userId' | 'date'>): Promise<void> => {
         try {
-            const dateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
+            const dateStr = formatDateKey(targetDate);
             const ref = doc(db, `users/${userId}/dailySummaries`, dateStr);
             
             const payload: DailyNutritionSummary = {

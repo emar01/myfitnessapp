@@ -1,6 +1,7 @@
 import { MarkdownDisplay } from '@/components/MarkdownDisplay';
 import { useTheme } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
+import { useAlert } from '@/context/AlertContext';
 import { db } from '@/lib/firebaseConfig';
 import { generateAtlasResponse, parseWorkoutImage } from '@/services/aiService';
 import { UserProfile } from '@/types';
@@ -13,7 +14,6 @@ import { addDoc, collection, doc, getDocs, increment, limit, onSnapshot, orderBy
 import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     FlatList,
     KeyboardAvoidingView,
     Platform,
@@ -44,6 +44,7 @@ export default function CoachScreen() {
     const styles = getStyles(palette, spacing, borderRadius, typography, shadows, isDark);
     const mStyles = markdownStyles(palette, typography, spacing);
     const { user } = useSession();
+    const { showAlert } = useAlert();
     const router = useRouter();
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputText, setInputText] = useState('');
@@ -199,14 +200,14 @@ export default function CoachScreen() {
 
         // CHECK IF AI IS ENABLED
         if (profile?.aiEnabled === false) {
-            Alert.alert("Spärrad", "Atlas är avstängd i din profil.");
+            showAlert("Spärrad", "Atlas är avstängd i din profil.");
             return;
         }
 
         try {
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (status !== 'granted') {
-                Alert.alert("Behörighet saknas", "Appen behöver åtkomst till dina bilder för att ladda upp träningspass.");
+                showAlert("Behörighet saknas", "Appen behöver åtkomst till dina bilder för att ladda upp träningspass.");
                 return;
             }
 
@@ -223,7 +224,7 @@ export default function CoachScreen() {
             }
         } catch (error) {
             console.error("Image pick error:", error);
-            Alert.alert("Fel", "Kunde inte öppna bildväljaren.");
+            showAlert("Fel", "Kunde inte öppna bildväljaren.");
         }
     };
 
@@ -272,13 +273,13 @@ export default function CoachScreen() {
                     }
                 });
             } else {
-                Alert.alert("Kunde inte tolka bilden", "Atlas hade svårt att se vad som stod på bilden. Prova en tydligare bild.");
+                showAlert("Kunde inte tolka bilden", "Atlas hade svårt att se vad som stod på bilden. Prova en tydligare bild.");
             }
 
         } catch (error) {
             console.error(error);
             setIsParsingImage(false);
-            Alert.alert("Fel", "Ett fel uppstod vid tolkning av bilden.");
+            showAlert("Fel", "Ett fel uppstod vid tolkning av bilden.");
         }
     };
 

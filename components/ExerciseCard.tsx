@@ -1,4 +1,5 @@
-﻿import { useTheme } from '@/constants/DesignSystem';
+import { useTheme } from '@/constants/DesignSystem';
+import { useAlert } from '@/context/AlertContext';
 import { WorkoutExercise, WorkoutSet } from '@/types';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -16,6 +17,7 @@ interface ExerciseCardProps {
 export default function ExerciseCard({ exercise, onUpdate, onRemove, onPlayVideo, currentPr }: ExerciseCardProps) {
     const { palette, spacing, borderRadius, typography, shadows, isDark } = useTheme();
     const styles = getStyles(palette, spacing, borderRadius, typography, shadows, isDark);
+    const { showAlert } = useAlert();
     // Determine if any set is a "Potential PR"
     const isPrSet = (weight: number) => {
         return currentPr ? weight > currentPr : false;
@@ -54,7 +56,7 @@ export default function ExerciseCard({ exercise, onUpdate, onRemove, onPlayVideo
                     <Text style={styles.title}>{exercise.name}</Text>
                 </View>
                 <View style={styles.headerActions}>
-                    <TouchableOpacity onPress={() => onPlayVideo && exercise.videoLink ? onPlayVideo(exercise.videoLink) : alert('No video available')}>
+                    <TouchableOpacity onPress={() => onPlayVideo && exercise.videoLink ? onPlayVideo(exercise.videoLink) : showAlert('Video', 'Ingen video tillgänglig')}>
                         <Ionicons name="play-circle-outline" size={24} color={palette.primary.main} style={{ marginRight: spacing.s }} />
                     </TouchableOpacity>
 

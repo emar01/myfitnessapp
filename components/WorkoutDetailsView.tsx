@@ -1,4 +1,4 @@
-﻿import StravaActivityPicker from '@/components/StravaActivityPicker';
+import StravaActivityPicker from '@/components/StravaActivityPicker';
 import { useTheme } from '@/constants/DesignSystem';
 import { StravaActivity } from '@/services/stravaService';
 import { FontAwesome } from '@expo/vector-icons';
@@ -45,11 +45,6 @@ export default function WorkoutDetailsView({
     // Scheduling state
     const [scheduledDate, setScheduledDate] = useState(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
-
-    // Logging State (Running)
-    const [completionDistance, setCompletionDistance] = useState('');
-    const [completionDuration, setCompletionDuration] = useState('');
-    const [isStravaLoading, setIsStravaLoading] = useState(false);
 
     // Strava Picker
     const [showStravaPicker, setShowStravaPicker] = useState(false);
@@ -406,13 +401,9 @@ export default function WorkoutDetailsView({
                                     )}
                                 </TouchableOpacity>
 
-                                <TouchableOpacity style={[styles.manageButtonPrimary, { flex: 1, backgroundColor: '#FC4C02' }]} onPress={handleFetchStrava} disabled={completing || isStravaLoading}>
-                                    {isStravaLoading ? <ActivityIndicator color="#FFF" /> : (
-                                        <>
-                                            <FontAwesome name="flash" size={16} color="#FFF" style={{ marginRight: 8 }} />
-                                            <Text style={styles.manageButtonTextPrimary}>Strava</Text>
-                                        </>
-                                    )}
+                                <TouchableOpacity style={[styles.manageButtonPrimary, { flex: 1, backgroundColor: '#FC4C02' }]} onPress={handleFetchStrava} disabled={completing}>
+                                    <FontAwesome name="flash" size={16} color="#FFF" style={{ marginRight: 8 }} />
+                                    <Text style={styles.manageButtonTextPrimary}>Strava</Text>
                                 </TouchableOpacity>
                             </View>
                         ) : (

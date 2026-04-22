@@ -1,4 +1,5 @@
 import { useTheme } from '@/constants/DesignSystem';
+import { useAlert } from '@/context/AlertContext';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -12,6 +13,7 @@ interface RunningSessionProps {
 export default function RunningSession({ initialDistance, initialDuration, onSave }: RunningSessionProps) {
     const { palette, spacing, borderRadius, typography, shadows, isDark } = useTheme();
     const styles = getStyles(palette, spacing, borderRadius, typography, shadows, isDark);
+    const { showAlert } = useAlert();
 
     const [distance, setDistance] = useState(initialDistance?.toString() || '');
     const [minutes, setMinutes] = useState(initialDuration ? Math.floor(initialDuration / 60).toString() : '');
@@ -43,7 +45,7 @@ export default function RunningSession({ initialDistance, initialDuration, onSav
         if (d > 0 && totalSeconds > 0) {
             onSave(d, totalSeconds);
         } else {
-            alert('Vänligen fyll i distans och tid.');
+            showAlert('Mata in data', 'Vänligen fyll i distans och tid.');
         }
     };
 

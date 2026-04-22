@@ -1,4 +1,5 @@
-﻿import { useTheme } from '@/constants/DesignSystem';
+import { useTheme } from '@/constants/DesignSystem';
+import { useAlert } from '@/context/AlertContext';
 import { db } from '@/lib/firebaseConfig';
 import { StravaActivity, exchangeToken, getStravaActivities, getStravaAuthRequestConfig } from '@/services/stravaService';
 import { Workout } from '@/types';
@@ -20,6 +21,7 @@ interface StravaSyncModalProps {
 export default function StravaSyncModal({ visible, onClose, userId }: StravaSyncModalProps) {
     const { palette, spacing, borderRadius, typography, isDark } = useTheme();
     const styles = getStyles(palette, spacing, borderRadius, typography, isDark);
+    const { showAlert } = useAlert();
     const [activities, setActivities] = useState<StravaActivity[]>([]);
     const [plannedWorkouts, setPlannedWorkouts] = useState<Workout[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -44,7 +46,7 @@ export default function StravaSyncModal({ visible, onClose, userId }: StravaSync
             setIsAuthenticated(true);
             loadData();
         } catch (e) {
-            alert("Strava login failed.");
+            showAlert("Inloggning misslyckades", "Kunde inte ansluta till Strava.");
             console.error(e);
         } finally {
             setIsLoading(false);
@@ -82,7 +84,7 @@ export default function StravaSyncModal({ visible, onClose, userId }: StravaSync
 
         } catch (e) {
             console.error("Failed to load sync data", e);
-            alert("Kunde inte hämta data.");
+            showAlert("Fel", "Kunde inte hämta data.");
         } finally {
             setIsLoading(false);
         }
@@ -116,11 +118,11 @@ export default function StravaSyncModal({ visible, onClose, userId }: StravaSync
                 stravaActivityId: activity.id.toString()
             } as any);
 
-            alert(`Kopplade "${activity.name}" till "${workout.name}"!`);
+            showAlert('Synkad', `Kopplade "${activity.name}" till "${workout.name}"!`);
             onClose();
         } catch (e) {
             console.error(e);
-            alert("Kunde inte koppla passet.");
+            showAlert("Fel", "Kunde inte koppla passet.");
         }
         setIsLoading(false);
     };
@@ -183,7 +185,7 @@ export default function StravaSyncModal({ visible, onClose, userId }: StravaSync
                                         ))}
                                     </View>
                                 ) : (
-                                    <TouchableOpacity style={styles.createButton} onPress={() => alert("Skapar nytt pass...")}>
+                                    <TouchableOpacity style={styles.createButton} onPress={() => showAlert("Info", "Denna funktion kommer snart!")}>
                                         <Text style={styles.createButtonText}>Logga som nytt pass</Text>
                                     </TouchableOpacity>
                                 )}

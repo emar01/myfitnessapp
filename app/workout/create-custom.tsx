@@ -1,5 +1,6 @@
 import { useTheme } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
+import { useAlert } from '@/context/AlertContext';
 import { db } from '@/lib/firebaseConfig';
 import { Workout } from '@/types';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
@@ -14,6 +15,7 @@ export default function CreateCustomWorkoutScreen() {
     const styles = getStyles(palette, spacing, borderRadius, typography, shadows, isDark);
     const router = useRouter();
     const { user } = useSession();
+    const { showAlert } = useAlert();
 
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
@@ -26,7 +28,7 @@ export default function CreateCustomWorkoutScreen() {
     const handleSave = async (status: 'Planned' | 'Completed') => {
         if (!user) return;
         if (!title) {
-            alert('Vänligen ange en titel.');
+            showAlert('Mata in titel', 'Vänligen ange en titel.');
             return;
         }
 
@@ -52,7 +54,7 @@ export default function CreateCustomWorkoutScreen() {
             router.push('/(tabs)');
         } catch (e) {
             console.error(e);
-            alert('Kunde inte spara passet.');
+            showAlert('Fel', 'Kunde inte spara passet.');
         } finally {
             setSaving(false);
         }
