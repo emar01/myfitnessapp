@@ -2,6 +2,18 @@ import { db } from '@/lib/firebaseConfig';
 import { FoodItem, FoodLogEntry, MealType } from '@/types';
 import { addDoc, collection, deleteDoc, doc, getDocs, getDoc, increment, query, setDoc, updateDoc, where } from 'firebase/firestore';
 
+export interface DailyNutritionSummary {
+    date: string; // YYYY-MM-DD
+    userId: string;
+    consumedCalories: number;
+    burnedCalories: number;
+    dailyGoal: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiber: number;
+}
+
 export const nutritionService = {
     /**
      * Log a food entry for a user
@@ -60,6 +72,27 @@ export const nutritionService = {
         } catch (error) {
             console.error("Error deleting food log:", error);
             throw error;
+        }
+    },
+
+    /**
+     * Save daily nutrition summary
+     */
+    saveDailySummary: async (userId: string, targetDate: Date, summary: Omit<DailyNutritionSummary, 'userId' | 'date'>): Promise<void> => {
+        try {
+            const dateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
+            const ref = doc(db, `users/${userId}/dailySummaries`, dateStr);
+            
+            const payload: DailyNutritionSummary = {
+                date: dateStr,
+                userId,
+                ...summary
+            };
+            
+            await setDoc(ref, payload, { merge: true });
+        } catch (error) {
+            console.error("Error saving daily summary:", error);
+            // Non-critical, so we don't necessarily need to throw
         }
     },
 

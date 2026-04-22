@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useTheme } from '@/constants/DesignSystem';
 import { useSession } from '@/context/ctx';
@@ -21,6 +22,7 @@ export default function NutritionScreen() {
     const router = useRouter();
 
     const [currentDate, setCurrentDate] = useState(new Date());
+    const [showDatePicker, setShowDatePicker] = useState(false);
     const [foodLogs, setFoodLogs] = useState<FoodLogEntry[]>([]);
     const [burnedCalories, setBurnedCalories] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
@@ -140,6 +142,27 @@ export default function NutritionScreen() {
             });
 
             setBurnedCalories(Math.round(burned));
+
+            // Calculate totals and save daily summary
+            const eaten = logs.reduce((sum, log) => sum + log.calories, 0);
+            const macros = logs.reduce((acc, log) => ({
+                protein: acc.protein + (log.protein || 0),
+                carbs: acc.carbs + (log.carbs || 0),
+                fat: acc.fat + (log.fat || 0),
+                fiber: acc.fiber + (log.fiber || 0),
+            }), { protein: 0, carbs: 0, fat: 0, fiber: 0 });
+
+            // Saving daily summary so statistics can be viewed later
+            await nutritionService.saveDailySummary(user.uid, currentDate, {
+                consumedCalories: eaten,
+                burnedCalories: Math.round(burned),
+                dailyGoal: calculatedGoal,
+                protein: macros.protein,
+                carbs: macros.carbs,
+                fat: macros.fat,
+                fiber: macros.fiber
+            });
+
         } catch (error) {
             console.error("Failed to load nutrition data:", error);
         } finally {
@@ -198,6 +221,37 @@ export default function NutritionScreen() {
         setModalVisible(true);
     };
 
+    const handlePrevDay = () => {
+        const newDate = new Date(currentDate);
+        newDate.setDate(newDate.getDate() - 1);
+        setCurrentDate(newDate);
+    };
+
+    const handleNextDay = () => {
+        const newDate = new Date(currentDate);
+        newDate.setDate(newDate.getDate() + 1);
+        // Prevent going into the future if you don't want to? We allow it for planning.
+        setCurrentDate(newDate);
+    };
+
+    const onDateChange = (event: any, selectedDate?: Date) => {
+        setShowDatePicker(Platform.OS === 'ios');
+        if (selectedDate) {
+            setCurrentDate(selectedDate);
+        }
+    };
+
+    const isToday = (date: Date) => {
+        const today = new Date();
+        return date.getDate() === today.getDate() &&
+               date.getMonth() === today.getMonth() &&
+               date.getFullYear() === today.getFullYear();
+    };
+
+    const formatDate = (date: Date) => {
+        return date.toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'short' });
+    };
+
     if (isLoading) {
         return (
             <SafeAreaView style={[styles.container, { backgroundColor: palette.background.default, justifyContent: 'center' }]}>
@@ -219,8 +273,30 @@ export default function NutritionScreen() {
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: palette.background.default }]}>
             <View style={[styles.header, { backgroundColor: palette.background.paper }]}>
-                <Text style={[styles.headerTitle, { color: palette.text.primary }]}>Journal</Text>
+                <TouchableOpacity onPress={handlePrevDay} style={styles.dateControl}>
+                    <FontAwesome name="chevron-left" size={16} color={palette.text.primary} />
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.dateSelector}>
+                    <Text style={[styles.headerTitle, { color: palette.text.primary, textTransform: 'capitalize' }]}>
+                        {isToday(currentDate) ? 'Idag' : formatDate(currentDate)}
+                    </Text>
+                    <FontAwesome name="calendar" size={14} color={palette.text.secondary} style={{ marginLeft: 8 }} />
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={handleNextDay} style={styles.dateControl}>
+                    <FontAwesome name="chevron-right" size={16} color={palette.text.primary} />
+                </TouchableOpacity>
             </View>
+
+            {showDatePicker && (
+                <DateTimePicker
+                    value={currentDate}
+                    mode="date"
+                    display="default"
+                    onChange={onDateChange}
+                />
+            )}
 
             <ScrollView contentContainerStyle={{ padding: spacing.m }}>
                 {missingProfileData && (
@@ -308,13 +384,22 @@ const styles = StyleSheet.create({
     },
     header: {
         padding: 16,
+        flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: '#ccc',
     },
     headerTitle: {
         fontSize: 18,
         fontWeight: 'bold',
+    },
+    dateControl: {
+        padding: 8,
+    },
+    dateSelector: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     warningBanner: {
         flexDirection: 'row',

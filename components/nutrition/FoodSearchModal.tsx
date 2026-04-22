@@ -4,7 +4,7 @@ import { useTheme } from '@/constants/DesignSystem';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as ImagePicker from 'expo-image-picker';
 import { FoodItem, MealType } from '@/types';
-import { parseFoodImage } from '@/services/aiService';
+import { parseFoodImage, estimateFoodNutrition } from '@/services/aiService';
 import { nutritionService } from '@/services/nutritionService';
 import { useSession } from '@/context/ctx';
 
@@ -91,6 +91,46 @@ export default function FoodSearchModal({ visible, mealType, onClose, onAddFood,
             }
         } catch (error) {
             console.error("AI parse failed", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleCreateMissingFood = async () => {
+        if (!searchQuery.trim() || !user || !mealType) return;
+        
+        setIsLoading(true);
+        try {
+            // 1. AI estimates nutrition
+            const aiData = await estimateFoodNutrition(searchQuery);
+            
+            if (aiData) {
+                // 2. Create FoodItem
+                const newFood: Omit<FoodItem, 'id'> = {
+                    name: searchQuery.trim(),
+                    calories: aiData.calories || 0,
+                    protein: aiData.protein || 0,
+                    carbs: aiData.carbs || 0,
+                    fat: aiData.fat || 0,
+                    fiber: aiData.fiber || 0,
+                    servingSize: aiData.servingSize || 1,
+                    servingUnit: aiData.servingUnit || 'portion',
+                    isPublic: true,
+                    createdBy: user.uid,
+                    categories: [mealType]
+                };
+                
+                // 3. Save to database
+                const newId = await nutritionService.createFoodItem(newFood);
+                
+                // 4. Log it immediately
+                onAddFood({ ...newFood, id: newId }, 1);
+            } else {
+                alert("Kunde inte uppskatta näringsvärden. Försök vara mer specifik.");
+            }
+        } catch (e) {
+            console.error("Kunde inte skapa matvara", e);
+            alert("Ett fel uppstod när matvaran skulle skapas.");
         } finally {
             setIsLoading(false);
         }
@@ -187,6 +227,15 @@ export default function FoodSearchModal({ visible, mealType, onClose, onAddFood,
                                     <Text style={[styles.emptyText, { color: palette.text.disabled }]}>
                                         {isSearching ? 'Inga träffar' : 'Inga förslag hittades'}
                                     </Text>
+                                    {isSearching && (
+                                        <TouchableOpacity 
+                                            style={[styles.createButton, { backgroundColor: palette.primary.main, borderRadius: borderRadius.l }]}
+                                            onPress={handleCreateMissingFood}
+                                        >
+                                            <FontAwesome name="magic" size={16} color="#fff" style={{ marginRight: 8 }} />
+                                            <Text style={styles.createButtonText}>Ai-skapa "{searchQuery}"</Text>
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
                             ) : (
                                 <FlatList
@@ -194,6 +243,17 @@ export default function FoodSearchModal({ visible, mealType, onClose, onAddFood,
                                     keyExtractor={(item, index) => item.id || index.toString()}
                                     renderItem={renderItem}
                                     keyboardShouldPersistTaps="handled"
+                                    ListFooterComponent={
+                                        isSearching ? (
+                                            <TouchableOpacity 
+                                                style={[styles.createButton, { backgroundColor: palette.primary.main, borderRadius: borderRadius.l, alignSelf: 'center' }]}
+                                                onPress={handleCreateMissingFood}
+                                            >
+                                                <FontAwesome name="magic" size={16} color="#fff" style={{ marginRight: 8 }} />
+                                                <Text style={styles.createButtonText}>Hittar du inte rätt? Ai-skapa "{searchQuery}"</Text>
+                                            </TouchableOpacity>
+                                        ) : null
+                                    }
                                 />
                             )}
                         </>
@@ -265,4 +325,6 @@ const styles = StyleSheet.create({
     photoText: { fontSize: 16, textAlign: 'center', marginBottom: 30 },
     photoButton: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 16 },
     photoButtonText: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginLeft: 12 },
+    createButton: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 12, marginTop: 24, marginBottom: 20 },
+    createButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
 });

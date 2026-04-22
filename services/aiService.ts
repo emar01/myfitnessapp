@@ -262,3 +262,66 @@ Om du är osäker, gör din bästa kvalificerade gissning.
         return null;
     }
 }
+
+export async function estimateFoodNutrition(foodName: string): Promise<any | null> {
+    if (!WEEKLY_PLAN_API_KEY || WEEKLY_PLAN_API_KEY.includes('YOUR_OPENAI_API_KEY')) {
+        console.error("API Key missing for estimateFoodNutrition");
+        return null;
+    }
+
+    try {
+        const prompt = `
+Du är en AI-assistent i en träningsapp som hanterar kost. Användaren vill lägga till en ny matvara: "${foodName}".
+Din uppgift är att uppskatta näringsinformation för detta. Om det är en hel rätt, ange per normal portion. Är det en råvara, välj rimlig enhet (t.ex. 100g, 1 st).
+
+Returnera ENDAST ett giltigt JSON-objekt med denna struktur, INGEN extatext eller markdown-block:
+{
+  "calories": 450,
+  "protein": 30,
+  "carbs": 40,
+  "fat": 15,
+  "fiber": 5,
+  "servingSize": 1,
+  "servingUnit": "portion"
+}
+Om du är osäker, gör din bästa kvalificerade gissning.
+`;
+
+        const payload = {
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+                temperature: 0.2,
+                maxOutputTokens: 1000,
+            }
+        };
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${WEEKLY_PLAN_API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            console.error("Gemini Estimate Error:", data.error);
+            return null;
+        }
+
+        const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!aiText) return null;
+
+        const jsonStr = aiText.replace(/```json/i, '').replace(/```/g, '').trim();
+
+        try {
+            return JSON.parse(jsonStr);
+        } catch (parseError) {
+            console.error("Failed to parse AI estimate response as JSON", aiText);
+            return null;
+        }
+
+    } catch (e) {
+        console.error("Network/API Error Estimating Food Nutrition:", e);
+        return null;
+    }
+}
