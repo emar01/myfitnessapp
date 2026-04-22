@@ -263,16 +263,22 @@ Om du är osäker, gör din bästa kvalificerade gissning.
     }
 }
 
-export async function estimateFoodNutrition(foodName: string): Promise<any | null> {
+export async function estimateFoodNutrition(foodName: string, mealType?: string): Promise<any | null> {
     if (!WEEKLY_PLAN_API_KEY || WEEKLY_PLAN_API_KEY.includes('YOUR_OPENAI_API_KEY')) {
         console.error("API Key missing for estimateFoodNutrition");
         return null;
     }
 
     try {
+        const mealContext = mealType ? ` Användaren äter detta som en del av sin "${mealType}".` : "";
         const prompt = `
-Du är en AI-assistent i en träningsapp som hanterar kost. Användaren vill lägga till en ny matvara: "${foodName}".
-Din uppgift är att uppskatta näringsinformation för detta. Om det är en hel rätt, ange per normal portion. Är det en råvara, välj rimlig enhet (t.ex. 100g, 1 st).
+Du är en AI-assistent i en träningsapp som hanterar kost. Användaren vill lägga till en ny matvara: "${foodName}".${mealContext}
+Din uppgift är att uppskatta näringsinformation för detta. 
+Regler för portion:
+1. Om det är en hel rätt (t.ex. "Lax med potatis"), ange per normal portion.
+2. Om det är en sås eller ett tillbehör (t.ex. "Béarnaise", "Majonnäs", "Ketchup"), ange ALLTID portionen i "msk" (matskedar) som enhet, och uppskatta näring för 1 msk. Detta gör det lättare för användaren att logga rätt mängd. 
+3. För andra tillbehör som inte är flytande, uppskatta en rimlig mängd (t.ex. 30g).
+4. Är det en råvara utan kontext, välj rimlig standardenhet (t.ex. 100g eller 1 st).
 
 Returnera ENDAST ett giltigt JSON-objekt med denna struktur, INGEN extatext eller markdown-block:
 {
@@ -282,7 +288,7 @@ Returnera ENDAST ett giltigt JSON-objekt med denna struktur, INGEN extatext elle
   "fat": 15,
   "fiber": 5,
   "servingSize": 1,
-  "servingUnit": "portion"
+  "servingUnit": "msk"
 }
 Om du är osäker, gör din bästa kvalificerade gissning.
 `;

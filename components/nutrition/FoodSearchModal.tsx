@@ -99,15 +99,16 @@ export default function FoodSearchModal({ visible, mealType, onClose, onAddFood,
         }
     };
 
-    const handleCreateMissingFood = async () => {
-        if (!searchQuery.trim() || !user || !mealType) return;
+    const handleCreateMissingFood = async (manualName?: string) => {
+        const nameToUse = manualName || searchQuery.trim();
+        if (!nameToUse || !user || !mealType) return;
         
         setIsLoading(true);
         try {
-            const aiData = await estimateFoodNutrition(searchQuery);
+            const aiData = await estimateFoodNutrition(nameToUse, mealType);
             
             const newFood: Partial<FoodItem> = {
-                name: searchQuery.trim(),
+                name: nameToUse,
                 calories: aiData?.calories || 0,
                 protein: aiData?.protein || 0,
                 carbs: aiData?.carbs || 0,
@@ -120,6 +121,7 @@ export default function FoodSearchModal({ visible, mealType, onClose, onAddFood,
             
             setEditingFood(newFood);
             setActiveTab('create');
+            if (manualName) setSearchQuery(''); // Clear if we did a manual trigger
 
             if (!aiData) {
                 showAlert("Manuell justering", "AI kunde inte säkert tolka matvaran, du får fylla i fälten manuellt nedan.");
@@ -231,53 +233,65 @@ export default function FoodSearchModal({ visible, mealType, onClose, onAddFood,
                 <View style={styles.content}>
                     {activeTab === 'create' ? (
                         <View style={{ flex: 1, paddingHorizontal: 4 }}>
-                            <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 16 }}>Skapa ny matvara</Text>
+                            <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 16, color: palette.text.primary }}>Skapa ny matvara</Text>
                             
-                            <Text style={styles.inputLabel}>Namn</Text>
-                            <TextInput 
-                                style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary }]} 
-                                value={editingFood?.name || ''} 
-                                onChangeText={t => setEditingFood(prev => prev ? { ...prev, name: t } : { name: t, calories: 0, servingSize: 100, servingUnit: 'g' })} 
-                            />
+                            <Text style={[styles.inputLabel, { color: palette.text.secondary }]}>Namn</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <TextInput 
+                                    style={[styles.createInput, { flex: 1, borderColor: palette.border.default, color: palette.text.primary }]} 
+                                    value={editingFood?.name || ''} 
+                                    onChangeText={t => setEditingFood(prev => prev ? { ...prev, name: t } : { name: t, calories: 0, servingSize: 100, servingUnit: 'g' })} 
+                                    placeholder="T.ex. Kycklingsallad"
+                                    placeholderTextColor={palette.text.disabled}
+                                />
+                                <TouchableOpacity 
+                                    onPress={() => handleCreateMissingFood(editingFood?.name)}
+                                    style={{ marginLeft: 10, backgroundColor: palette.primary.main, padding: 12, borderRadius: 8 }}
+                                    disabled={isLoading}
+                                >
+                                    <FontAwesome name="magic" size={20} color="#fff" />
+                                </TouchableOpacity>
+                            </View>
 
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                                 <View style={{ flex: 1, marginRight: 8 }}>
-                                    <Text style={styles.inputLabel}>Kalorier (kcal)</Text>
-                                    <TextInput style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary }]} keyboardType="numeric" value={editingFood?.calories?.toString()} onChangeText={t => setEditingFood(prev => prev ? { ...prev, calories: parseFloat(t) || 0 } : null)} />
+                                    <Text style={[styles.inputLabel, { color: palette.text.secondary }]}>Kalorier (kcal)</Text>
+                                    <TextInput style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary, backgroundColor: palette.background.paper }]} keyboardType="numeric" value={editingFood?.calories?.toString()} onChangeText={t => setEditingFood(prev => prev ? { ...prev, calories: parseFloat(t) || 0 } : null)} />
                                 </View>
                                 <View style={{ flex: 1, marginLeft: 8 }}>
-                                    <Text style={styles.inputLabel}>Protein (g)</Text>
-                                    <TextInput style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary }]} keyboardType="numeric" value={editingFood?.protein?.toString()} onChangeText={t => setEditingFood(prev => prev ? { ...prev, protein: parseFloat(t) || 0 } : null)} />
+                                    <Text style={[styles.inputLabel, { color: palette.text.secondary }]}>Protein (g)</Text>
+                                    <TextInput style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary, backgroundColor: palette.background.paper }]} keyboardType="numeric" value={editingFood?.protein?.toString()} onChangeText={t => setEditingFood(prev => prev ? { ...prev, protein: parseFloat(t) || 0 } : null)} />
                                 </View>
                             </View>
 
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                                 <View style={{ flex: 1, marginRight: 8 }}>
-                                    <Text style={styles.inputLabel}>Kolhydrater (g)</Text>
-                                    <TextInput style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary }]} keyboardType="numeric" value={editingFood?.carbs?.toString()} onChangeText={t => setEditingFood(prev => prev ? { ...prev, carbs: parseFloat(t) || 0 } : null)} />
+                                    <Text style={[styles.inputLabel, { color: palette.text.secondary }]}>Kolhydrater (g)</Text>
+                                    <TextInput style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary, backgroundColor: palette.background.paper }]} keyboardType="numeric" value={editingFood?.carbs?.toString()} onChangeText={t => setEditingFood(prev => prev ? { ...prev, carbs: parseFloat(t) || 0 } : null)} />
                                 </View>
                                 <View style={{ flex: 1, marginLeft: 8 }}>
-                                    <Text style={styles.inputLabel}>Fett (g)</Text>
-                                    <TextInput style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary }]} keyboardType="numeric" value={editingFood?.fat?.toString()} onChangeText={t => setEditingFood(prev => prev ? { ...prev, fat: parseFloat(t) || 0 } : null)} />
+                                    <Text style={[styles.inputLabel, { color: palette.text.secondary }]}>Fett (g)</Text>
+                                    <TextInput style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary, backgroundColor: palette.background.paper }]} keyboardType="numeric" value={editingFood?.fat?.toString()} onChangeText={t => setEditingFood(prev => prev ? { ...prev, fat: parseFloat(t) || 0 } : null)} />
                                 </View>
                             </View>
 
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                                 <View style={{ flex: 1, marginRight: 8 }}>
-                                    <Text style={styles.inputLabel}>Enhet (t.ex. g, portion)</Text>
-                                    <TextInput style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary }]} value={editingFood?.servingUnit || ''} onChangeText={t => setEditingFood(prev => prev ? { ...prev, servingUnit: t } : null)} />
+                                    <Text style={[styles.inputLabel, { color: palette.text.secondary }]}>Enhet (t.ex. g, portion)</Text>
+                                    <TextInput style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary, backgroundColor: palette.background.paper }]} value={editingFood?.servingUnit || ''} onChangeText={t => setEditingFood(prev => prev ? { ...prev, servingUnit: t } : null)} />
                                 </View>
                                 <View style={{ flex: 1, marginLeft: 8 }}>
-                                    <Text style={styles.inputLabel}>Storlek på enhet (t.ex. 100)</Text>
-                                    <TextInput style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary }]} keyboardType="numeric" value={editingFood?.servingSize?.toString()} onChangeText={t => setEditingFood(prev => prev ? { ...prev, servingSize: parseFloat(t) || 1 } : null)} />
+                                    <Text style={[styles.inputLabel, { color: palette.text.secondary }]}>Storlek på enhet (t.ex. 100)</Text>
+                                    <TextInput style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary, backgroundColor: palette.background.paper }]} keyboardType="numeric" value={editingFood?.servingSize?.toString()} onChangeText={t => setEditingFood(prev => prev ? { ...prev, servingSize: parseFloat(t) || 1 } : null)} />
                                 </View>
                             </View>
 
                             <TouchableOpacity 
-                                style={[styles.photoButton, { backgroundColor: palette.primary.main, borderRadius: borderRadius.l, marginTop: 24, justifyContent: 'center' }]} 
+                                style={[styles.createButton, { backgroundColor: palette.primary.main, borderRadius: borderRadius.l, marginTop: 24, justifyContent: 'center' }]} 
                                 onPress={saveManualFood}
+                                disabled={isLoading}
                             >
-                                {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.photoButtonText}>Spara till Alla</Text>}
+                                {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.createButtonText}>Spara matvara</Text>}
                             </TouchableOpacity>
 
                         </View>
@@ -415,6 +429,6 @@ const styles = StyleSheet.create({
     photoButtonText: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginLeft: 12 },
     createButton: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 12, marginTop: 24, marginBottom: 20 },
     createButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-    inputLabel: { fontSize: 13, fontWeight: '600', marginBottom: 4, marginTop: 12, color: '#555' },
-    createInput: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, backgroundColor: '#fff' },
+    inputLabel: { fontSize: 13, fontWeight: '600', marginBottom: 4, marginTop: 12 },
+    createInput: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16 },
 });

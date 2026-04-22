@@ -14,6 +14,7 @@ import {
     FlatList,
     Linking,
     Modal,
+    TextInput,
     RefreshControl,
     SafeAreaView,
     ScrollView,
@@ -36,11 +37,12 @@ export default function LibraryScreen() {
     const [workouts, setWorkouts] = useState<WorkoutTemplate[]>([]);
     const [programs, setPrograms] = useState<Program[]>([]);
     const [exercises, setExercises] = useState<Exercise[]>([]);
+    const [foods, setFoods] = useState<any[]>([]);
     const [completedActivities, setCompletedActivities] = useState<Workout[]>([]);
     const [activePrograms, setActivePrograms] = useState<Set<string>>(new Set());
 
     // View State
-    const [activeTab, setActiveTab] = useState<'workouts' | 'programs' | 'exercises' | 'aktiviteter'>('workouts');
+    const [activeTab, setActiveTab] = useState<'workouts' | 'programs' | 'exercises' | 'livsmedel' | 'aktiviteter'>('workouts');
     const [activeFilter, setActiveFilter] = useState<string | null>(null);
     const [subFilter, setSubFilter] = useState<string | null>(null);
 
@@ -49,6 +51,9 @@ export default function LibraryScreen() {
 
     // Creation Modal
     const [createModalVisible, setCreateModalVisible] = useState(false);
+    const [foodModalVisible, setFoodModalVisible] = useState(false);
+    const [editingFoodItem, setEditingFoodItem] = useState<any>(null);
+    const [isSavingFood, setIsSavingFood] = useState(false);
 
 
     useFocusEffect(
@@ -101,6 +106,10 @@ export default function LibraryScreen() {
             const eList = await fetchDual('exercises') as Exercise[];
             eList.sort((a, b) => a.name.localeCompare(b.name));
             setExercises(eList);
+
+            const fList = await fetchDual('foodItems');
+            fList.sort((a, b) => a.name.localeCompare(b.name));
+            setFoods(fList);
 
             if (user?.uid) {
                 const activeProgsRef = collection(db, 'users', user.uid, 'active_programs');
@@ -166,25 +175,41 @@ export default function LibraryScreen() {
 
 
     // Navigation Handlers
-    const handleCreate = (type: 'workout' | 'program' | 'exercise') => {
+    const handleCreate = (type: 'workout' | 'program' | 'exercise' | 'food') => {
         setCreateModalVisible(false);
         if (type === 'workout') {
-            router.push('/workout/edit-template'); // Assuming this exists or points correctly
+            router.push('/workout/edit-template');
         } else if (type === 'program') {
             router.push('/program/edit');
         } else if (type === 'exercise') {
             router.push('/exercise/edit');
+        } else if (type === 'food') {
+            setEditingFoodItem({ 
+                name: '', 
+                calories: 0, 
+                protein: 0, 
+                carbs: 0, 
+                fat: 0, 
+                fiber: 0, 
+                servingSize: 100, 
+                servingUnit: 'g',
+                isPublic: true 
+            });
+            setFoodModalVisible(true);
         }
     };
 
-    const handleEdit = (item: any, type: 'workout' | 'program' | 'exercise') => {
-        if (!item.id) return;
+    const handleEdit = (item: any, type: 'workout' | 'program' | 'exercise' | 'food') => {
+        if (!item.id && type !== 'food') return;
         if (type === 'workout') {
             router.push({ pathname: '/workout/edit-template', params: { id: item.id } });
         } else if (type === 'program') {
             router.push({ pathname: '/program/edit', params: { id: item.id } });
         } else if (type === 'exercise') {
             router.push({ pathname: '/exercise/edit', params: { id: item.id } });
+        } else if (type === 'food') {
+            setEditingFoodItem({ ...item });
+            setFoodModalVisible(true);
         }
     };
 
@@ -222,10 +247,16 @@ export default function LibraryScreen() {
                     <Text style={[styles.tabText, activeTab === 'exercises' && styles.tabTextActive]}>Övningar</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
+                    style={[styles.tab, activeTab === 'livsmedel' && styles.tabActive]}
+                    onPress={() => setActiveTab('livsmedel')}
+                >
+                    <Text style={[styles.tabText, activeTab === 'livsmedel' && styles.tabTextActive]}>Mat</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
                     style={[styles.tab, activeTab === 'aktiviteter' && styles.tabActive]}
                     onPress={() => setActiveTab('aktiviteter')}
                 >
-                    <Text style={[styles.tabText, activeTab === 'aktiviteter' && styles.tabTextActive]}>Aktiviteter</Text>
+                    <Text style={[styles.tabText, activeTab === 'aktiviteter' && styles.tabTextActive]}>Logg</Text>
                 </TouchableOpacity>
             </View>
 
@@ -431,6 +462,61 @@ export default function LibraryScreen() {
         );
     };
 
+    const deleteFoodItem = async (food: any) => {
+        const confirmed = await showConfirm(
+            'Ta bort livsmedel',
+            `Är du säker på att du vill ta bort "${food.name}"? Detta kan påverka loggar om det är det enda exemplaret.`,
+            { confirmText: 'Ta bort', cancelText: 'Avbryt', isDestructive: true }
+        );
+        if (confirmed) {
+            try {
+                const { deleteDoc, doc } = await import('firebase/firestore');
+                await deleteDoc(doc(db, 'foodItems', food.id));
+                setFoods(prev => prev.filter(f => f.id !== food.id));
+            } catch (e) {
+                console.error("Delete food failed", e);
+            }
+        }
+    };
+
+    const renderFoodItem = ({ item }: { item: any }) => {
+        const owned = isOwner(item);
+        return (
+            <TouchableOpacity
+                style={styles.itemCard}
+                onPress={() => handleEdit(item, 'food')}
+            >
+                <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Text style={styles.itemTitle}>{item.name}</Text>
+                            {renderPrivateBadge(item.isPublic)}
+                        </View>
+                        <View style={[styles.muscleBadge, { backgroundColor: palette.accent.main + '20' }]}>
+                            <Text style={[styles.muscleBadgeText, { color: palette.accent.main }]}>{item.calories} kcal</Text>
+                        </View>
+                    </View>
+                    <Text style={styles.itemSubtitle}>
+                        {item.servingSize} {item.servingUnit} • P: {item.protein}g • C: {item.carbs}g • F: {item.fat}g
+                    </Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginLeft: 16 }}>
+                    {owned && (
+                        <>
+                            <TouchableOpacity onPress={() => handleEdit(item, 'food')} hitSlop={10}>
+                                <Ionicons name="pencil-outline" size={20} color={palette.text.secondary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => deleteFoodItem(item)} hitSlop={10}>
+                                <Ionicons name="trash-outline" size={20} color={palette.status.error} />
+                            </TouchableOpacity>
+                        </>
+                    )}
+                    {!owned && <Ionicons name="chevron-forward" size={20} color={palette.text.disabled} />}
+                </View>
+            </TouchableOpacity>
+        );
+    };
+
     const handleDeleteActivity = async (workoutId: string) => {
         const confirmed = await showConfirm(
             'Ta bort aktivitet',
@@ -504,6 +590,7 @@ export default function LibraryScreen() {
     const getListData = () => {
         if (activeTab === 'workouts') return filteredWorkouts;
         if (activeTab === 'exercises') return filteredExercises;
+        if (activeTab === 'livsmedel') return foods;
         if (activeTab === 'aktiviteter') return completedActivities;
         return programs;
     };
@@ -512,6 +599,7 @@ export default function LibraryScreen() {
     const renderItem = ({ item }: { item: any }) => {
         if (activeTab === 'workouts') return renderWorkoutItem({ item });
         if (activeTab === 'exercises') return renderExerciseItem({ item });
+        if (activeTab === 'livsmedel') return renderFoodItem({ item });
         if (activeTab === 'aktiviteter') return renderActivityItem({ item });
         return renderProgramItem({ item });
     }
@@ -522,12 +610,139 @@ export default function LibraryScreen() {
             return `Inga träningspass hittades.\n(Debug: Fetched ${workouts.length}, Filter: ${activeFilter}, Cats: ${categories})`;
         }
         if (activeTab === 'exercises') return 'Inga övningar hittades.';
+        if (activeTab === 'livsmedel') return 'Inga livsmedel hittades.';
         if (activeTab === 'aktiviteter') return 'Inga genomförda aktiviteter hittades.';
         return 'Inga program hittades.';
     }
 
+    const saveFood = async () => {
+        if (!user || !editingFoodItem?.name) return;
+        setIsSavingFood(true);
+        try {
+            const { collection, addDoc, doc, updateDoc } = await import('firebase/firestore');
+            const payload = {
+                ...editingFoodItem,
+                createdBy: editingFoodItem.createdBy || user.uid,
+                isPublic: editingFoodItem.isPublic !== undefined ? editingFoodItem.isPublic : true,
+                updatedAt: new Date()
+            };
+
+            if (editingFoodItem.id) {
+                const ref = doc(db, 'foodItems', editingFoodItem.id);
+                await updateDoc(ref, payload);
+            } else {
+                await addDoc(collection(db, 'foodItems'), payload);
+            }
+            setFoodModalVisible(false);
+            fetchData();
+        } catch (e) {
+            console.error("Save food failed", e);
+        } finally {
+            setIsSavingFood(false);
+        }
+    };
+
     return (
         <SafeAreaView style={styles.container}>
+            {/* Food Editor Modal */}
+            <Modal visible={foodModalVisible} animationType="slide" presentationStyle="pageSheet">
+                <ScrollView style={{ flex: 1, backgroundColor: palette.background.default }}>
+                    <View style={{ padding: 20 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                            <Text style={{ fontSize: 20, fontWeight: 'bold', color: palette.text.primary }}>
+                                {editingFoodItem?.id ? 'Redigera matvara' : 'Ny matvara'}
+                            </Text>
+                            <TouchableOpacity onPress={() => setFoodModalVisible(false)}>
+                                <Ionicons name="close" size={28} color={palette.text.primary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={[styles.inputLabel, { color: palette.text.secondary }]}>Namn</Text>
+                        <TextInput 
+                            style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary, backgroundColor: palette.background.paper }]} 
+                            value={editingFoodItem?.name} 
+                            onChangeText={t => setEditingFoodItem((p: any) => ({ ...p, name: t }))}
+                        />
+
+                        <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.inputLabel, { color: palette.text.secondary }]}>Kalorier (kcal)</Text>
+                                <TextInput 
+                                    style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary, backgroundColor: palette.background.paper }]} 
+                                    keyboardType="numeric"
+                                    value={editingFoodItem?.calories?.toString()} 
+                                    onChangeText={t => setEditingFoodItem((p: any) => ({ ...p, calories: parseFloat(t) || 0 }))}
+                                />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.inputLabel, { color: palette.text.secondary }]}>Protein (g)</Text>
+                                <TextInput 
+                                    style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary, backgroundColor: palette.background.paper }]} 
+                                    keyboardType="numeric"
+                                    value={editingFoodItem?.protein?.toString()} 
+                                    onChangeText={t => setEditingFoodItem((p: any) => ({ ...p, protein: parseFloat(t) || 0 }))}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.inputLabel, { color: palette.text.secondary }]}>Kolhydrater (g)</Text>
+                                <TextInput 
+                                    style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary, backgroundColor: palette.background.paper }]} 
+                                    keyboardType="numeric"
+                                    value={editingFoodItem?.carbs?.toString()} 
+                                    onChangeText={t => setEditingFoodItem((p: any) => ({ ...p, carbs: parseFloat(t) || 0 }))}
+                                />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.inputLabel, { color: palette.text.secondary }]}>Fett (g)</Text>
+                                <TextInput 
+                                    style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary, backgroundColor: palette.background.paper }]} 
+                                    keyboardType="numeric"
+                                    value={editingFoodItem?.fat?.toString()} 
+                                    onChangeText={t => setEditingFoodItem((p: any) => ({ ...p, fat: parseFloat(t) || 0 }))}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.inputLabel, { color: palette.text.secondary }]}>Enhet</Text>
+                                <TextInput 
+                                    style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary, backgroundColor: palette.background.paper }]} 
+                                    value={editingFoodItem?.servingUnit} 
+                                    onChangeText={t => setEditingFoodItem((p: any) => ({ ...p, servingUnit: t }))}
+                                />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.inputLabel, { color: palette.text.secondary }]}>Storlek</Text>
+                                <TextInput 
+                                    style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary, backgroundColor: palette.background.paper }]} 
+                                    keyboardType="numeric"
+                                    value={editingFoodItem?.servingSize?.toString()} 
+                                    onChangeText={t => setEditingFoodItem((p: any) => ({ ...p, servingSize: parseFloat(t) || 100 }))}
+                                />
+                            </View>
+                        </View>
+
+                        <TouchableOpacity 
+                            style={{ 
+                                backgroundColor: palette.primary.main, 
+                                padding: 16, 
+                                borderRadius: borderRadius.l, 
+                                marginTop: 30,
+                                alignItems: 'center'
+                            }}
+                            onPress={saveFood}
+                            disabled={isSavingFood}
+                        >
+                            {isSavingFood ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>Spara</Text>}
+                        </TouchableOpacity>
+                    </View>
+                </ScrollView>
+            </Modal>
+
             {/* Custom Modal for Selection */}
             <Modal
                 transparent={true}
@@ -556,6 +771,11 @@ export default function LibraryScreen() {
                         <TouchableOpacity style={styles.actionButton} onPress={() => handleCreate('exercise')}>
                             <Ionicons name="body-outline" size={24} color={palette.text.primary} style={{ marginRight: 12 }} />
                             <Text style={styles.actionButtonText}>Övning</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.actionButton} onPress={() => handleCreate('food')}>
+                            <Ionicons name="nutrition-outline" size={24} color={palette.text.primary} style={{ marginRight: 12 }} />
+                            <Text style={styles.actionButtonText}>Matvara</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={[styles.actionButton, styles.cancelButton]} onPress={() => setCreateModalVisible(false)}>
