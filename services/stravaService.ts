@@ -118,6 +118,8 @@ export interface StravaActivity {
     total_elevation_gain: number;
     type: string;
     start_date: string;
+    calories?: number;
+    kilojoules?: number;
     map: {
         summary_polyline: string;
     };

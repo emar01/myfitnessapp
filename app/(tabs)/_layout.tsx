@@ -46,6 +46,7 @@ export default function TabLayout() {
             <Tabs.Screen name="settings" options={{ href: null }} />
             <Tabs.Screen name="calendar" options={{ href: null }} />
             <Tabs.Screen name="coach" options={{ href: null }} />
+            <Tabs.Screen name="nutrition" options={{ href: null }} />
             <Tabs.Screen name="two" options={{ href: null }} />
           </Tabs>
         </View>
@@ -110,6 +111,13 @@ export default function TabLayout() {
         options={{
           title: 'Coach',
           tabBarIcon: ({ color }) => <FontAwesome name="magic" size={22} color={color} style={{ marginBottom: -3 }} />,
+        }}
+      />
+      <Tabs.Screen
+        name="nutrition"
+        options={{
+          title: 'Kost',
+          tabBarIcon: ({ color }) => <FontAwesome name="apple" size={22} color={color} style={{ marginBottom: -3 }} />,
         }}
       />
       <Tabs.Screen

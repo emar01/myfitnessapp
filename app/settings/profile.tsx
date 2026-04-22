@@ -6,7 +6,7 @@ import { db } from '@/lib/firebaseConfig';
 import { UserProfile } from '@/types';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { collection, deleteDoc, doc, getDoc, onSnapshot, orderBy, query, updateDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, onSnapshot, orderBy, query, updateDoc, setDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -24,6 +24,8 @@ export default function ProfileScreen() {
     const { themePreference, setThemePreference } = useThemeContext();
     const { showAlert, showConfirm } = useAlert();
     const [profile, setProfile] = useState<UserProfile | null>(null);
+    const [localStats, setLocalStats] = useState({ age: '', height: '', weight: '', calorieGoal: '', gender: '' });
+    const [isEditingProfile, setIsEditingProfile] = useState(false);
     const [memories, setMemories] = useState<Memory[]>([]);
     const [isUpdating, setIsUpdating] = useState(false);
     const [stravaConnected, setStravaConnected] = useState(false);
@@ -86,6 +88,18 @@ export default function ProfileScreen() {
         return () => { unsubscribe(); unsubMem(); };
     }, [user]);
 
+    useEffect(() => {
+        if (profile && !isEditingProfile) {
+            setLocalStats({
+                age: profile.age ? profile.age.toString() : '',
+                height: profile.height ? profile.height.toString() : '',
+                weight: profile.weight ? profile.weight.toString() : '',
+                calorieGoal: profile.dailyCalorieGoal ? profile.dailyCalorieGoal.toString() : '',
+                gender: profile.gender || ''
+            });
+        }
+    }, [profile?.age, profile?.height, profile?.weight, profile?.dailyCalorieGoal, profile?.gender, isEditingProfile]);
+
     if (!user) return null;
 
     const deleteMemory = async (id: string) => {
@@ -101,9 +115,9 @@ export default function ProfileScreen() {
         setIsUpdating(true);
         try {
             const userRef = doc(db, 'users', user.uid);
-            await updateDoc(userRef, {
+            await setDoc(userRef, {
                 aiEnabled: value
-            });
+            }, { merge: true });
         } catch (error) {
             console.error("Failed to update AI setting", error);
             alert("Kunde inte ändra inställningen just nu.");
@@ -161,51 +175,123 @@ export default function ProfileScreen() {
                 </View>
 
                 {/* Personal Info Section */}
-                <Text style={styles.sectionTitle}>Mina Personuppgifter</Text>
-                <View style={styles.card}>
+                <View style={[styles.row, { borderBottomWidth: 0, paddingVertical: 0, marginBottom: spacing.s, paddingHorizontal: spacing.s }]}>
+                    <Text style={[styles.sectionTitle, { marginBottom: 0, marginLeft: 0 }]}>Mina Personuppgifter</Text>
+                    {!isEditingProfile ? (
+                        <TouchableOpacity onPress={() => setIsEditingProfile(true)}>
+                            <Text style={{ color: palette.primary.main, fontWeight: 'bold', fontSize: 14 }}>Redigera</Text>
+                        </TouchableOpacity>
+                    ) : (
+                        <View style={{ flexDirection: 'row', gap: 16 }}>
+                            <TouchableOpacity onPress={() => {
+                                setLocalStats({
+                                    age: profile?.age ? profile.age.toString() : '',
+                                    height: profile?.height ? profile.height.toString() : '',
+                                    weight: profile?.weight ? profile.weight.toString() : '',
+                                    calorieGoal: profile?.dailyCalorieGoal ? profile.dailyCalorieGoal.toString() : '',
+                                    gender: profile?.gender || ''
+                                });
+                                setIsEditingProfile(false);
+                            }}>
+                                <Text style={{ color: palette.text.secondary, fontWeight: 'bold', fontSize: 14 }}>Avbryt</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => {
+                                setDoc(doc(db, 'users', user.uid), {
+                                    age: localStats.age ? Number(localStats.age) : null,
+                                    height: localStats.height ? Number(localStats.height) : null,
+                                    weight: localStats.weight ? Number(localStats.weight) : null,
+                                    dailyCalorieGoal: localStats.calorieGoal ? Number(localStats.calorieGoal) : null,
+                                    gender: localStats.gender || null
+                                }, { merge: true });
+                                setIsEditingProfile(false);
+                            }}>
+                                <Text style={{ color: palette.status.success, fontWeight: 'bold', fontSize: 14 }}>Spara</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+                </View>
+
+                <View style={[styles.card, { flexDirection: 'column', alignItems: 'stretch' }]}>
                     <View style={[styles.row, { borderBottomWidth: 0 }]}>
                         <View style={styles.statItem}>
                             <Text style={styles.statLabel}>Ålder</Text>
-                            <TextInput
-                                style={styles.statInput}
-                                value={profile?.age?.toString() || ''}
-                                placeholder="-"
-                                keyboardType="numeric"
-                                onChangeText={(t) => updateDoc(doc(db, 'users', user.uid), { age: Number(t) })}
-                            />
+                            {isEditingProfile ? (
+                                <TextInput
+                                    style={styles.statInput}
+                                    value={localStats.age}
+                                    placeholder="-"
+                                    keyboardType="numeric"
+                                    onChangeText={(t) => setLocalStats(prev => ({ ...prev, age: t }))}
+                                />
+                            ) : (
+                                <Text style={styles.statValue}>{profile?.age || '-'}</Text>
+                            )}
                         </View>
                         <View style={styles.statItem}>
                             <Text style={styles.statLabel}>Längd (cm)</Text>
-                            <TextInput
-                                style={styles.statInput}
-                                value={profile?.height?.toString() || ''}
-                                placeholder="-"
-                                keyboardType="numeric"
-                                onChangeText={(t) => updateDoc(doc(db, 'users', user.uid), { height: Number(t) })}
-                            />
+                            {isEditingProfile ? (
+                                <TextInput
+                                    style={styles.statInput}
+                                    value={localStats.height}
+                                    placeholder="-"
+                                    keyboardType="numeric"
+                                    onChangeText={(t) => setLocalStats(prev => ({ ...prev, height: t }))}
+                                />
+                            ) : (
+                                <Text style={styles.statValue}>{profile?.height || '-'}</Text>
+                            )}
                         </View>
                         <View style={styles.statItem}>
                             <Text style={styles.statLabel}>Vikt (kg)</Text>
-                            <TextInput
-                                style={styles.statInput}
-                                value={profile?.weight?.toString() || ''}
-                                placeholder="-"
-                                keyboardType="numeric"
-                                onChangeText={(t) => updateDoc(doc(db, 'users', user.uid), { weight: Number(t) })}
-                            />
+                            {isEditingProfile ? (
+                                <TextInput
+                                    style={styles.statInput}
+                                    value={localStats.weight}
+                                    placeholder="-"
+                                    keyboardType="numeric"
+                                    onChangeText={(t) => setLocalStats(prev => ({ ...prev, weight: t }))}
+                                />
+                            ) : (
+                                <Text style={styles.statValue}>{profile?.weight || '-'}</Text>
+                            )}
                         </View>
                     </View>
                     <View style={[styles.row, { borderBottomWidth: 0, marginTop: 8 }]}>
                         <Text style={{ marginRight: 8, color: palette.text.secondary }}>Kön:</Text>
-                        {['Man', 'Kvinna', 'Annat'].map((gender) => (
-                            <TouchableOpacity
-                                key={gender}
-                                style={[styles.genderButton, profile?.gender === gender && styles.genderButtonActive]}
-                                onPress={() => updateDoc(doc(db, 'users', user.uid), { gender: gender })}
-                            >
-                                <Text style={[styles.genderText, profile?.gender === gender && styles.genderTextActive]}>{gender}</Text>
-                            </TouchableOpacity>
-                        ))}
+                        {['Man', 'Kvinna', 'Annat'].map((gender) => {
+                            const isActive = isEditingProfile ? localStats.gender === gender : profile?.gender === gender;
+                            return (
+                                <TouchableOpacity
+                                    key={gender}
+                                    style={[
+                                        styles.genderButton, 
+                                        isActive && styles.genderButtonActive,
+                                        !isEditingProfile && !isActive && { opacity: 0.3 }
+                                    ]}
+                                    onPress={() => isEditingProfile && setLocalStats(prev => ({ ...prev, gender }))}
+                                    disabled={!isEditingProfile}
+                                >
+                                    <Text style={[styles.genderText, isActive && styles.genderTextActive]}>{gender}</Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+                    <View style={[styles.row, { borderBottomWidth: 0, marginTop: 8 }]}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.label}>Manuellt Kalorimål</Text>
+                            <Text style={styles.description}>Lämna tomt för automatisk beräkning (via längd/vikt)</Text>
+                        </View>
+                        {isEditingProfile ? (
+                            <TextInput
+                                style={[styles.statInput, { minWidth: 80, textAlign: 'right' }]}
+                                value={localStats.calorieGoal}
+                                placeholder="Auto"
+                                keyboardType="numeric"
+                                onChangeText={(t) => setLocalStats(prev => ({ ...prev, calorieGoal: t }))}
+                            />
+                        ) : (
+                            <Text style={styles.statValue}>{profile?.dailyCalorieGoal || 'Auto'}</Text>
+                        )}
                     </View>
                 </View>
 
@@ -490,9 +576,15 @@ const getStyles = (palette: any, spacing: any, borderRadius: any, typography: an
         fontWeight: 'bold',
         color: palette.text.primary,
         borderBottomWidth: 1,
-        borderBottomColor: palette.border.default,
+        borderBottomColor: palette.primary.main,
         minWidth: 40,
         textAlign: 'center',
+    },
+    statValue: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: palette.text.primary,
+        paddingVertical: 1,
     },
     genderButton: {
         paddingHorizontal: 12,

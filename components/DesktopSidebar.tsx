@@ -44,6 +44,7 @@ export default function DesktopSidebar() {
                 <NavItem label="Bibliotek" icon="book" route="/library" />
                 <NavItem label="Kalender" icon="calendar" route="/calendar" />
                 <NavItem label="Coach" icon="flash" route="/coach" />
+                <NavItem label="Kost" icon="nutrition" route="/nutrition" />
                 <NavItem label="Inställningar" icon="settings" route="/settings" />
             </View>
         </View>

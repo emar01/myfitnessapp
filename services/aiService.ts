@@ -181,3 +181,84 @@ Regler:
         return null;
     }
 }
+
+export async function parseFoodImage(base64Image: string): Promise<any | null> {
+    if (!WEEKLY_PLAN_API_KEY || WEEKLY_PLAN_API_KEY.includes('YOUR_OPENAI_API_KEY')) {
+        console.error("API Key missing");
+        return null;
+    }
+
+    try {
+        const prompt = `
+Du är en AI-assistent i en träningsapp som hanterar kost. Din uppgift är att tolka en bild av en måltid eller matvara och konvertera det till JSON-format med näringsinformation.
+
+Regler:
+1. Identifiera vad maten på bilden är.
+2. Uppskatta mängden mat (i gram eller portioner) samt uppskatta kalorier, protein, kolhydrater, fett och fibrer för hela mängden som syns.
+3. Returnera ENDAST ett giltigt JSON-objekt med denna struktur, INGEN extatext eller markdown-block:
+{
+  "foodName": "Namn på maträtten/livsmedlet",
+  "calories": 450,
+  "protein": 30,
+  "carbs": 40,
+  "fat": 15,
+  "fiber": 5,
+  "amountConsumed": 1,
+  "servingUnit": "portion"
+}
+Om du är osäker, gör din bästa kvalificerade gissning.
+`;
+
+        const payload = {
+            contents: [
+                {
+                    parts: [
+                        { text: prompt },
+                        {
+                            inline_data: {
+                                mime_type: "image/jpeg",
+                                data: base64Image
+                            }
+                        }
+                    ]
+                }
+            ],
+            generationConfig: {
+                temperature: 0.2, // Låg temp för mer exakt JSON men tillräckligt hög för gissningar
+                maxOutputTokens: 2000,
+            }
+        };
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${WEEKLY_PLAN_API_KEY}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            console.error("Gemini Food Image Error:", data.error);
+            return null;
+        }
+
+        const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!aiText) return null;
+
+        // Clean up potential markdown formatting block
+        const jsonStr = aiText.replace(/```json/i, '').replace(/```/g, '').trim();
+
+        try {
+            return JSON.parse(jsonStr);
+        } catch (parseError) {
+            console.error("Failed to parse AI food response as JSON", aiText);
+            return null;
+        }
+
+    } catch (e) {
+        console.error("Network/API Error Parsing Food Image:", e);
+        return null;
+    }
+}

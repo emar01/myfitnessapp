@@ -64,6 +64,7 @@ export interface UserProfile {
     aiEnabled?: boolean;
     aiTotalCost?: number; // Accumulated cost in USD
     role?: 'user' | 'admin';
+    dailyCalorieGoal?: number; // Target calories per day
 }
 
 export interface PersonalRecord {
@@ -107,4 +108,41 @@ export interface WorkoutTemplate {
     duration?: number; // minutes
     isPublic?: boolean;
     createdBy?: string;
+}
+
+// --- NUTRITION TYPES ---
+
+export interface FoodItem {
+    id?: string;
+    name: string;
+    brand?: string;
+    calories: number;
+    protein?: number;
+    carbs?: number;
+    fat?: number;
+    fiber?: number;
+    servingSize: number;
+    servingUnit: string;
+    isPublic?: boolean;
+    createdBy?: string;
+    categories?: MealType[]; // Which meal types this item is suitable for
+}
+
+export type MealType = 'Frukost' | 'Lunch' | 'Middag' | 'Mellanmål';
+
+export interface FoodLogEntry {
+    id?: string;
+    userId: string;
+    date: Date | any; // The day this was logged (or Firestore timestamp)
+    mealType: MealType;
+    foodItemId?: string; 
+    foodName: string; 
+    calories: number; // Calculated for the consumed amount
+    protein?: number;
+    carbs?: number;
+    fat?: number;
+    fiber?: number;
+    amountConsumed: number; // Mängd äten (baserat på enhet)
+    servingUnit: string; 
+    imageUrl?: string; 
 }
