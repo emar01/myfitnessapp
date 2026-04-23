@@ -42,7 +42,10 @@ const foodItems = [
     { name: "Kaffe (Svart)", calories: 2, protein: 0.1, carbs: 0, fat: 0, servingSize: 100, servingUnit: "ml", isPublic: true },
     { name: "Keso (Grynig färskost 4%)", calories: 93, protein: 12, carbs: 2, fat: 4, servingSize: 100, servingUnit: "g", isPublic: true },
     { name: "Smör", calories: 717, protein: 0.9, carbs: 0.1, fat: 81, servingSize: 100, servingUnit: "g", isPublic: true },
-    { name: "Olivolja", calories: 884, protein: 0, carbs: 0, fat: 100, servingSize: 100, servingUnit: "ml", isPublic: true }
+    { name: "Olivolja", calories: 884, protein: 0, carbs: 0, fat: 100, servingSize: 100, servingUnit: "ml", isPublic: true },
+    { name: "Pannkaka", calories: 95, protein: 3, carbs: 12, fat: 4, servingSize: 1, servingUnit: "st", isPublic: true },
+    { name: "Jordnötssmör", calories: 94, protein: 4, carbs: 3.2, fat: 8, servingSize: 1, servingUnit: "msk", isPublic: true },
+    { name: "Sylt", calories: 40, protein: 0.1, carbs: 10, fat: 0, servingSize: 1, servingUnit: "msk", isPublic: true }
 ];
 
 async function seed() {

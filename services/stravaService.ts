@@ -142,6 +142,22 @@ export const getStravaActivities = async (userId: string, page = 1, perPage = 30
     return await response.json();
 };
 
+export const getStravaActivityDetail = async (userId: string, activityId: string): Promise<StravaActivity> => {
+    const token = await getValidStravaToken(userId);
+
+    const response = await fetch(`https://www.strava.com/api/v3/activities/${activityId}`, {
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error("Failed to fetch Strava activity detail");
+    }
+
+    return await response.json();
+};
+
 export const mapStravaType = (stravaType: string): { category: WorkoutCategory, subcategory?: RunningSubcategory | StrengthSubcategory } => {
     const type = stravaType.toLowerCase();
 

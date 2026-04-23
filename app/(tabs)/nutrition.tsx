@@ -12,7 +12,7 @@ import { FoodLogEntry, FoodItem, MealType } from '@/types';
 import { nutritionService } from '@/services/nutritionService';
 import { formatDateKey } from '@/utils/dateUtils';
 import { workoutService } from '@/services/workoutService';
-import { getStravaActivities } from '@/services/stravaService';
+import { getStravaActivities, getStravaActivityDetail } from '@/services/stravaService';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebaseConfig';
@@ -114,40 +114,53 @@ export default function NutritionScreen() {
             const stravaIdsUsed = new Set<string>();
 
             // 1. Add calories from Strava
-            todayStrava.forEach(a => {
+            for (const a of todayStrava) {
                 stravaIdsUsed.add(a.id.toString());
                 let aCalories = 0;
-                const movingMinutes = a.moving_time / 60;
+                let detailedActivity = a;
+
+                // Calories are often missing in SummaryActivity, try fetching detail if missing
+                if (!a.calories || a.calories <= 1) {
+                    try {
+                        detailedActivity = await getStravaActivityDetail(user.uid, a.id.toString());
+                    } catch (e) {
+                        console.warn("Failed to fetch detailed Strava activity", e);
+                    }
+                }
+
+                const movingMinutes = detailedActivity.moving_time / 60;
                 
-                if (a.calories && a.calories > 1) {
+                if (detailedActivity.calories && detailedActivity.calories > 1) {
                     // Use Strava's calories if explicitly provided and > 1
-                    aCalories = a.calories;
+                    aCalories = detailedActivity.calories;
                 } else {
-                    // Calorie data missing or 0, estimate based on time/type or kJ
-                    let multiplier = 8; // Default
-                    const type = a.type.toLowerCase();
-                    if (type.includes('run')) multiplier = 12;
-                    if (type.includes('ride') || type.includes('cycle')) multiplier = 14; 
-                    if (type.includes('walk')) multiplier = 4;
+                    // Calorie data still missing, estimate based on time/type or kJ
+                    let multiplier = 6; // Default
+                    const type = detailedActivity.type.toLowerCase();
+                    if (type.includes('run')) multiplier = 11; // Slightly higher for runs
+                    if (type.includes('ride') || type.includes('cycle')) multiplier = 8; 
+                    if (type.includes('walk')) multiplier = 3.5;
                     
                     const estimatedFromTime = movingMinutes * multiplier;
-                    const kJ = a.kilojoules || 0;
+                    const kJ = detailedActivity.kilojoules || 0;
                     
-                    // We take the MAX of Work(kJ) and time-based estimation
-                    // In cycling, 1 kJ is approx 1 kcal. 
-                    // If Strava says 771 kJ for 2 hours, it's very low, so 128min * 14kcal/min = 1792 will win.
-                    aCalories = Math.max(kJ, estimatedFromTime);
+                    // We trust kJ for cycling if available, as it's very close to kcal (1:1 approx)
+                    if (kJ > 0 && (type.includes('ride') || type.includes('cycle'))) {
+                        aCalories = kJ;
+                    } else {
+                        aCalories = estimatedFromTime;
+                    }
                 }
                 
                 burned += aCalories;
                 activitiesList.push({
-                    id: a.id.toString(),
-                    name: a.name,
+                    id: detailedActivity.id.toString(),
+                    name: detailedActivity.name,
                     calories: Math.round(aCalories),
                     type: 'strava',
-                    debug: `Tid: ${Math.round(movingMinutes)}m, kJ: ${Math.round(a.kilojoules || 0)}, c: ${Math.round(a.calories || 0)}, type: ${a.type}`
+                    debug: `Tid: ${Math.round(movingMinutes)}m, kJ: ${Math.round(detailedActivity.kilojoules || 0)}, c: ${Math.round(detailedActivity.calories || 0)}, type: ${detailedActivity.type}`
                 });
-            });
+            }
 
             // 2. Add calories from local workouts that are NOT from Strava
             todayWorkouts.forEach(w => {
@@ -157,9 +170,9 @@ export default function NutritionScreen() {
                 }
                 
                 // Manual workout fallback multipliers
-                let multiplier = 10;
-                if (w.category === 'styrketräning') multiplier = 6; 
-                if (w.category === 'rörlighet') multiplier = 4;
+                let multiplier = 8; // Default (was 10)
+                if (w.category === 'styrketräning') multiplier = 5; // (was 6)
+                if (w.category === 'rörlighet') multiplier = 3; // (was 4)
 
                 let wCalories = 0;
                 if (w.duration) {
