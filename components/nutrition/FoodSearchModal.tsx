@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Modal, View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, ActivityIndicator, Image } from 'react-native';
+import { Modal, View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, ActivityIndicator, Image, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
 import { useTheme } from '@/constants/DesignSystem';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as ImagePicker from 'expo-image-picker';
@@ -28,7 +28,20 @@ export default function FoodSearchModal({ visible, mealType, onClose, onAddFood,
     const [suggestions, setSuggestions] = useState<FoodItem[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isSuggestionsLoading, setIsSuggestionsLoading] = useState(false);
+    const [inputValues, setInputValues] = useState({
+        calories: '',
+        protein: '',
+        carbs: '',
+        fat: '',
+        servingSize: '',
+    });
+    const [aiAlternatives, setAiAlternatives] = useState<any[]>([]);
+    const [aiStatusMessage, setAiStatusMessage] = useState<string | null>(null);
     const isSearching = searchQuery.trim().length > 0;
+
+    useEffect(() => {
+        console.log("FoodSearchModal isLoading:", isLoading);
+    }, [isLoading]);
 
     // Load category suggestions when modal opens
     useEffect(() => {
@@ -41,6 +54,9 @@ export default function FoodSearchModal({ visible, mealType, onClose, onAddFood,
         if (!visible) {
             setSearchQuery('');
             setSearchResults([]);
+            setAiAlternatives([]);
+            setAiStatusMessage(null);
+            setEditingFood(null);
         }
     }, [visible, mealType, user]);
 
@@ -77,6 +93,13 @@ export default function FoodSearchModal({ visible, mealType, onClose, onAddFood,
         setIsLoading(true);
         try {
             const aiData = await parseFoodImage(base64Image);
+
+            if (aiData?.error === 'RATE_LIMIT') {
+                showAlert("Belastning", aiData.message);
+                setIsLoading(false);
+                return;
+            }
+
             if (aiData && aiData.foodName) {
                 const newFood: FoodItem = {
                     name: aiData.foodName,
@@ -104,29 +127,79 @@ export default function FoodSearchModal({ visible, mealType, onClose, onAddFood,
         if (!nameToUse || !user || !mealType) return;
         
         setIsLoading(true);
+        Keyboard.dismiss();
         try {
-            const aiData = await estimateFoodNutrition(nameToUse, mealType);
-            
-            const newFood: Partial<FoodItem> = {
+            // Pre-initialize with what we have
+            setEditingFood(prev => ({
+                ...prev,
                 name: nameToUse,
-                calories: aiData?.calories || 0,
-                protein: aiData?.protein || 0,
-                carbs: aiData?.carbs || 0,
-                fat: aiData?.fat || 0,
-                fiber: aiData?.fiber || 0,
-                servingSize: aiData?.servingSize || 100,
-                servingUnit: aiData?.servingUnit || 'g',
-                categories: [mealType]
-            };
-            
-            setEditingFood(newFood);
-            setActiveTab('create');
-            if (manualName) setSearchQuery(''); // Clear if we did a manual trigger
+                calories: prev?.calories || 0,
+                protein: prev?.protein || 0,
+                carbs: prev?.carbs || 0,
+                fat: prev?.fat || 0,
+                fiber: prev?.fiber || 0,
+                servingSize: prev?.servingSize || 100,
+                servingUnit: prev?.servingUnit || 'g'
+            }));
 
-            if (!aiData) {
-                showAlert("Manuell justering", "AI kunde inte säkert tolka matvaran, du får fylla i fälten manuellt nedan.");
+            setInputValues(prev => ({
+                calories: prev.calories || '0',
+                protein: prev.protein || '0',
+                carbs: prev.carbs || '0',
+                fat: prev.fat || '0',
+                servingSize: prev.servingSize || '100',
+            }));
+            
+            const aiData = await estimateFoodNutrition(nameToUse, mealType);
+
+            if (aiData?.error === 'RATE_LIMIT') {
+                showAlert("Belastning", aiData.message);
+                setIsLoading(false);
+                return;
+            }
+
+            const alternatives = aiData?.alternatives || [];
+            setAiAlternatives(alternatives);
+            setAiStatusMessage(aiData?.message || null);
+
+            if (alternatives.length > 0) {
+                const first = alternatives[0];
+                const newFood: Partial<FoodItem> = {
+                    name: first.name || nameToUse,
+                    calories: first.calories || 0,
+                    protein: first.protein || 0,
+                    carbs: first.carbs || 0,
+                    fat: first.fat || 0,
+                    fiber: first.fiber || 0,
+                    servingSize: first.servingSize || 100,
+                    servingUnit: first.servingUnit || 'g',
+                    categories: [mealType]
+                };
+                
+                setEditingFood(newFood);
+                setInputValues({
+                    calories: (first.calories || 0).toString(),
+                    protein: (first.protein || 0).toString(),
+                    carbs: (first.carbs || 0).toString(),
+                    fat: (first.fat || 0).toString(),
+                    servingSize: (first.servingSize || 100).toString(),
+                });
+            }
+            
+            setActiveTab('create');
+            // Only clear search query if we are SURE it's a manual override from the create tab
+            if (manualName && manualName !== searchQuery) setSearchQuery(''); 
+
+            setIsLoading(false);
+
+            if (!aiData || alternatives.length === 0) {
+                // If AI failed, at least we have the name set from the pre-initialization
+                if (!aiData) {
+                    showAlert("Manuell justering", "AI kunde inte hämta data just nu, du får fylla i fälten manuellt.");
+                }
             }
         } catch (e) {
+            setIsLoading(false);
             console.error("Kunde inte ai-skapa", e);
             showAlert("Fel", "Ett fel uppstod.");
         } finally {
@@ -171,6 +244,12 @@ export default function FoodSearchModal({ visible, mealType, onClose, onAddFood,
         ? `${displayedItems.length} resultat`
         : `Förslag för ${mealType}`;
 
+    const updateNumericField = (field: keyof typeof inputValues, value: string) => {
+        setInputValues(prev => ({ ...prev, [field]: value }));
+        const parsed = parseFloat(value.replace(',', '.'));
+        setEditingFood(prev => ({ ...prev, [field]: isNaN(parsed) ? 0 : parsed }));
+    };
+
     const renderItem = ({ item }: { item: FoodItem }) => (
         <TouchableOpacity
             style={[styles.resultItem, { borderBottomColor: palette.border.default }]}
@@ -189,7 +268,13 @@ export default function FoodSearchModal({ visible, mealType, onClose, onAddFood,
 
     return (
         <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-            <View style={[styles.container, { backgroundColor: palette.background.default }]}>
+            <KeyboardAvoidingView 
+                behavior={Platform.OS === 'ios' ? 'padding' : (Platform.OS === 'android' ? 'height' : undefined)} 
+                style={{ flex: 1 }}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+                enabled={Platform.OS !== 'web'}
+            >
+                <View style={[styles.container, { backgroundColor: palette.background.default }]} pointerEvents="auto">
                 {/* Header */}
                 <View style={[styles.header, { backgroundColor: palette.background.paper, borderBottomColor: palette.border.default }]}>
                     <TouchableOpacity onPress={onClose} style={styles.closeButton}>
@@ -253,36 +338,120 @@ export default function FoodSearchModal({ visible, mealType, onClose, onAddFood,
                                 </TouchableOpacity>
                             </View>
 
+                            {/* AI Status Message and Alternatives */}
+                            {(aiStatusMessage || aiAlternatives.length > 1) && (
+                                <View style={{ marginVertical: 12, padding: 12, backgroundColor: palette.primary.main + '10', borderRadius: 8, borderWidth: 1, borderColor: palette.primary.main + '30' }}>
+                                    {aiStatusMessage && (
+                                        <Text style={{ fontSize: 13, color: palette.text.primary, fontWeight: '600', marginBottom: aiAlternatives.length > 1 ? 8 : 0 }}>
+                                            <FontAwesome name="info-circle" size={14} color={palette.primary.main} /> {aiStatusMessage}
+                                        </Text>
+                                    )}
+                                    {aiAlternatives.length > 1 && (
+                                        <View>
+                                            <Text style={{ fontSize: 11, color: palette.text.secondary, marginBottom: 6 }}>Hittade flera alternativ. Välj ett:</Text>
+                                            <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                                                {aiAlternatives.map((alt, idx) => (
+                                                    <TouchableOpacity 
+                                                        key={idx}
+                                                        onPress={() => {
+                                                            setEditingFood(prev => ({ 
+                                                                ...prev, 
+                                                                name: alt.name, 
+                                                                calories: alt.calories, 
+                                                                protein: alt.protein,
+                                                                carbs: alt.carbs,
+                                                                fat: alt.fat,
+                                                                fiber: alt.fiber,
+                                                                servingSize: alt.servingSize,
+                                                                servingUnit: alt.servingUnit
+                                                            }));
+                                                            setInputValues({
+                                                                calories: (alt.calories || 0).toString(),
+                                                                protein: (alt.protein || 0).toString(),
+                                                                carbs: (alt.carbs || 0).toString(),
+                                                                fat: (alt.fat || 0).toString(),
+                                                                servingSize: (alt.servingSize || 100).toString(),
+                                                            });
+                                                        }}
+                                                        style={{ 
+                                                            paddingHorizontal: 10, 
+                                                            paddingVertical: 6, 
+                                                            borderRadius: 16, 
+                                                            backgroundColor: editingFood?.name === alt.name ? palette.primary.main : palette.background.paper,
+                                                            marginRight: 6,
+                                                            marginBottom: 6,
+                                                            borderWidth: 1,
+                                                            borderColor: palette.primary.main + '50'
+                                                        }}
+                                                    >
+                                                        <Text style={{ fontSize: 12, color: editingFood?.name === alt.name ? '#fff' : palette.text.primary }}>{alt.name}</Text>
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </View>
+                                        </View>
+                                    )}
+                                </View>
+                            )}
+
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                                 <View style={{ flex: 1, marginRight: 8 }}>
                                     <Text style={[styles.inputLabel, { color: palette.text.secondary }]}>Kalorier (kcal)</Text>
-                                    <TextInput style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary, backgroundColor: palette.background.paper }]} keyboardType="numeric" value={editingFood?.calories?.toString()} onChangeText={t => setEditingFood(prev => prev ? { ...prev, calories: parseFloat(t) || 0 } : null)} />
+                                    <TextInput 
+                                        style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary }]} 
+                                        keyboardType="numeric" 
+                                        value={inputValues.calories} 
+                                        onChangeText={t => updateNumericField('calories', t)} 
+                                    />
                                 </View>
                                 <View style={{ flex: 1, marginLeft: 8 }}>
                                     <Text style={[styles.inputLabel, { color: palette.text.secondary }]}>Protein (g)</Text>
-                                    <TextInput style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary, backgroundColor: palette.background.paper }]} keyboardType="numeric" value={editingFood?.protein?.toString()} onChangeText={t => setEditingFood(prev => prev ? { ...prev, protein: parseFloat(t) || 0 } : null)} />
+                                    <TextInput 
+                                        style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary }]} 
+                                        keyboardType="numeric" 
+                                        value={inputValues.protein} 
+                                        onChangeText={t => updateNumericField('protein', t)} 
+                                    />
                                 </View>
                             </View>
 
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                                 <View style={{ flex: 1, marginRight: 8 }}>
                                     <Text style={[styles.inputLabel, { color: palette.text.secondary }]}>Kolhydrater (g)</Text>
-                                    <TextInput style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary, backgroundColor: palette.background.paper }]} keyboardType="numeric" value={editingFood?.carbs?.toString()} onChangeText={t => setEditingFood(prev => prev ? { ...prev, carbs: parseFloat(t) || 0 } : null)} />
+                                    <TextInput 
+                                        style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary }]} 
+                                        keyboardType="numeric" 
+                                        value={inputValues.carbs} 
+                                        onChangeText={t => updateNumericField('carbs', t)} 
+                                    />
                                 </View>
                                 <View style={{ flex: 1, marginLeft: 8 }}>
                                     <Text style={[styles.inputLabel, { color: palette.text.secondary }]}>Fett (g)</Text>
-                                    <TextInput style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary, backgroundColor: palette.background.paper }]} keyboardType="numeric" value={editingFood?.fat?.toString()} onChangeText={t => setEditingFood(prev => prev ? { ...prev, fat: parseFloat(t) || 0 } : null)} />
+                                    <TextInput 
+                                        style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary }]} 
+                                        keyboardType="numeric" 
+                                        value={inputValues.fat} 
+                                        onChangeText={t => updateNumericField('fat', t)} 
+                                    />
                                 </View>
                             </View>
 
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                                 <View style={{ flex: 1, marginRight: 8 }}>
                                     <Text style={[styles.inputLabel, { color: palette.text.secondary }]}>Enhet (t.ex. g, portion)</Text>
-                                    <TextInput style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary, backgroundColor: palette.background.paper }]} value={editingFood?.servingUnit || ''} onChangeText={t => setEditingFood(prev => prev ? { ...prev, servingUnit: t } : null)} />
+                                    <TextInput 
+                                        style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary }]} 
+                                        value={editingFood?.servingUnit || 'g'} 
+                                        onChangeText={t => setEditingFood(prev => ({ ...prev, servingUnit: t }))} 
+                                    />
                                 </View>
                                 <View style={{ flex: 1, marginLeft: 8 }}>
                                     <Text style={[styles.inputLabel, { color: palette.text.secondary }]}>Storlek på enhet (t.ex. 100)</Text>
-                                    <TextInput style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary, backgroundColor: palette.background.paper }]} keyboardType="numeric" value={editingFood?.servingSize?.toString()} onChangeText={t => setEditingFood(prev => prev ? { ...prev, servingSize: parseFloat(t) || 1 } : null)} />
+                                    <TextInput 
+                                        style={[styles.createInput, { borderColor: palette.border.default, color: palette.text.primary }]} 
+                                        keyboardType="numeric" 
+                                        value={inputValues.servingSize} 
+                                        onChangeText={t => updateNumericField('servingSize', t)} 
+                                    />
                                 </View>
                             </View>
 
@@ -331,11 +500,18 @@ export default function FoodSearchModal({ visible, mealType, onClose, onAddFood,
                                     </Text>
                                     {isSearching && (
                                         <TouchableOpacity 
-                                            style={[styles.createButton, { backgroundColor: palette.primary.main, borderRadius: borderRadius.l }]}
-                                            onPress={handleCreateMissingFood}
+                                            style={[styles.createButton, { backgroundColor: palette.primary.main, borderRadius: borderRadius.l, opacity: isLoading ? 0.6 : 1 }]}
+                                            onPress={() => handleCreateMissingFood()}
+                                            disabled={isLoading}
                                         >
-                                            <FontAwesome name="magic" size={16} color="#fff" style={{ marginRight: 8 }} />
-                                            <Text style={styles.createButtonText}>Ai-skapa "{searchQuery}"</Text>
+                                            {isLoading ? (
+                                                <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />
+                                            ) : (
+                                                <FontAwesome name="magic" size={16} color="#fff" style={{ marginRight: 8 }} />
+                                            )}
+                                            <Text style={styles.createButtonText}>
+                                                {isLoading ? 'Analyserar...' : `Ai-skapa "${searchQuery}"`}
+                                            </Text>
                                         </TouchableOpacity>
                                     )}
                                 </View>
@@ -348,11 +524,18 @@ export default function FoodSearchModal({ visible, mealType, onClose, onAddFood,
                                     ListFooterComponent={
                                         isSearching ? (
                                             <TouchableOpacity 
-                                                style={[styles.createButton, { backgroundColor: palette.primary.main, borderRadius: borderRadius.l, alignSelf: 'center' }]}
-                                                onPress={handleCreateMissingFood}
+                                                style={[styles.createButton, { backgroundColor: palette.primary.main, borderRadius: borderRadius.l, alignSelf: 'center', opacity: isLoading ? 0.6 : 1 }]}
+                                                onPress={() => handleCreateMissingFood()}
+                                                disabled={isLoading}
                                             >
-                                                <FontAwesome name="magic" size={16} color="#fff" style={{ marginRight: 8 }} />
-                                                <Text style={styles.createButtonText}>Hittar du inte rätt? Ai-skapa "{searchQuery}"</Text>
+                                                {isLoading ? (
+                                                    <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />
+                                                ) : (
+                                                    <FontAwesome name="magic" size={16} color="#fff" style={{ marginRight: 8 }} />
+                                                )}
+                                                <Text style={styles.createButtonText}>
+                                                    {isLoading ? 'Analyserar...' : `Hittar du inte rätt? Ai-skapa "${searchQuery}"`}
+                                                </Text>
                                             </TouchableOpacity>
                                         ) : null
                                     }
@@ -376,6 +559,7 @@ export default function FoodSearchModal({ visible, mealType, onClose, onAddFood,
                     )}
                 </View>
             </View>
+            </KeyboardAvoidingView>
         </Modal>
     );
 }

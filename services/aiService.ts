@@ -5,6 +5,8 @@ import { SYSTEM_PROMPT_TEMPLATE } from '@/utils/aiContext';
 // Du kan skaffa en på https://aistudio.google.com/app/apikey
 // ---------------------------------------------------------
 const WEEKLY_PLAN_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_AI_KEY || '';
+const GEMINI_MODEL = "gemini-2.0-flash";
+const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${WEEKLY_PLAN_API_KEY}`;
 
 export interface ChatMessage {
     role: 'system' | 'user' | 'assistant';
@@ -62,7 +64,7 @@ export async function generateAtlasResponse(
             }
         };
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${WEEKLY_PLAN_API_KEY}`, {
+        const response = await fetch(GEMINI_ENDPOINT, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -148,7 +150,7 @@ Regler:
             }
         };
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${WEEKLY_PLAN_API_KEY}`, {
+        const response = await fetch(GEMINI_ENDPOINT, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -160,6 +162,9 @@ Regler:
 
         if (data.error) {
             console.error("Gemini Image Error:", data.error);
+            if (data.error.code === 429) {
+                return { error: 'RATE_LIMIT', message: 'Tjänsten är hårt belastad just nu. Vänta en minut och försök igen.' };
+            }
             return null;
         }
 
@@ -229,7 +234,7 @@ Om du är osäker, gör din bästa kvalificerade gissning.
             }
         };
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${WEEKLY_PLAN_API_KEY}`, {
+        const response = await fetch(GEMINI_ENDPOINT, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -241,6 +246,9 @@ Om du är osäker, gör din bästa kvalificerade gissning.
 
         if (data.error) {
             console.error("Gemini Food Image Error:", data.error);
+            if (data.error.code === 429) {
+                return { error: 'RATE_LIMIT', message: 'Tjänsten är hårt belastad just nu. Vänta en minut och försök igen.' };
+            }
             return null;
         }
 
@@ -274,23 +282,32 @@ export async function estimateFoodNutrition(foodName: string, mealType?: string)
         const prompt = `
 Du är en AI-assistent i en träningsapp som hanterar kost. Användaren vill lägga till en ny matvara: "${foodName}".${mealContext}
 Din uppgift är att uppskatta näringsinformation för detta. 
+
+Om namnet är otydligt eller har flera vanliga varianter (t.ex. "Mjölk" kan vara 3%, 1.5%, 0.5%), ge upp till 3 olika alternativ.
+
 Regler för portion:
 1. Om det är en hel rätt (t.ex. "Lax med potatis"), ange per normal portion.
-2. Om det är en sås eller ett tillbehör (t.ex. "Béarnaise", "Majonnäs", "Ketchup"), ange ALLTID portionen i "msk" (matskedar) som enhet, och uppskatta näring för 1 msk. Detta gör det lättare för användaren att logga rätt mängd. 
+2. Om det är en sås eller ett tillbehör (t.ex. "Béarnaise", "Majonnäs", "Ketchup"), ange ALLTID portionen i "msk" (matskedar) som enhet, och uppskatta näring för 1 msk. 
 3. För andra tillbehör som inte är flytande, uppskatta en rimlig mängd (t.ex. 30g).
 4. Är det en råvara utan kontext, välj rimlig standardenhet (t.ex. 100g eller 1 st).
 
 Returnera ENDAST ett giltigt JSON-objekt med denna struktur, INGEN extatext eller markdown-block:
 {
-  "calories": 450,
-  "protein": 30,
-  "carbs": 40,
-  "fat": 15,
-  "fiber": 5,
-  "servingSize": 1,
-  "servingUnit": "msk"
+  "confidence": 0.8, // Hur säker du är på din tolkning (0-1)
+  "message": "En kort beskrivning av vad du hittade, t.ex. 'Hittade flera varianter av mjölk'.",
+  "alternatives": [
+    {
+      "name": "Namn på varianten (t.ex. Mellanmjölk 1.5%)",
+      "calories": 45,
+      "protein": 3.5,
+      "carbs": 5,
+      "fat": 1.5,
+      "fiber": 0,
+      "servingSize": 100,
+      "servingUnit": "g"
+    }
+  ]
 }
-Om du är osäker, gör din bästa kvalificerade gissning.
 `;
 
         const payload = {
@@ -301,7 +318,7 @@ Om du är osäker, gör din bästa kvalificerade gissning.
             }
         };
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${WEEKLY_PLAN_API_KEY}`, {
+        const response = await fetch(GEMINI_ENDPOINT, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -311,6 +328,9 @@ Om du är osäker, gör din bästa kvalificerade gissning.
 
         if (data.error) {
             console.error("Gemini Estimate Error:", data.error);
+            if (data.error.code === 429) {
+                return { error: 'RATE_LIMIT', message: 'Tjänsten är hårt belastad just nu. Vänta en minut och försök igen.' };
+            }
             return null;
         }
 
