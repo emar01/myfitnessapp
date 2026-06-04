@@ -29,6 +29,7 @@ export default function ProfileScreen() {
     const [memories, setMemories] = useState<Memory[]>([]);
     const [isUpdating, setIsUpdating] = useState(false);
     const [stravaConnected, setStravaConnected] = useState(false);
+    const [globalAiDisabled, setGlobalAiDisabled] = useState(false);
 
     // Strava Auth
     const [request, response, promptAsync] = useAuthRequest(
@@ -85,7 +86,15 @@ export default function ProfileScreen() {
             setMemories(snap.docs.map(d => ({ id: d.id, content: d.data().content })));
         });
 
-        return () => { unsubscribe(); unsubMem(); };
+        // Subscribe to Global Config
+        const configRef = doc(db, 'config', 'global');
+        const unsubConfig = onSnapshot(configRef, (docSnap) => {
+            if (docSnap.exists()) {
+                setGlobalAiDisabled(docSnap.data().aiDisabledGlobally === true);
+            }
+        });
+
+        return () => { unsubscribe(); unsubMem(); unsubConfig(); };
     }, [user]);
 
     useEffect(() => {
@@ -121,6 +130,21 @@ export default function ProfileScreen() {
         } catch (error) {
             console.error("Failed to update AI setting", error);
             showAlert("Fel", "Kunde inte ändra inställningen just nu.");
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
+    const toggleGlobalAi = async (value: boolean) => {
+        setIsUpdating(true);
+        try {
+            const configRef = doc(db, 'config', 'global');
+            await setDoc(configRef, {
+                aiDisabledGlobally: value
+            }, { merge: true });
+        } catch (error) {
+            console.error("Failed to update global AI setting", error);
+            showAlert("Fel", "Kunde inte ändra global AI-inställning.");
         } finally {
             setIsUpdating(false);
         }
@@ -400,7 +424,31 @@ export default function ProfileScreen() {
 
                 </View>
 
-
+                {/* Admin Settings Section */}
+                {isAdmin && (
+                    <>
+                        <Text style={styles.sectionTitle}>Admininställningar</Text>
+                        <View style={[styles.card, { flexDirection: 'column', alignItems: 'stretch' }]}>
+                            <View style={[styles.row, { borderBottomWidth: 0 }]}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.label}>Stäng av all AI i appen</Text>
+                                    <Text style={styles.description}>
+                                        Inaktiverar alla AI-tjänster globalt för alla användare (Atlas Coach, bildanalys, matuppskattning).
+                                    </Text>
+                                </View>
+                                {isUpdating ? (
+                                    <ActivityIndicator size="small" color={palette.primary.main} />
+                                ) : (
+                                    <Switch
+                                        value={globalAiDisabled}
+                                        onValueChange={toggleGlobalAi}
+                                        trackColor={{ false: palette.text.disabled, true: palette.status.error || palette.primary.main }}
+                                    />
+                                )}
+                            </View>
+                        </View>
+                    </>
+                )}
 
                 {/* AI Memory Manager Section */}
                 <Text style={styles.sectionTitle}>Atlas Minne (Långtidsminne)</Text>

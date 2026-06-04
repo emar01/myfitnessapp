@@ -1,4 +1,19 @@
 import { SYSTEM_PROMPT_TEMPLATE } from '@/utils/aiContext';
+import { db } from '@/lib/firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
+
+export async function isAiGloballyDisabled(): Promise<boolean> {
+    try {
+        const configRef = doc(db, 'config', 'global');
+        const configSnap = await getDoc(configRef);
+        if (configSnap.exists()) {
+            return configSnap.data().aiDisabledGlobally === true;
+        }
+    } catch (e) {
+        console.error("Error checking global AI status:", e);
+    }
+    return false;
+}
 
 // ---------------------------------------------------------
 // VIKTIGT: Byt ut denna sträng mot din riktiga Google AI Studio / Firebase API-nyckel
@@ -17,6 +32,10 @@ export async function generateAtlasResponse(
     messages: ChatMessage[],
     contextJson: string
 ): Promise<string> {
+
+    if (await isAiGloballyDisabled()) {
+        return "⚠️ AI-tjänster är för närvarande avstängda av en administratör.";
+    }
 
     if (WEEKLY_PLAN_API_KEY.includes('YOUR_OPENAI_API_KEY')) {
         return "⚠️ Du måste lägga in din Google API-nyckel i `services/aiService.ts`.";
@@ -96,6 +115,9 @@ export async function generateAtlasResponse(
 }
 
 export async function parseWorkoutImage(base64Image: string, availableExercises: { id: string, name: string }[]): Promise<any | null> {
+    if (await isAiGloballyDisabled()) {
+        return { error: 'AI_DISABLED', message: 'AI-tjänster är för närvarande avstängda av en administratör.' };
+    }
     if (!WEEKLY_PLAN_API_KEY || WEEKLY_PLAN_API_KEY.includes('YOUR_OPENAI_API_KEY')) {
         console.error("API Key missing");
         return null;
@@ -188,6 +210,9 @@ Regler:
 }
 
 export async function parseFoodImage(base64Image: string): Promise<any | null> {
+    if (await isAiGloballyDisabled()) {
+        return { error: 'AI_DISABLED', message: 'AI-tjänster är för närvarande avstängda av en administratör.' };
+    }
     if (!WEEKLY_PLAN_API_KEY || WEEKLY_PLAN_API_KEY.includes('YOUR_OPENAI_API_KEY')) {
         console.error("API Key missing");
         return null;
@@ -272,6 +297,9 @@ Om du är osäker, gör din bästa kvalificerade gissning.
 }
 
 export async function estimateFoodNutrition(foodName: string, mealType?: string): Promise<any | null> {
+    if (await isAiGloballyDisabled()) {
+        return { error: 'AI_DISABLED', message: 'AI-tjänster är för närvarande avstängda av en administratör.' };
+    }
     if (!WEEKLY_PLAN_API_KEY || WEEKLY_PLAN_API_KEY.includes('YOUR_OPENAI_API_KEY')) {
         console.error("API Key missing for estimateFoodNutrition");
         return null;

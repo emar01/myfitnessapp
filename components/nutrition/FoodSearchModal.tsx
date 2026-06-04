@@ -100,6 +100,12 @@ export default function FoodSearchModal({ visible, mealType, onClose, onAddFood,
                 return;
             }
 
+            if (aiData?.error === 'AI_DISABLED') {
+                showAlert("AI Inaktiverad", aiData.message);
+                setIsLoading(false);
+                return;
+            }
+
             if (aiData && aiData.foodName) {
                 const newFood: FoodItem = {
                     name: aiData.foodName,
@@ -154,6 +160,12 @@ export default function FoodSearchModal({ visible, mealType, onClose, onAddFood,
 
             if (aiData?.error === 'RATE_LIMIT') {
                 showAlert("Belastning", aiData.message);
+                setIsLoading(false);
+                return;
+            }
+
+            if (aiData?.error === 'AI_DISABLED') {
+                showAlert("AI Inaktiverad", aiData.message);
                 setIsLoading(false);
                 return;
             }

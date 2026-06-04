@@ -52,6 +52,7 @@ export default function CoachScreen() {
     const [isParsingImage, setIsParsingImage] = useState(false);
     const [context, setContext] = useState<string | null>(null);
     const [profile, setProfile] = useState<UserProfile | null>(null);
+    const [globalAiDisabled, setGlobalAiDisabled] = useState(false);
     const flatListRef = useRef<FlatList>(null);
 
     useEffect(() => {
@@ -91,9 +92,18 @@ export default function CoachScreen() {
             }
         });
 
+        // 4. Subscribe to Global Config
+        const configRef = doc(db, 'config', 'global');
+        const unsubConfig = onSnapshot(configRef, (docSnap) => {
+            if (docSnap.exists()) {
+                setGlobalAiDisabled(docSnap.data().aiDisabledGlobally === true);
+            }
+        });
+
         return () => {
             unsubscribe();
             unsubProfile();
+            unsubConfig();
         };
     }, [user]);
 
@@ -113,6 +123,12 @@ export default function CoachScreen() {
 
     const sendMessage = async (text: string) => {
         if (!text.trim() || !user) return;
+
+        // CHECK IF AI IS GLOBALLY DISABLED
+        if (globalAiDisabled) {
+            showAlert("Systemmeddelande", "AI-tjänster är för närvarande inaktiverade av administratören.");
+            return;
+        }
 
         // CHECK IF AI IS ENABLED
         if (profile?.aiEnabled === false) {
@@ -198,6 +214,12 @@ export default function CoachScreen() {
     const handlePickImage = async () => {
         if (!user) return;
 
+        // CHECK IF AI IS GLOBALLY DISABLED
+        if (globalAiDisabled) {
+            showAlert("Systemmeddelande", "AI-tjänster är för närvarande inaktiverade av administratören.");
+            return;
+        }
+
         // CHECK IF AI IS ENABLED
         if (profile?.aiEnabled === false) {
             showAlert("Spärrad", "Atlas är avstängd i din profil.");
@@ -249,6 +271,11 @@ export default function CoachScreen() {
             const parsedData = await parseWorkoutImage(base64Image, availableExercises);
 
             setIsParsingImage(false);
+
+            if (parsedData?.error === 'AI_DISABLED') {
+                showAlert("AI Inaktiverad", parsedData.message);
+                return;
+            }
 
             if (parsedData && parsedData.exercises) {
                 // Pre-process sets to ensure every set has weight, reps and type to avoid UI crashes
@@ -355,39 +382,49 @@ export default function CoachScreen() {
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
             >
-                {isParsingImage && (
-                    <View style={styles.parsingOverlay}>
-                        <ActivityIndicator size="small" color={palette.primary.main} />
-                        <Text style={styles.parsingText}>Atlas tolkar passet...</Text>
+                {globalAiDisabled ? (
+                    <View style={{ padding: spacing.m, backgroundColor: palette.background.paper, alignItems: 'center', borderTopWidth: 1, borderTopColor: palette.border.default }}>
+                        <Text style={{ color: palette.status.error || '#FF3B30', fontWeight: 'bold', textAlign: 'center' }}>
+                            ⚠️ AI-tjänster är tillfälligt inaktiverade av administratören.
+                        </Text>
                     </View>
-                )}
-                <View style={styles.inputContainer}>
-                    <TouchableOpacity
-                        style={styles.attachButton}
-                        onPress={handlePickImage}
-                        disabled={isLoading || isParsingImage}
-                    >
-                        <Ionicons name="camera" size={24} color={palette.text.secondary} />
-                    </TouchableOpacity>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Fråga Atlas..."
-                        value={inputText}
-                        onChangeText={setInputText}
-                        placeholderTextColor={palette.text.disabled}
-                    />
-                    <TouchableOpacity
-                        style={[styles.sendButton, (!inputText && !isLoading) && styles.sendButtonDisabled]}
-                        onPress={() => sendMessage(inputText)}
-                        disabled={!inputText || isLoading}
-                    >
-                        {isLoading ? (
-                            <ActivityIndicator size="small" color="white" />
-                        ) : (
-                            <Ionicons name="send" size={20} color="white" />
+                ) : (
+                    <>
+                        {isParsingImage && (
+                            <View style={styles.parsingOverlay}>
+                                <ActivityIndicator size="small" color={palette.primary.main} />
+                                <Text style={styles.parsingText}>Atlas tolkar passet...</Text>
+                            </View>
                         )}
-                    </TouchableOpacity>
-                </View>
+                        <View style={styles.inputContainer}>
+                            <TouchableOpacity
+                                style={styles.attachButton}
+                                onPress={handlePickImage}
+                                disabled={isLoading || isParsingImage}
+                            >
+                                <Ionicons name="camera" size={24} color={palette.text.secondary} />
+                            </TouchableOpacity>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Fråga Atlas..."
+                                value={inputText}
+                                onChangeText={setInputText}
+                                placeholderTextColor={palette.text.disabled}
+                            />
+                            <TouchableOpacity
+                                style={[styles.sendButton, (!inputText && !isLoading) && styles.sendButtonDisabled]}
+                                onPress={() => sendMessage(inputText)}
+                                disabled={!inputText || isLoading}
+                            >
+                                {isLoading ? (
+                                    <ActivityIndicator size="small" color="white" />
+                                ) : (
+                                    <Ionicons name="send" size={20} color="white" />
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </>
+                )}
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
